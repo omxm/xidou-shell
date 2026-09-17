@@ -1,11 +1,15 @@
 import QtQuick
 import Quickshell
 import "config"
+import "bar"
 
-// Phase 0 entry point: loads Config + Theme and proves the pipeline works.
-// No panels yet — those start in Phase 1. Run with:
+// Shell entry point. Run with:
 //   quickshell -p /path/to/xidou-shell/quickshell
-// and check the log output below to verify config.toml was read correctly.
+//
+// Phase 0 (config + theme) loads first; Phase 1 (the bar) instantiates one
+// Bar per screen, mapping screen order to dwm monitor number — fine for the
+// X230's single 1366x768 panel, and a reasonable default for multi-monitor
+// until dwm-ipc's per-monitor identity is threaded through explicitly.
 ShellRoot {
     settings.watchFiles: true
 
@@ -25,5 +29,17 @@ ShellRoot {
             + " background=" + Theme.background
             + " font=" + Theme.fontFamily + "@" + Theme.fontSize
             + " radius=" + Theme.radius);
+    }
+
+    Variants {
+        model: Quickshell.screens
+
+        Bar {
+            required property var modelData
+            required property int index
+
+            screen: modelData
+            monitorNum: index
+        }
     }
 }
