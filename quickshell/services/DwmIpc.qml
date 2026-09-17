@@ -65,9 +65,17 @@ Singleton {
                     var parsed = JSON.parse(text);
                     var byNum = {};
                     for (var i = 0; i < parsed.length; i++) {
-                        byNum[parsed[i].num] = parsed[i];
-                        if (parsed[i].is_selected)
-                            root.focusedMonitor = parsed[i].num;
+                        var mon = parsed[i];
+                        // dwm only populates tag_state (selected/occupied/urgent)
+                        // once the first tag-changing event fires after startup;
+                        // until then it's all zero even though a tag is actually
+                        // active. Seed "selected" from tagset.current so the bar
+                        // highlights the right tag before any switch happens.
+                        if (mon.tag_state && mon.tag_state.selected === 0 && mon.tagset)
+                            mon.tag_state.selected = mon.tagset.current;
+                        byNum[mon.num] = mon;
+                        if (mon.is_selected)
+                            root.focusedMonitor = mon.num;
                     }
                     root.monitorsByNum = byNum;
                     root.connected = true;

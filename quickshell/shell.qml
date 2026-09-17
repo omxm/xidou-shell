@@ -36,10 +36,9 @@ ShellRoot {
 
         Bar {
             required property var modelData
-            required property int index
 
             screen: modelData
-            monitorNum: index
+            monitorNum: Quickshell.screens.indexOf(modelData)
         }
     }
 }
