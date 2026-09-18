@@ -185,6 +185,14 @@ static void
 connect_to_socket()
 {
   struct sockaddr_un addr;
+  const char *socket_path = getenv("XIDOU_DWM_SOCKET");
+
+  if (!socket_path || !*socket_path)
+    socket_path = DEFAULT_SOCKET_PATH;
+  else if (strlen(socket_path) >= sizeof(addr.sun_path)) {
+    fprintf(stderr, "XIDOU_DWM_SOCKET too long, falling back to %s\n", DEFAULT_SOCKET_PATH);
+    socket_path = DEFAULT_SOCKET_PATH;
+  }
 
   int sock = socket(AF_UNIX, SOCK_STREAM, 0);
 
@@ -192,7 +200,7 @@ connect_to_socket()
   memset(&addr, 0, sizeof(struct sockaddr_un));
 
   addr.sun_family = AF_UNIX;
-  strcpy(addr.sun_path, DEFAULT_SOCKET_PATH);
+  strcpy(addr.sun_path, socket_path);
 
   connect(sock, (const struct sockaddr *)&addr, sizeof(struct sockaddr_un));
 

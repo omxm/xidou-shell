@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/epoll.h>
+#include <sys/un.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
@@ -1805,8 +1806,26 @@ setupepoll(void)
 		exit(1);
 	}
 
-	if (ipc_init(ipcsockpath, epoll_fd, ipccommands, LENGTH(ipccommands)) < 0) {
-		fputs("Failed to initialize IPC\n", stderr);
+	/* Overridable via $XIDOU_DWM_SOCKET so a test instance can run
+	 * alongside a live one without stealing its socket path — see
+	 * dwm-msg.c's connect_to_socket() for the matching client-side
+	 * lookup. Falls back to ipcsockpath (config.h) when unset. Bounds
+	 * this against sun_path's real size before it reaches ipc_init(),
+	 * since that ends up in an unbounded strcpy(); previously
+	 * unreachable from outside the process (ipcsockpath is a fixed
+	 * config.h literal), an env var makes the length externally
+	 * controlled for the first time. */
+	{
+		const char *sockpath = getenv("XIDOU_DWM_SOCKET");
+		if (!sockpath || !*sockpath)
+			sockpath = ipcsockpath;
+		else if (strlen(sockpath) >= sizeof(((struct sockaddr_un *)0)->sun_path)) {
+			fprintf(stderr, "XIDOU_DWM_SOCKET too long, falling back to %s\n", ipcsockpath);
+			sockpath = ipcsockpath;
+		}
+		if (ipc_init(sockpath, epoll_fd, ipccommands, LENGTH(ipccommands)) < 0) {
+			fputs("Failed to initialize IPC\n", stderr);
+		}
 	}
 }
 
