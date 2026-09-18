@@ -1,0 +1,20 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Xidou
+Comment=Xidou Shell (dwm + Quickshell, X11)
+Exec=dbus-run-session startx /home/haru/projects/xidou-shell/session/xidou-xinitrc
+Icon=xidou
+Type=Application
+
+# NOTE: this file must be installed under a *wayland-sessions* directory
+# (e.g. /usr/share/wayland-sessions/xidou.desktop), NOT xsessions/, even
+# though the session it starts is X11. noctalia-greeter (this machine's
+# greetd greeter) only scans wayland-sessions* directories for session
+# entries — confirmed via `strings` on /usr/bin/noctalia-greeter, which
+# references only wayland-sessions paths and never xsessions. It doesn't
+# care what DesktopNames/Exec actually launch, so an Xorg session dropped
+# here works, it's just an unusual location for one.
+#
+# DesktopNames is intentionally omitted: mango's entry sets
+# DesktopNames=mango;wlroots for compositor/portal matching, which doesn't
+# apply to an X11 WM.

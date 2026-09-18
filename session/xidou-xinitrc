@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+# Xidou Shell — xinit client script.
+#
+# Run by `startx` (via the xidou.desktop session entry) once Xorg is up on
+# the real display. Not meant to be run inside Xephyr — see the repo README
+# for the nested-server dev workflow instead.
+#
+# dwm owns the session: quickshell (the bar/panels) is started in the
+# background first so the bar's strut geometry is in place before dwm's
+# first arrange, then dwm becomes the foreground process. dwm exiting ends
+# the X session, same as a normal xinitrc's `exec` convention.
+set -eu
+
+REPO_DIR="/home/haru/projects/xidou-shell"
+
+[ -f "$HOME/.Xresources" ] && xrdb -merge "$HOME/.Xresources" 2>/dev/null
+
+quickshell -p "$REPO_DIR/quickshell" &
+
+exec "$REPO_DIR/dwm/dwm"
