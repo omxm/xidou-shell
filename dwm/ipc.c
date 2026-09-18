@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -874,19 +875,25 @@ ipc_drop_client(IPCClient *c)
   int res = close(fd);
 
   if (res == 0) {
-    struct epoll_event ev;
-
-    // Stop waking up to messages from this client
-    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, &ev);
-    ipc_list_remove_client(&ipc_clients, c);
-
-    free(c->buffer);
-    free(c);
-
     DEBUG("Successfully removed client on fd %d\n", fd);
-  } else if (res < 0 && res != EINTR) {
-    fprintf(stderr, "Failed to close fd %d\n", fd);
+  } else {
+    fprintf(stderr, "close failed on fd %d: %s\n", fd, strerror(errno));
   }
+
+  // Whether or not close() itself succeeded, the fd is no longer usable
+  // (and even if it somehow were, the kernel is free to hand out the same
+  // fd number again). Leaving this client's bookkeeping around after that
+  // point is the actual bug: a stale IPCClient* left in ipc_clients (and
+  // registered in epoll) shadows whatever connection the OS later hands
+  // that fd number to, since ipc_list_get_client() returns the first
+  // match by fd. So this cleanup always runs, regardless of close()'s
+  // result.
+  struct epoll_event ev;
+  epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, &ev);
+  ipc_list_remove_client(&ipc_clients, c);
+
+  free(c->buffer);
+  free(c);
 
   return res;
 }
@@ -1148,7 +1155,10 @@ ipc_handle_client_epoll_event(struct epoll_event *ev, Monitor *mons,
   int fd = ev->data.fd;
   IPCClient *c = ipc_get_client(fd);
 
-  if (ev->events & EPOLLHUP) {
+  if (ev->events & EPOLLERR) {
+    DEBUG("EPOLLERR received from client at fd %d\n", fd);
+    ipc_drop_client(c);
+  } else if (ev->events & EPOLLHUP) {
     DEBUG("EPOLLHUP received from client at fd %d\n", fd);
     ipc_drop_client(c);
   } else if (ev->events & EPOLLOUT) {
