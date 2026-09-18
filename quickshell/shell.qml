@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Mpris
 import "config"
 import "services"
 import "bar"
@@ -56,6 +57,31 @@ ShellRoot {
 
         function toggle(name: string): void {
             PanelState.toggle(name);
+        }
+    }
+
+    // ctrl+<arrow> media keys (dwm/config.h) go here rather than a
+    // playerctl-style external CLI — the bar's Media module already holds
+    // a live MprisPlayer, this just drives the same one.
+    IpcHandler {
+        target: "mpris"
+
+        function next(): void {
+            var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
+            if (p && p.canGoNext)
+                p.next();
+        }
+
+        function previous(): void {
+            var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
+            if (p && p.canGoPrevious)
+                p.previous();
+        }
+
+        function playPause(): void {
+            var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
+            if (p && p.canTogglePlaying)
+                p.togglePlaying();
         }
     }
 }

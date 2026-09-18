@@ -265,6 +265,11 @@ static int strutrangeoverlaps(long start, long end, int monstart, int monsize);
 static void updatestrut(Window w);
 static void removestrut(Window w);
 static void refreshworkareas(void);
+static void cycleview(const Arg *arg);
+static void cycletag(const Arg *arg);
+static void togglefullscreen(const Arg *arg);
+static void resizeclientkey(const Arg *arg);
+static void grabrootbuttons(void);
 static void updatebars(void);
 static void updateclientlist(void);
 static int updategeom(void);
@@ -1028,6 +1033,32 @@ grabbuttons(Client *c, int focused)
 }
 
 void
+grabrootbuttons(void)
+{
+	/* dwm has no other root-level passive button grab — every existing
+	 * buttons[] entry is scoped to a specific click context (bar area,
+	 * a client window). MODKEY+scroll needs to work regardless of what's
+	 * under the pointer, including Quickshell's own bar/launcher windows
+	 * dwm never manages — a passive grab directly on root, with
+	 * owner_events False, reports the event's window as root itself
+	 * (not whatever's actually under the pointer), which is exactly what
+	 * lands it in buttonpress()'s default ClkRootWin case below and lets
+	 * the existing buttons[] dispatch loop handle it with no further
+	 * special-casing. Per X11 grab semantics this correctly takes
+	 * priority over any window it's covering, since nothing else on this
+	 * system registers its own grab for the same modifier+button. */
+	unsigned int i, j;
+	unsigned int modifiers[] = { 0, LockMask, numlockmask, numlockmask|LockMask };
+
+	XUngrabButton(dpy, AnyButton, AnyModifier, root);
+	for (i = 0; i < LENGTH(buttons); i++)
+		if (buttons[i].click == ClkRootWin)
+			for (j = 0; j < LENGTH(modifiers); j++)
+				XGrabButton(dpy, buttons[i].button, buttons[i].mask | modifiers[j],
+					root, False, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
+}
+
+void
 grabkeys(void)
 {
 	updatenumlockmask();
@@ -1219,8 +1250,10 @@ mappingnotify(XEvent *e)
 	XMappingEvent *ev = &e->xmapping;
 
 	XRefreshKeyboardMapping(ev);
-	if (ev->request == MappingKeyboard)
+	if (ev->request == MappingKeyboard) {
 		grabkeys();
+		grabrootbuttons();
+	}
 }
 
 void
@@ -1491,6 +1524,28 @@ resizemouse(const Arg *arg)
 }
 
 void
+resizeclientkey(const Arg *arg)
+{
+	/* A direct, discrete per-keypress nudge — no drag "mode" the way
+	 * resizemouse() has, matching MangoWM's resizewin as literally as
+	 * dwm's own resize() allows. Tiled clients get resize() called on
+	 * them same as floating ones; the layout's next arrange() (which
+	 * could happen on basically any subsequent event) will simply
+	 * recompute and override it, same limitation resizemouse() already
+	 * has for tiled clients — not floated automatically, since that
+	 * wasn't asked for. */
+	const int *delta = (const int *)arg->v;
+	Client *c = selmon->sel;
+	int nw, nh;
+
+	if (!c || c->isfullscreen)
+		return;
+	nw = MAX(c->w + delta[0], 1);
+	nh = MAX(c->h + delta[1], 1);
+	resize(c, c->x, c->y, nw, nh, 1);
+}
+
+void
 restack(Monitor *m)
 {
 	Client *c;
@@ -1644,6 +1699,17 @@ setfocus(Client *c)
 }
 
 void
+togglefullscreen(const Arg *arg)
+{
+	/* setfullscreen() already does exactly what's needed — floats,
+	 * resizes to the monitor's full geometry, and saves/restores prior
+	 * geometry on toggle-off — this is just the keybind-facing wrapper. */
+	if (!selmon->sel)
+		return;
+	setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
+}
+
+void
 setfullscreen(Client *c, int fullscreen)
 {
 	if (fullscreen && !c->isfullscreen) {
@@ -1789,6 +1855,7 @@ setup(void)
 	XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
 	XSelectInput(dpy, root, wa.event_mask);
 	grabkeys();
+	grabrootbuttons();
 	focus(NULL);
 	setupepoll();
 }
@@ -1901,6 +1968,45 @@ tag(const Arg *arg)
 		focus(NULL);
 		arrange(selmon);
 	}
+}
+
+void
+cycleview(const Arg *arg)
+{
+	/* Computed directly from the current tag's bit position ±1, wrapping
+	 * at the ends — not by tracking "visited" tags, which is exactly the
+	 * i3 bug CLAUDE.md's lessons doc warns about (workspace next/prev
+	 * skipping unvisited workspaces). If multiple tags are selected at
+	 * once (possible via toggleview), the lowest one is treated as
+	 * "current" for cycling purposes. */
+	unsigned int cur = selmon->tagset[selmon->seltags];
+	int curtag = 0;
+	Arg a;
+
+	while (curtag < (int)LENGTH(tags) - 1 && !(cur & (1 << curtag)))
+		curtag++;
+	a.ui = 1 << (((curtag + arg->i) % (int)LENGTH(tags) + (int)LENGTH(tags)) % (int)LENGTH(tags));
+	view(&a);
+}
+
+void
+cycletag(const Arg *arg)
+{
+	/* Same computed ±1 wrap as cycleview(), but moves the focused client
+	 * there instead of switching the view — mirrors tag()'s own pattern
+	 * (move only, does not follow/switch view) with a computed target
+	 * instead of a fixed one. */
+	unsigned int cur;
+	int curtag = 0;
+	Arg a;
+
+	if (!selmon->sel)
+		return;
+	cur = selmon->tagset[selmon->seltags];
+	while (curtag < (int)LENGTH(tags) - 1 && !(cur & (1 << curtag)))
+		curtag++;
+	a.ui = 1 << (((curtag + arg->i) % (int)LENGTH(tags) + (int)LENGTH(tags)) % (int)LENGTH(tags));
+	tag(&a);
 }
 
 void
