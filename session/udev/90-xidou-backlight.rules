@@ -1,0 +1,13 @@
+# Grants the `video` group write access to the X230's backlight brightness
+# node, so bin/xidou-brightness can write it as a normal user instead of
+# needing root or a setuid helper. This system runs seatd (not
+# elogind/logind), so there's no automatic per-session ACL on backlight
+# sysfs nodes the way there would be under logind — this rule is the
+# one-time substitute for that.
+#
+# One-time setup (not run automatically by anything in this repo):
+#   sudo cp session/udev/90-xidou-backlight.rules /etc/udev/rules.d/
+#   sudo usermod -aG video "$USER"
+#   sudo udevadm control --reload-rules && sudo udevadm trigger --subsystem-match=backlight
+#   (then log out/in, or reboot, for the group membership to take effect)
+SUBSYSTEM=="backlight", ACTION=="add", RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"

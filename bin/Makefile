@@ -13,8 +13,9 @@ xidou-focus-window: xidou-focus-window.c
 
 install: all
 	mkdir -p ${DESTDIR}${PREFIX}/bin
-	cp -f xidou xidou-focus-window ${DESTDIR}${PREFIX}/bin
+	cp -f xidou xidou-brightness xidou-focus-window ${DESTDIR}${PREFIX}/bin
 	chmod 755 ${DESTDIR}${PREFIX}/bin/xidou
+	chmod 755 ${DESTDIR}${PREFIX}/bin/xidou-brightness
 	chmod 755 ${DESTDIR}${PREFIX}/bin/xidou-focus-window
 
 clean:

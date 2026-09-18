@@ -39,6 +39,10 @@ latitude = 0.0
 longitude = 0.0
 units = "celsius"          # celsius | fahrenheit
 
+[osd]
+width = 220
+height = 56
+
 [panels.control_center]
 enabled = true
 keybind = "super+e"

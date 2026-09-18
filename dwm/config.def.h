@@ -71,6 +71,16 @@ static const char *volraisecmd[] = { "wpctl", "set-volume", "-l", "1.0", "@DEFAU
 static const char *vollowercmd[] = { "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-", NULL };
 static const char *volmutecmd[]  = { "wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle", NULL };
 
+/* Brightness keys go through bin/xidou-brightness rather than a CLI tool
+ * the way the volume keys use wpctl — brightnessctl/light aren't installed
+ * on this system, so that helper writes /sys/class/backlight directly (see
+ * its header comment for the one-time udev/group setup this needs), then
+ * pings the shell via `xidou msg osd brightness` since sysfs writes don't
+ * produce a live signal Quickshell could watch passively the way it does
+ * for Pipewire volume. */
+static const char *brightupcmd[]   = { "xidou-brightness", "up", NULL };
+static const char *brightdowncmd[] = { "xidou-brightness", "down", NULL };
+
 /* super+ctrl+<arrow>: resizeclientkey()'s argument — a discrete {dx,dy} nudge
  * per keypress, matching MangoWM's resizewin as literally as dwm's own
  * resize() allows (see resizeclientkey() in dwm.c for the tiled-client
@@ -135,6 +145,8 @@ static const Key keys[] = {
 	{ 0,                            XF86XK_AudioRaiseVolume, spawn, {.v = volraisecmd } },
 	{ 0,                            XF86XK_AudioLowerVolume, spawn, {.v = vollowercmd } },
 	{ 0,                            XF86XK_AudioMute,        spawn, {.v = volmutecmd } },
+	{ 0,                            XF86XK_MonBrightnessUp,   spawn, {.v = brightupcmd } },
+	{ 0,                            XF86XK_MonBrightnessDown, spawn, {.v = brightdowncmd } },
 	{ ControlMask,                  XK_Right,  spawn,            {.v = mprisnextcmd } },
 	{ ControlMask,                  XK_Left,   spawn,            {.v = mprisprevcmd } },
 	{ ControlMask,                  XK_Down,   spawn,            {.v = mprisplaypausecmd } },

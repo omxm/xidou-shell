@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+# Raw sysfs backlight control for the X230's intel_backlight device.
+#
+# No CLI brightness tool (brightnessctl, light) is installed on this system,
+# so this writes /sys/class/backlight directly instead — matching how
+# dwm/config.h's volume keys go straight to wpctl rather than through a
+# wrapper. Needs the udev rule in session/udev/90-xidou-backlight.rules
+# installed and this user in the `video` group for write access; see that
+# file's header comment for the one-time setup. Without it, the `echo`
+# below fails with "Permission denied" and this exits non-zero.
+set -eu
+
+DEVICE="/sys/class/backlight/intel_backlight"
+STEP_PERCENT=5
+
+[ -d "$DEVICE" ] || { echo "xidou-brightness: no backlight device at $DEVICE" >&2; exit 1; }
+
+max=$(cat "$DEVICE/max_brightness")
+cur=$(cat "$DEVICE/brightness")
+step=$(( max * STEP_PERCENT / 100 ))
+[ "$step" -lt 1 ] && step=1
+
+case "${1:-}" in
+up)
+	new=$(( cur + step ))
+	[ "$new" -gt "$max" ] && new="$max"
+	;;
+down)
+	new=$(( cur - step ))
+	[ "$new" -lt 0 ] && new=0
+	;;
+*)
+	echo "usage: xidou-brightness up|down" >&2
+	exit 1
+	;;
+esac
+
+echo "$new" > "$DEVICE/brightness"
+xidou msg osd brightness

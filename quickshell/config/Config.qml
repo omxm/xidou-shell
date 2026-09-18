@@ -51,6 +51,10 @@ Singleton {
             longitude: 0.0,
             units: "celsius" // celsius | fahrenheit
         },
+        osd: {
+            width: 220,
+            height: 56
+        },
         panels: {
             control_center: { enabled: true, keybind: "super+e" },
             launcher: { enabled: true, keybind: "super+d" },

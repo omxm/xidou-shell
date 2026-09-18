@@ -6,6 +6,7 @@ import "config"
 import "services"
 import "bar"
 import "launcher"
+import "osd"
 
 // Shell entry point. Run with:
 //   quickshell -p /path/to/xidou-shell/quickshell
@@ -48,6 +49,8 @@ ShellRoot {
 
     Launcher {}
 
+    Osd {}
+
     // Shell-side IPC target for dwm's spawned commands (see bin/xidou and
     // dwm/config.h's super+d bind) — this is shell UI state (panel
     // visibility), not window-manager state, so it goes through Quickshell's
@@ -82,6 +85,18 @@ ShellRoot {
             var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
             if (p && p.canTogglePlaying)
                 p.togglePlaying();
+        }
+    }
+
+    // Nudged by bin/xidou-brightness (dwm/config.h's MonBrightness keybinds)
+    // after it writes the new sysfs value — brightness has no live signal
+    // to watch passively the way Osd.qml watches Pipewire for volume, so it
+    // has to be told explicitly. See services/Brightness.qml.
+    IpcHandler {
+        target: "osd"
+
+        function brightness(): void {
+            Brightness.refreshAndShow();
         }
     }
 }
