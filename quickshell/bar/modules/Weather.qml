@@ -18,8 +18,9 @@ Item {
     property real longitude: cfg.longitude
     property string tempText: ""
     property string conditionText: ""
+    property string icon: ""
 
-    implicitWidth: cfg.enabled && root.tempText ? (label.implicitWidth + Theme.fontSize) : 0
+    implicitWidth: cfg.enabled && root.tempText ? (row.implicitWidth + Theme.fontSize) : 0
     implicitHeight: parent ? parent.height : Theme.fontSize * 2
     visible: cfg.enabled && root.tempText !== ""
 
@@ -38,6 +39,27 @@ Item {
             return "Showers";
         if (code >= 95)
             return "Storm";
+        return "";
+    }
+
+    // Material Symbols Outlined codepoints for clear_day / cloudy / foggy /
+    // rainy / ac_unit (snow) / thunderstorm, from Google's upstream
+    // codepoints file.
+    function wmoIcon(code) {
+        if (code === 0)
+            return "";
+        if (code <= 3)
+            return "";
+        if (code === 45 || code === 48)
+            return "";
+        if (code >= 51 && code <= 67)
+            return "";
+        if (code >= 71 && code <= 77)
+            return "";
+        if (code >= 80 && code <= 82)
+            return "";
+        if (code >= 95)
+            return "";
         return "";
     }
 
@@ -97,6 +119,7 @@ Item {
                     if (parsed.current) {
                         root.tempText = Math.round(parsed.current.temperature_2m) + "°" + (root.cfg.units === "fahrenheit" ? "F" : "C");
                         root.conditionText = root.wmoDescription(parsed.current.weather_code);
+                        root.icon = root.wmoIcon(parsed.current.weather_code);
                     }
                 } catch (e) {
                     console.warn("[xidou] weather: failed to parse forecast response: " + e);
@@ -130,12 +153,25 @@ Item {
         }
     }
 
-    Text {
-        id: label
+    Row {
+        id: row
         anchors.centerIn: parent
-        text: root.conditionText ? (root.tempText + " " + root.conditionText) : root.tempText
-        color: Theme.textMuted
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSize
+        spacing: Theme.fontSize / 4
+
+        Text {
+            text: root.icon
+            visible: text.length > 0
+            color: Theme.textMuted
+            font.family: Theme.iconFontFamily
+            font.pixelSize: Theme.fontSize
+        }
+
+        Text {
+            id: label
+            text: root.tempText
+            color: Theme.textMuted
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSize
+        }
     }
 }

@@ -9,7 +9,11 @@ Item {
 
     property int usedPercent: 0
 
-    implicitWidth: label.implicitWidth + Theme.fontSize
+    // Material Symbols Outlined codepoint for "memory", from Google's
+    // upstream codepoints file (google/material-design-icons).
+    readonly property string icon: ""
+
+    implicitWidth: row.implicitWidth + Theme.fontSize
     implicitHeight: parent ? parent.height : Theme.fontSize * 2
 
     FileView {
@@ -40,12 +44,23 @@ Item {
             root.usedPercent = Math.round((total - avail) / total * 100);
     }
 
-    Text {
-        id: label
+    Row {
+        id: row
         anchors.centerIn: parent
-        text: "MEM " + root.usedPercent + "%"
-        color: Theme.textMuted
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSize
+        spacing: Theme.fontSize / 4
+
+        Text {
+            text: root.icon
+            color: Theme.textMuted
+            font.family: Theme.iconFontFamily
+            font.pixelSize: Theme.fontSize
+        }
+
+        Text {
+            text: root.usedPercent + "%"
+            color: Theme.textMuted
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSize
+        }
     }
 }

@@ -12,20 +12,36 @@ Item {
     readonly property bool muted: sink && sink.audio ? sink.audio.muted : false
     readonly property int volumePercent: sink && sink.audio ? Math.round(sink.audio.volume * 100) : 0
 
-    implicitWidth: label.implicitWidth + Theme.fontSize
+    // Material Symbols Outlined codepoints for "volume_up" / "volume_off",
+    // from Google's upstream codepoints file.
+    readonly property string icon: root.muted ? "" : ""
+
+    implicitWidth: row.implicitWidth + Theme.fontSize
     implicitHeight: parent ? parent.height : Theme.fontSize * 2
 
     PwObjectTracker {
         objects: root.sink ? [root.sink] : []
     }
 
-    Text {
-        id: label
+    Row {
+        id: row
         anchors.centerIn: parent
-        text: root.sink ? (root.muted ? "MUTE" : ("VOL " + root.volumePercent + "%")) : "VOL --"
-        color: root.muted ? Theme.textMuted : Theme.text
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSize
+        spacing: Theme.fontSize / 4
+
+        Text {
+            text: root.icon
+            color: root.muted ? Theme.textMuted : Theme.text
+            font.family: Theme.iconFontFamily
+            font.pixelSize: Theme.fontSize
+        }
+
+        Text {
+            text: root.sink ? (root.muted ? "" : (root.volumePercent + "%")) : "--"
+            visible: text.length > 0
+            color: root.muted ? Theme.textMuted : Theme.text
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSize
+        }
     }
 
     MouseArea {

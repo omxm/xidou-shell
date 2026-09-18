@@ -19,15 +19,31 @@ Item {
         return n;
     }
 
-    implicitWidth: label.implicitWidth + Theme.fontSize
+    // Material Symbols Outlined codepoints for "bluetooth" /
+    // "bluetooth_disabled", from Google's upstream codepoints file.
+    readonly property string icon: root.enabled ? "" : ""
+
+    implicitWidth: row.implicitWidth + Theme.fontSize
     implicitHeight: parent ? parent.height : Theme.fontSize * 2
 
-    Text {
-        id: label
+    Row {
+        id: row
         anchors.centerIn: parent
-        text: !root.adapter ? "BT --" : (root.enabled ? ("BT " + root.connectedCount) : "BT off")
-        color: root.enabled ? Theme.text : Theme.textMuted
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSize
+        spacing: Theme.fontSize / 4
+
+        Text {
+            text: root.icon
+            color: root.enabled ? Theme.text : Theme.textMuted
+            font.family: Theme.iconFontFamily
+            font.pixelSize: Theme.fontSize
+        }
+
+        Text {
+            text: !root.adapter ? "--" : (root.enabled ? String(root.connectedCount) : "")
+            visible: text.length > 0
+            color: root.enabled ? Theme.text : Theme.textMuted
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSize
+        }
     }
 }

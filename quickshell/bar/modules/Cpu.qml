@@ -12,7 +12,11 @@ Item {
     property real lastTotal: -1
     property real lastIdle: 0
 
-    implicitWidth: label.implicitWidth + Theme.fontSize
+    // Material Symbols Outlined codepoint for "developer_board", from
+    // Google's upstream codepoints file.
+    readonly property string icon: ""
+
+    implicitWidth: row.implicitWidth + Theme.fontSize
     implicitHeight: parent ? parent.height : Theme.fontSize * 2
 
     FileView {
@@ -45,12 +49,23 @@ Item {
         root.lastIdle = idle;
     }
 
-    Text {
-        id: label
+    Row {
+        id: row
         anchors.centerIn: parent
-        text: "CPU " + root.usagePercent + "%"
-        color: Theme.textMuted
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSize
+        spacing: Theme.fontSize / 4
+
+        Text {
+            text: root.icon
+            color: Theme.textMuted
+            font.family: Theme.iconFontFamily
+            font.pixelSize: Theme.fontSize
+        }
+
+        Text {
+            text: root.usagePercent + "%"
+            color: Theme.textMuted
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSize
+        }
     }
 }
