@@ -109,6 +109,18 @@ Rules that follow from that:
 - UI text: **Inter** (Variable), SIL Open Font License. Matches Noctalia's own choice
   (its package requires `inter-fonts` + `inter-variable-fonts`).
 
+### External daemon dependencies
+
+- Every background service this shell needs but doesn't start itself (pipewire,
+  wireplumber, pipewire-pulse today; a clipboard daemon and others in later phases) gets
+  a "check if running, start if not" line in `session/xidou-xinitrc`, the same way
+  MangoWM's own startup config already handles its equivalents. This is the single place
+  this session's runtime dependencies live — bringing up a fresh machine should be "run
+  this script," not hunting down what's missing piece by piece.
+- When a later phase introduces a new external dependency (the clipboard panel needing
+  `clipnotify`/`xclip`, for instance), add its check-then-start line to that same block
+  rather than starting it ad hoc from a panel's QML or a separate script.
+
 ## Config system
 
 - Path: `~/.config/xidou/config.toml`

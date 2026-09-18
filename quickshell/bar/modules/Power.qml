@@ -35,6 +35,7 @@ Item {
         spacing: Theme.fontSize / 4
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.icon
             visible: root.hasBattery
             color: Theme.text
@@ -43,6 +44,7 @@ Item {
         }
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.hasBattery ? (root.percent + "%") : "--"
             color: Theme.text
             font.family: Theme.fontFamily

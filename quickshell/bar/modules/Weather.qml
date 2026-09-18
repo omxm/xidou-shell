@@ -159,6 +159,7 @@ Item {
         spacing: Theme.fontSize / 4
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.icon
             visible: text.length > 0
             color: Theme.textMuted
@@ -168,6 +169,7 @@ Item {
 
         Text {
             id: label
+            anchors.verticalCenter: parent.verticalCenter
             text: root.tempText
             color: Theme.textMuted
             font.family: Theme.fontFamily

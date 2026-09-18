@@ -29,6 +29,7 @@ Item {
         spacing: Theme.fontSize / 4
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.icon
             color: root.muted ? Theme.textMuted : Theme.text
             font.family: Theme.iconFontFamily
@@ -36,6 +37,7 @@ Item {
         }
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.sink ? (root.muted ? "" : (root.volumePercent + "%")) : "--"
             visible: text.length > 0
             color: root.muted ? Theme.textMuted : Theme.text

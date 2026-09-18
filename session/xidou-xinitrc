@@ -15,6 +15,45 @@ REPO_DIR="/home/haru/projects/xidou-shell"
 
 [ -f "$HOME/.Xresources" ] && xrdb -merge "$HOME/.Xresources" 2>/dev/null
 
+# --- external daemon dependencies -------------------------------------
+# Every background service this shell needs but doesn't start itself gets
+# a "check if running, start if not" line here, mirroring how MangoWM's
+# own startup config already handles this — the single place this
+# session's runtime dependencies live, so a fresh machine setup is "run
+# this script" rather than hunting down what's missing piece by piece.
+# See CLAUDE.md's Architecture section for the convention; add to this
+# block as later phases (clipboard daemon, etc.) bring in new
+# dependencies rather than starting them ad hoc elsewhere.
+ensure_running() {
+    # $1 = process name to check for (pgrep -x), $2.. = command to start it
+    name="$1"
+    shift
+    if ! pgrep -x "$name" >/dev/null 2>&1; then
+        "$@" &
+    fi
+}
+
+ensure_running pipewire pipewire
+ensure_running pipewire-pulse pipewire-pulse
+
+# WirePlumber needs a running pipewire to connect to and, critically, a
+# valid session D-Bus address to finish initializing (its RTKit/dbus
+# component fails without one) — starting it here, inside this session's
+# own dbus-run-session context (see session/xidou.desktop's Exec line),
+# gives it a real one rather than whatever a previous, possibly-dead
+# session left behind. Wait briefly for pipewire's socket rather than
+# racing it with a blind sleep.
+i=0
+while [ "$i" -lt 25 ]; do
+    if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pipewire-0" ]; then
+        break
+    fi
+    sleep 0.2
+    i=$((i + 1))
+done
+ensure_running wireplumber wireplumber
+# ------------------------------------------------------------------------
+
 quickshell -p "$REPO_DIR/quickshell" &
 
 exec "$REPO_DIR/dwm/dwm"

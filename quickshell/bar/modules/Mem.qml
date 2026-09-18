@@ -50,6 +50,7 @@ Item {
         spacing: Theme.fontSize / 4
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.icon
             color: Theme.textMuted
             font.family: Theme.iconFontFamily
@@ -57,6 +58,7 @@ Item {
         }
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.usedPercent + "%"
             color: Theme.textMuted
             font.family: Theme.fontFamily

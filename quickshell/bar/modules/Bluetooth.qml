@@ -32,6 +32,7 @@ Item {
         spacing: Theme.fontSize / 4
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.icon
             color: root.enabled ? Theme.text : Theme.textMuted
             font.family: Theme.iconFontFamily
@@ -39,6 +40,7 @@ Item {
         }
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: !root.adapter ? "--" : (root.enabled ? String(root.connectedCount) : "")
             visible: text.length > 0
             color: root.enabled ? Theme.text : Theme.textMuted
