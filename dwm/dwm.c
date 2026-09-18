@@ -63,7 +63,8 @@ enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
 enum { SchemeNorm, SchemeSel }; /* color schemes */
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
-       NetWMWindowTypeDialog, NetWMWindowTypeDock, NetClientList, NetLast }; /* EWMH atoms */
+       NetWMWindowTypeDialog, NetWMWindowTypeDock, NetWMStrutPartial, NetWMStrut,
+       NetClientList, NetLast }; /* EWMH atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
@@ -150,6 +151,25 @@ struct Monitor {
 	const Layout *lt[2];
 	const Layout *lastlt;
 };
+
+/* Tracks _NET_WM_STRUT_PARTIAL/_NET_WM_STRUT reservations from windows dwm
+ * never manages as clients (external bars/docks — see the
+ * _NET_WM_WINDOW_TYPE_DOCK handling in manage()). Struts are always
+ * screen-relative per the EWMH spec, not monitor-relative, so left_y1/y2
+ * etc. hold the reserved range along the perpendicular axis, used to work
+ * out which monitor(s) a given strut actually applies to on a multi-monitor
+ * setup. A legacy _NET_WM_STRUT (no partial ranges) is stored with all the
+ * range fields at 0, the sentinel this file treats as "applies along the
+ * whole edge" per spec. */
+typedef struct StrutWin StrutWin;
+struct StrutWin {
+	Window win;
+	long left, right, top, bottom;
+	long left_y1, left_y2, right_y1, right_y2;
+	long top_x1, top_x2, bottom_x1, bottom_x2;
+	StrutWin *next;
+};
+static StrutWin *struts = NULL;
 
 typedef struct {
 	const char *class;
@@ -239,6 +259,11 @@ static void unfocus(Client *c, int setfocus);
 static void unmanage(Client *c, int destroyed);
 static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
+static StrutWin *getorcreatestrut(Window w);
+static int strutrangeoverlaps(long start, long end, int monstart, int monsize);
+static void updatestrut(Window w);
+static void removestrut(Window w);
+static void refreshworkareas(void);
 static void updatebars(void);
 static void updateclientlist(void);
 static int updategeom(void);
@@ -693,6 +718,8 @@ destroynotify(XEvent *e)
 
 	if ((c = wintoclient(ev->window)))
 		unmanage(c, 1);
+	else
+		removestrut(ev->window); /* no-op if it wasn't a tracked strut window */
 }
 
 void
@@ -1096,7 +1123,11 @@ manage(Window w, XWindowAttributes *wa)
 	/* _NET_WM_WINDOW_TYPE_DOCK windows (Quickshell's PanelWindow bar) are
 	 * never managed as clients: no border, no tiling/floating placement,
 	 * no attach to any tag's stack. They position themselves via their own
-	 * EWMH strut geometry, so dwm just maps them and stays out of the way. */
+	 * geometry, but dwm does read their _NET_WM_STRUT_PARTIAL/_NET_WM_STRUT
+	 * to shrink every monitor's usable tiling area accordingly (see
+	 * updatestrut()/updatebarpos()) — the same mechanism external bars like
+	 * polybar rely on with any EWMH-compliant WM. Select property/structure
+	 * events so strut changes and the window closing are both tracked. */
 	{
 		Atom da, wtype = None;
 		int format;
@@ -1110,7 +1141,9 @@ manage(Window w, XWindowAttributes *wa)
 			XFree(p);
 		}
 		if (wtype == netatom[NetWMWindowTypeDock]) {
+			XSelectInput(dpy, w, PropertyChangeMask | StructureNotifyMask);
 			XMapWindow(dpy, w);
+			updatestrut(w);
 			return;
 		}
 	}
@@ -1304,6 +1337,17 @@ propertynotify(XEvent *e)
 	Client *c;
 	Window trans;
 	XPropertyEvent *ev = &e->xproperty;
+
+	if (ev->atom == netatom[NetWMStrutPartial] || ev->atom == netatom[NetWMStrut]) {
+		/* Applies to unmanaged dock windows (see manage()), so this has to
+		 * run before the PropertyDelete/wintoclient checks below, which
+		 * only make sense for managed clients. updatestrut() re-reads the
+		 * property from scratch, so it handles a PropertyDelete correctly
+		 * on its own (the read just comes back empty and the strut gets
+		 * dropped) without needing a separate case here. */
+		updatestrut(ev->window);
+		return;
+	}
 
 	if ((ev->window == root) && (ev->atom == XA_WM_NAME))
 		updatestatus();
@@ -1699,6 +1743,8 @@ setup(void)
 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 	netatom[NetWMWindowTypeDock] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+	netatom[NetWMStrutPartial] = XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False);
+	netatom[NetWMStrut] = XInternAtom(dpy, "_NET_WM_STRUT", False);
 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
 	/* init cursors */
 	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
@@ -1963,6 +2009,8 @@ unmapnotify(XEvent *e)
 			setclientstate(c, WithdrawnState);
 		else
 			unmanage(c, 0);
+	} else {
+		removestrut(ev->window); /* no-op if it wasn't a tracked strut window */
 	}
 }
 
@@ -1991,7 +2039,12 @@ updatebars(void)
 void
 updatebarpos(Monitor *m)
 {
+	StrutWin *s;
+	long left = 0, right = 0, top = 0, bottom = 0;
+
+	m->wx = m->mx;
 	m->wy = m->my;
+	m->ww = m->mw;
 	m->wh = m->mh;
 	if (m->showbar) {
 		m->wh -= bh;
@@ -1999,6 +2052,129 @@ updatebarpos(Monitor *m)
 		m->wy = m->topbar ? m->wy + bh : m->wy;
 	} else
 		m->by = -bh;
+
+	/* _NET_WM_STRUT_PARTIAL/_NET_WM_STRUT: reserve space for external
+	 * panels (Quickshell's bar, etc.), the same EWMH mechanism external
+	 * bars like polybar rely on. Take the largest reservation on each
+	 * edge among struts that actually overlap this monitor, and stack
+	 * that on top of whatever dwm's own (disabled, showbar=0) bar
+	 * already reserved above. */
+	for (s = struts; s; s = s->next) {
+		if (s->left > left && strutrangeoverlaps(s->left_y1, s->left_y2, m->my, m->mh))
+			left = s->left;
+		if (s->right > right && strutrangeoverlaps(s->right_y1, s->right_y2, m->my, m->mh))
+			right = s->right;
+		if (s->top > top && strutrangeoverlaps(s->top_x1, s->top_x2, m->mx, m->mw))
+			top = s->top;
+		if (s->bottom > bottom && strutrangeoverlaps(s->bottom_x1, s->bottom_x2, m->mx, m->mw))
+			bottom = s->bottom;
+	}
+	m->wx += left;
+	m->ww -= (left + right);
+	m->wy += top;
+	m->wh -= (top + bottom);
+}
+
+StrutWin *
+getorcreatestrut(Window w)
+{
+	StrutWin *s;
+
+	for (s = struts; s; s = s->next)
+		if (s->win == w)
+			return s;
+	s = ecalloc(1, sizeof(StrutWin));
+	s->win = w;
+	s->next = struts;
+	struts = s;
+	return s;
+}
+
+int
+strutrangeoverlaps(long start, long end, int monstart, int monsize)
+{
+	/* (0, 0) is the sentinel for "no partial range given" — a legacy
+	 * _NET_WM_STRUT, or a _NET_WM_STRUT_PARTIAL that genuinely reserves
+	 * the whole edge — which per spec applies regardless of monitor. */
+	if (start == 0 && end == 0)
+		return 1;
+	return end > monstart && start < monstart + monsize;
+}
+
+void
+updatestrut(Window w)
+{
+	Atom da;
+	int di;
+	unsigned long dl, nitems;
+	long *data = NULL;
+	StrutWin *s;
+
+	if (XGetWindowProperty(dpy, w, netatom[NetWMStrutPartial], 0L, 12L, False,
+		XA_CARDINAL, &da, &di, &nitems, &dl, (unsigned char **)&data) == Success
+		&& data && nitems >= 12) {
+		s = getorcreatestrut(w);
+		s->left = data[0]; s->right = data[1]; s->top = data[2]; s->bottom = data[3];
+		s->left_y1 = data[4]; s->left_y2 = data[5];
+		s->right_y1 = data[6]; s->right_y2 = data[7];
+		s->top_x1 = data[8]; s->top_x2 = data[9];
+		s->bottom_x1 = data[10]; s->bottom_x2 = data[11];
+		XFree(data);
+	} else {
+		if (data)
+			XFree(data);
+		data = NULL;
+		if (XGetWindowProperty(dpy, w, netatom[NetWMStrut], 0L, 4L, False,
+			XA_CARDINAL, &da, &di, &nitems, &dl, (unsigned char **)&data) == Success
+			&& data && nitems >= 4) {
+			s = getorcreatestrut(w);
+			s->left = data[0]; s->right = data[1]; s->top = data[2]; s->bottom = data[3];
+			s->left_y1 = s->left_y2 = s->right_y1 = s->right_y2 = 0;
+			s->top_x1 = s->top_x2 = s->bottom_x1 = s->bottom_x2 = 0;
+			XFree(data);
+		} else {
+			if (data)
+				XFree(data);
+			removestrut(w);
+			return;
+		}
+	}
+
+	if (!s->left && !s->right && !s->top && !s->bottom) {
+		removestrut(w);
+		return;
+	}
+
+	refreshworkareas();
+}
+
+void
+removestrut(Window w)
+{
+	StrutWin *s, *prev = NULL;
+
+	for (s = struts; s; prev = s, s = s->next) {
+		if (s->win == w) {
+			if (prev)
+				prev->next = s->next;
+			else
+				struts = s->next;
+			free(s);
+			refreshworkareas();
+			return;
+		}
+	}
+}
+
+void
+refreshworkareas(void)
+{
+	Monitor *m;
+
+	for (m = mons; m; m = m->next) {
+		updatebarpos(m);
+		arrange(m);
+	}
 }
 
 void
