@@ -62,7 +62,7 @@ enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
 enum { SchemeNorm, SchemeSel }; /* color schemes */
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
-       NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
+       NetWMWindowTypeDialog, NetWMWindowTypeDock, NetClientList, NetLast }; /* EWMH atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
@@ -1092,6 +1092,28 @@ manage(Window w, XWindowAttributes *wa)
 	Window trans = None;
 	XWindowChanges wc;
 
+	/* _NET_WM_WINDOW_TYPE_DOCK windows (Quickshell's PanelWindow bar) are
+	 * never managed as clients: no border, no tiling/floating placement,
+	 * no attach to any tag's stack. They position themselves via their own
+	 * EWMH strut geometry, so dwm just maps them and stays out of the way. */
+	{
+		Atom da, wtype = None;
+		int format;
+		unsigned long nitems, dl;
+		unsigned char *p = NULL;
+
+		if (XGetWindowProperty(dpy, w, netatom[NetWMWindowType], 0L, sizeof wtype, False,
+			XA_ATOM, &da, &format, &nitems, &dl, &p) == Success && p) {
+			if (nitems > 0 && format == 32)
+				wtype = *(Atom *)p;
+			XFree(p);
+		}
+		if (wtype == netatom[NetWMWindowTypeDock]) {
+			XMapWindow(dpy, w);
+			return;
+		}
+	}
+
 	c = ecalloc(1, sizeof(Client));
 	c->win = w;
 	/* geometry */
@@ -1675,6 +1697,7 @@ setup(void)
 	netatom[NetWMFullscreen] = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+	netatom[NetWMWindowTypeDock] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
 	/* init cursors */
 	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
