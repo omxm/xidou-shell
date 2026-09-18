@@ -209,6 +209,10 @@ static void focus(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
+static Client *dirtoclient(const int *dir);
+static void focusdir(const Arg *arg);
+static void exchange_client(const Arg *arg);
+static void swapclients(Client *c1, Client *c2);
 static Atom getatomprop(Client *c, Atom prop);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
@@ -940,6 +944,146 @@ focusstack(const Arg *arg)
 	if (c) {
 		focus(c);
 		restack(selmon);
+	}
+}
+
+Client *
+dirtoclient(const int *dir)
+{
+	/* dir is a {dx,dy} unit vector — reuses the same encoding
+	 * resizeclientkey()'s deltas use in config.h, just {-1,0,1} instead
+	 * of pixel counts. Floating and fullscreen clients are excluded:
+	 * "nearest tiled client" was explicit in the ask, and isfullscreen
+	 * implies isfloating anyway via setfullscreen(), so excluding
+	 * isfloating covers both.
+	 *
+	 * Candidates are split into two pools: "aligned" ones, whose bounding
+	 * box actually overlaps the source's along the axis perpendicular to
+	 * the search direction, and everything else. An aligned candidate
+	 * always wins over a merely-closer-by-center-distance one — without
+	 * this, searching "down" from a window stacked above another could
+	 * jump sideways into a full-height master column instead, if its
+	 * vertical center happened to land closer even though it's off to
+	 * the side (caught empirically on a real dwindle 1-master+2-stack
+	 * layout, not theoretical). The unaligned pool is just a fallback
+	 * for layouts where nothing lines up in that direction at all. */
+	Client *c, *best = NULL, *fallback = NULL;
+	Client *sel = selmon->sel;
+	long bestscore = 0, fallbackscore = 0, score;
+	int scx, scy, ccx, ccy, dx, dy, primary, aligned;
+
+	if (!sel)
+		return NULL;
+
+	scx = sel->x + sel->w / 2;
+	scy = sel->y + sel->h / 2;
+
+	for (c = selmon->clients; c; c = c->next) {
+		if (c == sel || !ISVISIBLE(c) || c->isfloating)
+			continue;
+		ccx = c->x + c->w / 2;
+		ccy = c->y + c->h / 2;
+		dx = ccx - scx;
+		dy = ccy - scy;
+
+		if (dir[0] > 0 && dx <= 0)
+			continue;
+		if (dir[0] < 0 && dx >= 0)
+			continue;
+		if (dir[1] > 0 && dy <= 0)
+			continue;
+		if (dir[1] < 0 && dy >= 0)
+			continue;
+
+		primary = dir[0] ? abs(dx) : abs(dy);
+		aligned = dir[0]
+			? (c->y < sel->y + sel->h && c->y + c->h > sel->y)
+			: (c->x < sel->x + sel->w && c->x + c->w > sel->x);
+		score = primary;
+
+		if (aligned) {
+			if (!best || score < bestscore) {
+				bestscore = score;
+				best = c;
+			}
+		} else if (!fallback || score < fallbackscore) {
+			fallbackscore = score;
+			fallback = c;
+		}
+	}
+	return best ? best : fallback;
+}
+
+void
+focusdir(const Arg *arg)
+{
+	Client *c;
+
+	if (!selmon->sel || (selmon->sel->isfullscreen && lockfullscreen))
+		return;
+	if ((c = dirtoclient((const int *)arg->v))) {
+		focus(c);
+		restack(selmon);
+	}
+}
+
+void
+swapclients(Client *c1, Client *c2)
+{
+	/* In-place swap of two nodes in a singly-linked list (mon->clients),
+	 * by pointer-to-pointer, so every OTHER client's relative order is
+	 * left untouched — detach()+attach() would instead move both to the
+	 * head of the list, which also reshuffles anyone currently between
+	 * them. Handles both the adjacent (c1->next == c2, or vice versa)
+	 * and general case. */
+	Client **pp1 = NULL, **pp2 = NULL, **pp, *tmp;
+
+	if (c1 == c2 || !c1 || !c2)
+		return;
+
+	for (pp = &selmon->clients; *pp; pp = &(*pp)->next) {
+		if (*pp == c1)
+			pp1 = pp;
+		if (*pp == c2)
+			pp2 = pp;
+	}
+	if (!pp1 || !pp2)
+		return;
+
+	if (c1->next == c2) {
+		*pp1 = c2;
+		c1->next = c2->next;
+		c2->next = c1;
+	} else if (c2->next == c1) {
+		*pp2 = c1;
+		c2->next = c1->next;
+		c1->next = c2;
+	} else {
+		*pp1 = c2;
+		*pp2 = c1;
+		tmp = c1->next;
+		c1->next = c2->next;
+		c2->next = tmp;
+	}
+}
+
+void
+exchange_client(const Arg *arg)
+{
+	/* Swaps tiling positions (list order, which the layout functions
+	 * derive geometry from) rather than swapping x/y/w/h directly — the
+	 * next arrange() recomputes real geometry from the new order. Focus
+	 * stays on the same Client* throughout (dwm tracks focus by pointer,
+	 * not screen position), so it "follows" the moved client without
+	 * needing an explicit focus() call — it was never unfocused. */
+	Client *sel = selmon->sel;
+	Client *c;
+
+	if (!sel || (sel->isfullscreen && lockfullscreen))
+		return;
+	if ((c = dirtoclient((const int *)arg->v))) {
+		swapclients(sel, c);
+		arrange(selmon);
 	}
 }
 

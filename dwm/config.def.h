@@ -81,6 +81,16 @@ static const int resizeright[2] = { 30, 0 };
 static const int resizeup[2]    = { 0, -30 };
 static const int resizedown[2]  = { 0, 30 };
 
+/* super+<arrow> / super+shift+<arrow>: focusdir()/exchange_client()'s
+ * argument — a {dx,dy} unit vector (not pixels, unlike the resize deltas
+ * above) pointing which screen direction to search in. Mirrors MangoWM's
+ * focusdir/exchange_client actions: move focus to, or swap positions with,
+ * the nearest tiled client in that direction. */
+static const int dirleft[2]  = { -1, 0 };
+static const int dirright[2] = { 1, 0 };
+static const int dirup[2]    = { 0, -1 };
+static const int dirdown[2]  = { 0, 1 };
+
 /* ctrl+<arrow>: MPRIS control. No CLI player controller (playerctl etc.) is
  * installed, and none is needed — Quickshell's Media bar module already
  * holds a live MprisPlayer with next()/previous()/togglePlaying(), so this
@@ -132,6 +142,14 @@ static const Key keys[] = {
 	{ MODKEY|ControlMask,           XK_Right,  resizeclientkey,  {.v = resizeright } },
 	{ MODKEY|ControlMask,           XK_Up,     resizeclientkey,  {.v = resizeup } },
 	{ MODKEY|ControlMask,           XK_Down,   resizeclientkey,  {.v = resizedown } },
+	{ MODKEY,                       XK_Left,   focusdir,         {.v = dirleft } },
+	{ MODKEY,                       XK_Right,  focusdir,         {.v = dirright } },
+	{ MODKEY,                       XK_Up,     focusdir,         {.v = dirup } },
+	{ MODKEY,                       XK_Down,   focusdir,         {.v = dirdown } },
+	{ MODKEY|ShiftMask,             XK_Left,   exchange_client,  {.v = dirleft } },
+	{ MODKEY|ShiftMask,             XK_Right,  exchange_client,  {.v = dirright } },
+	{ MODKEY|ShiftMask,             XK_Up,     exchange_client,  {.v = dirup } },
+	{ MODKEY|ShiftMask,             XK_Down,   exchange_client,  {.v = dirdown } },
 	{ MODKEY,                       XK_b,      togglebar,        {0} },
 	{ MODKEY,                       XK_j,      focusstack,       {.i = +1 } },
 	{ MODKEY,                       XK_k,      focusstack,       {.i = -1 } },
