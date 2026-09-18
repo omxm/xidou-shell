@@ -90,9 +90,19 @@ Singleton {
         id: runCommand
     }
 
-    // Long-lived subscription: one line of JSON per dwm-ipc event. Restarted
-    // on exit (e.g. dwm restarting) so the shell recovers without a manual
-    // reload.
+    // Long-lived subscription. dwm-msg pretty-prints each event as
+    // multi-line JSON (not one line per event), so SplitParser's
+    // newline-delimited chunks are JSON *fragments*, not whole documents —
+    // accumulate them here, tracking brace depth (string/escape-aware, so
+    // braces inside a quoted value like a window title don't miscount),
+    // and only hand a chunk to JSON.parse once it closes its top-level
+    // object. Restarted on exit (e.g. dwm restarting) so the shell
+    // recovers without a manual reload.
+    property string eventBuffer: ""
+    property int eventBraceDepth: 0
+    property bool eventInString: false
+    property bool eventEscapeNext: false
+
     Process {
         id: subscribe
         command: [root.dwmMsg, "--ignore-reply", "subscribe", "tag_change_event", "monitor_focus_change_event"]
@@ -100,11 +110,15 @@ Singleton {
 
         stdout: SplitParser {
             splitMarker: "\n"
-            onRead: data => root.handleEvent(data)
+            onRead: data => root.bufferEventChunk(data)
         }
 
         onExited: {
             root.connected = false;
+            root.eventBuffer = "";
+            root.eventBraceDepth = 0;
+            root.eventInString = false;
+            root.eventEscapeNext = false;
             restartTimer.start();
         }
     }
@@ -115,14 +129,54 @@ Singleton {
         onTriggered: subscribe.running = true
     }
 
-    function handleEvent(line) {
-        if (!line)
+    // Called once per newline-delimited chunk from the subscribe stream;
+    // appends to eventBuffer and dispatches to handleEvent() only once a
+    // complete top-level JSON object has been accumulated.
+    function bufferEventChunk(chunk) {
+        if (!chunk)
+            return;
+        // SplitParser strips the newline; put it back so the reassembled
+        // text is valid whitespace-separated JSON, matching the original
+        // pretty-printed output.
+        var text = chunk + "\n";
+        for (var i = 0; i < text.length; i++) {
+            var ch = text[i];
+            root.eventBuffer += ch;
+
+            if (root.eventEscapeNext) {
+                root.eventEscapeNext = false;
+                continue;
+            }
+            if (root.eventInString) {
+                if (ch === "\\")
+                    root.eventEscapeNext = true;
+                else if (ch === "\"")
+                    root.eventInString = false;
+                continue;
+            }
+            if (ch === "\"") {
+                root.eventInString = true;
+            } else if (ch === "{") {
+                root.eventBraceDepth++;
+            } else if (ch === "}") {
+                root.eventBraceDepth--;
+                if (root.eventBraceDepth === 0) {
+                    root.handleEvent(root.eventBuffer);
+                    root.eventBuffer = "";
+                }
+            }
+        }
+    }
+
+    function handleEvent(text) {
+        var trimmed = text.trim();
+        if (!trimmed)
             return;
         var event;
         try {
-            event = JSON.parse(line);
+            event = JSON.parse(trimmed);
         } catch (e) {
-            console.warn("[xidou] dwm-msg subscribe: failed to parse event: " + line);
+            console.warn("[xidou] dwm-msg subscribe: failed to parse event: " + trimmed);
             return;
         }
 
