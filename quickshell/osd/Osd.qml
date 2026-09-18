@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Services.Pipewire
 import "../config"
 import "../services"
+import "../lib/Position.js" as Position
 
 // Transient volume/brightness pop-up (Phase 3). Volume changes are observed
 // passively via Pipewire's live sink state -- the same state Volume.qml's
@@ -15,9 +16,11 @@ import "../services"
 // then calls `xidou msg osd brightness` -- see shell.qml's "osd"
 // IpcHandler and services/Brightness.qml's refreshAndShow().
 //
-// Not anchored to a screen edge (see Launcher.qml's comment on the same
-// centering approach) -- margins are measured from the *available* area,
-// so the bar's reserved height has to be subtracted before halving.
+// Position is config-driven ([osd].position/margin, default top-center) via
+// the shared Position.js resolver -- also used by NotificationPopups.qml so
+// the two panels' positioning behaves identically and can be kept apart
+// (default top-center vs notifications' top-right) to avoid the visual
+// collision seen on the Noctalia reference screenshots.
 PanelWindow {
     id: root
 
@@ -45,9 +48,10 @@ PanelWindow {
         objects: root.sink ? [root.sink] : []
     }
 
-    readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
     readonly property int panelWidth: Config.data.osd.width
     readonly property int panelHeight: Config.data.osd.height
+
+    readonly property var pos: Position.resolve(Config.data.osd.position, screen.width, panelWidth, Config.data.osd.margin)
 
     visible: OsdState.visible
     implicitWidth: panelWidth
@@ -55,10 +59,14 @@ PanelWindow {
     color: "transparent"
     focusable: false
 
-    anchors.top: true
-    anchors.left: true
-    margins.top: root.barReservedHeight + Theme.fontSize * 2
-    margins.left: Math.round((screen.width - panelWidth) / 2)
+    anchors.top: pos.anchorTop
+    anchors.bottom: pos.anchorBottom
+    anchors.left: pos.anchorLeft
+    anchors.right: pos.anchorRight
+    margins.top: pos.marginTop
+    margins.bottom: pos.marginBottom
+    margins.left: pos.marginLeft
+    margins.right: pos.marginRight
 
     readonly property string icon: {
         if (OsdState.kind === "brightness")

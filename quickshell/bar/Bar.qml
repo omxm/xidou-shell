@@ -37,6 +37,7 @@ PanelWindow {
         cpu: cpuComponent,
         bluetooth: bluetoothComponent,
         volume: volumeComponent,
+        dnd: dndComponent,
         power: powerComponent
     })
 
@@ -101,6 +102,11 @@ PanelWindow {
     Component {
         id: volumeComponent
         Modules.Volume {}
+    }
+
+    Component {
+        id: dndComponent
+        Modules.Dnd {}
     }
 
     Component {

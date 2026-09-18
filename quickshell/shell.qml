@@ -7,6 +7,7 @@ import "services"
 import "bar"
 import "launcher"
 import "osd"
+import "notification"
 
 // Shell entry point. Run with:
 //   quickshell -p /path/to/xidou-shell/quickshell
@@ -50,6 +51,8 @@ ShellRoot {
     Launcher {}
 
     Osd {}
+
+    NotificationPopups {}
 
     // Shell-side IPC target for dwm's spawned commands (see bin/xidou and
     // dwm/config.h's super+d bind) — this is shell UI state (panel
@@ -97,6 +100,15 @@ ShellRoot {
 
         function brightness(): void {
             Brightness.refreshAndShow();
+        }
+    }
+
+    // dwm's super+n keybind (dwm/config.h's notificationdndcmd) lands here.
+    IpcHandler {
+        target: "notifications"
+
+        function toggleDnd(): void {
+            Notifications.toggleDnd();
         }
     }
 }

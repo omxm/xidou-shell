@@ -39,7 +39,7 @@ Singleton {
             height: 32,
             modules_left: ["logo", "workspaces"],
             modules_center: ["media", "clock", "weather"],
-            modules_right: ["tray", "mem", "cpu", "bluetooth", "volume", "power"]
+            modules_right: ["tray", "mem", "cpu", "bluetooth", "volume", "dnd", "power"]
         },
         weather: {
             enabled: true,
@@ -53,7 +53,16 @@ Singleton {
         },
         osd: {
             width: 220,
-            height: 56
+            height: 56,
+            position: "top-center", // top-left | top-center | top-right | bottom-left | bottom-center | bottom-right
+            margin: 8 // gap from the bar/screen edge the position anchors to
+        },
+        notification: {
+            position: "top-right", // same values as [osd].position
+            margin: 12,
+            width: 320,
+            spacing: 8,       // gap between stacked notification cards
+            timeout_ms: 5000  // default auto-dismiss; overridden per-notification when the sender sets its own expire timeout
         },
         panels: {
             control_center: { enabled: true, keybind: "super+e" },

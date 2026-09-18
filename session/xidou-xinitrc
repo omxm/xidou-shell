@@ -52,6 +52,13 @@ while [ "$i" -lt 25 ]; do
     i=$((i + 1))
 done
 ensure_running wireplumber wireplumber
+
+# picom: without a compositing manager, X11 windows' alpha channels never
+# actually get composited, so Quickshell's transparent PanelWindows (OSD,
+# notifications, launcher) render their QML-drawn rounded corners as solid
+# black wherever another window sits behind them instead of showing it
+# through. See session/picom.conf for the (deliberately minimal) config.
+ensure_running picom picom --config "$REPO_DIR/session/picom.conf"
 # ------------------------------------------------------------------------
 
 quickshell -p "$REPO_DIR/quickshell" &
