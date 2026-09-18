@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import "../config"
 import "../services"
 
@@ -32,6 +33,26 @@ PanelWindow {
     implicitWidth: panelWidth
     implicitHeight: panelHeight
     color: "transparent"
+
+    // PanelWindow.focusable (the documented, intended lever for asking the
+    // platform for real X input focus) is set, but empirically does nothing
+    // on this system's X11 backend — verified via XGetInputFocus staying on
+    // the root window after showing the panel, with neither
+    // Window.requestActivate() nor ProxyWindowBase's _backingWindow
+    // producing any different result either. dwm itself is uninvolved: this
+    // window is unmanaged (see the _NET_WM_WINDOW_TYPE_DOCK handling in
+    // manage()), so dwm's focus()/setfocus()/unfocus() never target it
+    // regardless. Falls back to explicitly forcing focus via a small
+    // external helper (bin/xidou-focus-window) that does exactly what a
+    // direct XSetInputFocus was confirmed to do reliably — find this
+    // window by its size (PanelWindow has no title/id exposed to QML) and
+    // force focus onto it.
+    focusable: true
+
+    Process {
+        id: focusHelper
+        command: ["xidou-focus-window", String(root.panelWidth), String(root.panelHeight)]
+    }
 
     anchors.top: true
     anchors.left: true
@@ -71,6 +92,19 @@ PanelWindow {
             searchField.text = "";
             selectedIndex = 0;
             searchField.forceActiveFocus();
+            // Give the window a moment to actually map before trying to
+            // focus it by title — xidou-focus-window can't find a window
+            // that isn't on screen yet.
+            focusHelperTimer.start();
+        }
+    }
+
+    Timer {
+        id: focusHelperTimer
+        interval: 50
+        onTriggered: {
+            focusHelper.running = false;
+            focusHelper.running = true;
         }
     }
 

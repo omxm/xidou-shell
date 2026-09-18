@@ -582,8 +582,19 @@ clientmessage(XEvent *e)
 	XClientMessageEvent *cme = &e->xclient;
 	Client *c = wintoclient(cme->window);
 
-	if (!c)
+	if (!c) {
+		/* Unmanaged windows (docks/the launcher — see the
+		 * _NET_WM_WINDOW_TYPE_DOCK handling in manage()) never go through
+		 * dwm's normal focus()/setfocus() machinery, so a toolkit's
+		 * "please give me focus" request via the standard EWMH
+		 * _NET_ACTIVE_WINDOW client message was being silently dropped
+		 * here — Qt/Quickshell asks for focus this way (even with
+		 * PanelWindow.focusable set) rather than assuming it can just
+		 * call XSetInputFocus on itself without the WM's involvement. */
+		if (cme->message_type == netatom[NetActiveWindow])
+			XSetInputFocus(dpy, cme->window, RevertToPointerRoot, CurrentTime);
 		return;
+	}
 	if (cme->message_type == netatom[NetWMState]) {
 		if (cme->data.l[1] == netatom[NetWMFullscreen]
 		|| cme->data.l[2] == netatom[NetWMFullscreen])
