@@ -41,6 +41,16 @@ Singleton {
             modules_center: ["media", "clock", "weather"],
             modules_right: ["tray", "mem", "cpu", "bluetooth", "volume", "power"]
         },
+        weather: {
+            enabled: true,
+            // Resolution priority: auto_locate (IP geolocation) > city
+            // (Open-Meteo geocoding) > latitude/longitude used as-is.
+            auto_locate: true,
+            city: "",
+            latitude: 0.0,
+            longitude: 0.0,
+            units: "celsius" // celsius | fahrenheit
+        },
         panels: {
             control_center: { enabled: true, keybind: "super+e" },
             launcher: { enabled: true, keybind: "super+d" },

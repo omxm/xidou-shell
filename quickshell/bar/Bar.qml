@@ -6,10 +6,9 @@ import "modules" as Modules
 // The bar panel: a single PanelWindow reserving strut space, top or bottom
 // per config.toml [bar].position. Left/center/right module lists are read
 // from config and resolved against `moduleComponents` below — an unknown
-// module name is skipped with a warning rather than rendered broken, since
-// several names in the default config (media, weather, tray, mem, cpu,
-// bluetooth, volume, power) belong to later roadmap phases and aren't
-// implemented yet.
+// module name is skipped with a warning rather than rendered broken, so a
+// typo in modules_left/center/right degrades gracefully instead of crashing
+// the bar.
 PanelWindow {
     id: bar
 
@@ -30,7 +29,15 @@ PanelWindow {
     readonly property var moduleComponents: ({
         logo: logoComponent,
         workspaces: workspacesComponent,
-        clock: clockComponent
+        clock: clockComponent,
+        media: mediaComponent,
+        weather: weatherComponent,
+        tray: trayComponent,
+        mem: memComponent,
+        cpu: cpuComponent,
+        bluetooth: bluetoothComponent,
+        volume: volumeComponent,
+        power: powerComponent
     })
 
     function resolveModules(names) {
@@ -59,6 +66,46 @@ PanelWindow {
     Component {
         id: clockComponent
         Modules.Clock {}
+    }
+
+    Component {
+        id: mediaComponent
+        Modules.Media {}
+    }
+
+    Component {
+        id: weatherComponent
+        Modules.Weather {}
+    }
+
+    Component {
+        id: trayComponent
+        Modules.Tray {}
+    }
+
+    Component {
+        id: memComponent
+        Modules.Mem {}
+    }
+
+    Component {
+        id: cpuComponent
+        Modules.Cpu {}
+    }
+
+    Component {
+        id: bluetoothComponent
+        Modules.Bluetooth {}
+    }
+
+    Component {
+        id: volumeComponent
+        Modules.Volume {}
+    }
+
+    Component {
+        id: powerComponent
+        Modules.Power {}
     }
 
     Item {
