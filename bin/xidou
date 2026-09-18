@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+# Xidou Shell control CLI.
+#
+# `xidou msg <command> [args...]` talks to the running Quickshell instance
+# over its own IPC (`quickshell ipc call`), mirroring how MangoWM's
+# `noctalia msg panel-toggle launcher` works — see CLAUDE.md's Architecture
+# section. dwm's keybinds spawn this rather than talking to dwm-ipc for
+# anything that's shell UI state (panel visibility, etc.) rather than
+# window-manager state.
+set -eu
+
+REPO_DIR="/home/haru/projects/xidou-shell"
+
+usage() {
+	echo "usage: xidou msg panel-toggle <panel-name>" >&2
+	echo "   or: xidou msg <ipc-target> <ipc-function> [args...]" >&2
+	exit 1
+}
+
+[ "$#" -ge 1 ] || usage
+cmd="$1"
+shift
+
+case "$cmd" in
+msg)
+	[ "$#" -ge 1 ] || usage
+	if [ "$1" = "panel-toggle" ]; then
+		[ "$#" -eq 2 ] || usage
+		exec quickshell ipc -p "$REPO_DIR/quickshell" call panels toggle "$2"
+	else
+		exec quickshell ipc -p "$REPO_DIR/quickshell" call "$@"
+	fi
+	;;
+*)
+	usage
+	;;
+esac

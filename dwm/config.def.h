@@ -71,11 +71,19 @@ static const char *volraisecmd[] = { "wpctl", "set-volume", "-l", "1.0", "@DEFAU
 static const char *vollowercmd[] = { "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-", NULL };
 static const char *volmutecmd[]  = { "wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle", NULL };
 
+/* Launcher toggle goes through `xidou msg`, the CLI/IPC surface CLAUDE.md's
+ * architecture section calls for (mirrors MangoWM's `noctalia msg
+ * panel-toggle launcher`) — dwm still owns the bind, it just hands off to
+ * the shell over Quickshell's own IPC rather than dwm-ipc, since this is
+ * shell UI state, not window-manager state. */
+static const char *launchertogglecmd[] = { "xidou", "msg", "panel-toggle", "launcher", NULL };
+
 static const Key keys[] = {
 	/* modifier                     key        function        argument */
 	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
 	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
 	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
+	{ MODKEY,                       XK_d,      spawn,          {.v = launchertogglecmd } },
 	{ 0,                            XF86XK_AudioRaiseVolume, spawn, {.v = volraisecmd } },
 	{ 0,                            XF86XK_AudioLowerVolume, spawn, {.v = vollowercmd } },
 	{ 0,                            XF86XK_AudioMute,        spawn, {.v = volmutecmd } },
@@ -83,7 +91,7 @@ static const Key keys[] = {
 	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
 	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
 	{ MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
-	{ MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
+	{ MODKEY|ShiftMask,             XK_i,      incnmaster,     {.i = -1 } },
 	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
 	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
 	{ MODKEY|ShiftMask,             XK_c,      killclient,     {0} },

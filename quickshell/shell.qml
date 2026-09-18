@@ -1,7 +1,10 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import "config"
+import "services"
 import "bar"
+import "launcher"
 
 // Shell entry point. Run with:
 //   quickshell -p /path/to/xidou-shell/quickshell
@@ -39,6 +42,20 @@ ShellRoot {
 
             screen: modelData
             monitorNum: Quickshell.screens.indexOf(modelData)
+        }
+    }
+
+    Launcher {}
+
+    // Shell-side IPC target for dwm's spawned commands (see bin/xidou and
+    // dwm/config.h's super+d bind) — this is shell UI state (panel
+    // visibility), not window-manager state, so it goes through Quickshell's
+    // own IPC rather than dwm-ipc.
+    IpcHandler {
+        target: "panels"
+
+        function toggle(name: string): void {
+            PanelState.toggle(name);
         }
     }
 }
