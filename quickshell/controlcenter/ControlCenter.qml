@@ -106,23 +106,34 @@ PanelWindow {
                 }
 
                 Item {
+                    id: content
                     width: parent.width - sidebar.width - parent.spacing
                     height: parent.height
 
-                    HomeSection {
-                        anchors.fill: parent
-                        visible: root.selectedIndex === 0
+                    // Section name -> Component, same string-keyed lookup
+                    // pattern Bar.qml's moduleComponents/resolveModules
+                    // already uses — an unresolved name falls back to the
+                    // placeholder rather than needing every new section to
+                    // extend a growing exclusion chain here.
+                    readonly property var sectionComponents: ({
+                        "Home": homeComponent,
+                        "Audio": audioComponent,
+                        "Bluetooth": bluetoothComponent,
+                        "Power": powerComponent
+                    })
+
+                    Component { id: homeComponent; HomeSection {} }
+                    Component { id: audioComponent; AudioSection {} }
+                    Component { id: bluetoothComponent; BluetoothSection {} }
+                    Component { id: powerComponent; PowerSection {} }
+                    Component {
+                        id: placeholderComponent
+                        PlaceholderSection { sectionName: root.sections[root.selectedIndex] }
                     }
 
-                    AudioSection {
+                    Loader {
                         anchors.fill: parent
-                        visible: root.selectedIndex === 2
-                    }
-
-                    PlaceholderSection {
-                        anchors.fill: parent
-                        visible: root.selectedIndex !== 0 && root.selectedIndex !== 2
-                        sectionName: root.sections[root.selectedIndex]
+                        sourceComponent: content.sectionComponents[root.sections[root.selectedIndex]] || placeholderComponent
                     }
                 }
             }
