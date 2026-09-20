@@ -119,13 +119,17 @@ PanelWindow {
                         "Home": homeComponent,
                         "Audio": audioComponent,
                         "Bluetooth": bluetoothComponent,
-                        "Power": powerComponent
+                        "Power": powerComponent,
+                        "Weather": weatherComponent,
+                        "System": systemComponent
                     })
 
                     Component { id: homeComponent; HomeSection {} }
                     Component { id: audioComponent; AudioSection {} }
                     Component { id: bluetoothComponent; BluetoothSection {} }
                     Component { id: powerComponent; PowerSection {} }
+                    Component { id: weatherComponent; WeatherSection {} }
+                    Component { id: systemComponent; SystemSection {} }
                     Component {
                         id: placeholderComponent
                         PlaceholderSection { sectionName: root.sections[root.selectedIndex] }
