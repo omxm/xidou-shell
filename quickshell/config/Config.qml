@@ -22,6 +22,10 @@ Singleton {
         },
         theme: {
             mode: "dark",
+            // builtin: use the static colors below. wallpaper: use
+            // services/ColorScheme.qml's matugen-derived palette instead
+            // (falls back to builtin until the first regenerate() completes).
+            source: "builtin", // builtin | wallpaper
             accent: "#c9b890",
             background: "#1a1a1a",
             surface: "#242424",

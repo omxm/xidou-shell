@@ -10,6 +10,7 @@ version = "0.1.0"
 
 [theme]
 mode = "dark"              # dark | light | auto
+source = "builtin"         # builtin | wallpaper (wallpaper uses matugen's generated palette, see services/ColorScheme.qml)
 accent = "#c9b890"
 background = "#1a1a1a"
 surface = "#242424"

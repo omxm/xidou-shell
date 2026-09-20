@@ -224,6 +224,16 @@ Confirmed UI (from a real Noctalia v5 screenshot): tabs for `Built-in / Wallpape
 Community`, a style preset dropdown (e.g. "Soft"), Dark/Light/Auto color-mode toggle,
 per-wallpaper favorite (star) toggle, filter/search box, thumbnail grid.
 
+Color matching follows Noctalia's own real approach — shell out to `matugen` (package:
+`matugen`, in the `extra` repo) and read its JSON output, not a reimplementation of its
+logic in QML/JS. Every invocation MUST include `--source-color-index 0` — see lesson #2
+below, confirmed against matugen 4.2.0's own `--help`. `-j hex` dumps colors as JSON to
+stdout (no template/config file needed for this shell's use case); `--type`'s real values
+are `scheme-content/expressive/fidelity/fruit-salad/monochrome/neutral/rainbow/
+tonal-spot/vibrant/smart` (default `scheme-tonal-spot`) — Noctalia's "Soft" preset name is
+its own UI label, not a literal matugen flag value; that mapping still needs deciding when
+the wallpaper-picker UI itself is built.
+
 **Phase 7 — clipboard / screenshot / session (lock, power menu)**
 
 **Final phase — startup/splash screen**

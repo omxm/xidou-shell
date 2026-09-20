@@ -114,4 +114,18 @@ ShellRoot {
             Notifications.toggleDnd();
         }
     }
+
+    // Manual "regenerate theme" trigger (`xidou msg theme regenerate <path>`)
+    // ahead of the wallpaper-picker UI that will eventually call the same
+    // thing on wallpaper selection (Phase 6). Maps config.toml's theme.mode
+    // ("auto") onto matugen's own mode name ("smart") -- they're not spelled
+    // the same even though they mean the same thing.
+    IpcHandler {
+        target: "theme"
+
+        function regenerate(imagePath: string): void {
+            var mode = Config.data.theme.mode === "auto" ? "smart" : Config.data.theme.mode;
+            ColorScheme.regenerate(imagePath, mode, "scheme-tonal-spot");
+        }
+    }
 }
