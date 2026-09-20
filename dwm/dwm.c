@@ -22,6 +22,7 @@
  */
 #include <errno.h>
 #include <locale.h>
+#include <math.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -42,6 +43,7 @@
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
+#include <X11/extensions/shape.h>
 #include <X11/Xft/Xft.h>
 
 #include "drw.h"
@@ -172,6 +174,20 @@ struct StrutWin {
 };
 static StrutWin *struts = NULL;
 
+/* Every _NET_WM_WINDOW_TYPE_DOCK window (Quickshell's bar, launcher, OSD,
+ * notifications — see manage()), tracked purely so restack() can re-raise
+ * all of them above regular clients on every call. struts (above) only
+ * covers the subset that set a strut (the bar), which isn't enough here:
+ * popups like the launcher/OSD/notifications never set one, so without
+ * this separate list dwm forgets about them the instant manage() returns
+ * and nothing ever keeps them stacked above newly mapped/focused clients. */
+typedef struct DockWin DockWin;
+struct DockWin {
+	Window win;
+	DockWin *next;
+};
+static DockWin *dockwins = NULL;
+
 typedef struct {
 	const char *class;
 	const char *instance;
@@ -197,6 +213,9 @@ static void configure(Client *c);
 static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
+static void adddockwin(Window w);
+static void removedockwin(Window w);
+static void raisedocks(void);
 static void destroynotify(XEvent *e);
 static void detach(Client *c);
 static void detachstack(Client *c);
@@ -242,7 +261,9 @@ static void run(void);
 static void scan(void);
 static int sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
+static XRectangle *roundedrectrects(int w, int h, int r, int *n_out);
 static void setclientstate(Client *c, long state);
+static void setcornershape(Client *c);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
@@ -632,6 +653,102 @@ configure(Client *c)
 	ce.above = None;
 	ce.override_redirect = False;
 	XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *)&ce);
+	setcornershape(c);
+}
+
+/* Builds a rounded-rect region of size w*h, corner radius r, as 2*r+1
+ * horizontal strips (one row per pixel through both corners, one full-width
+ * band between them) -- at the small radii this shell actually uses
+ * (8-16px) a per-row staircase is the finest approximation
+ * XShapeCombineRectangles admits, and sampling each row's inset at its
+ * vertical center (i+0.5) rather than its edge roughly halves the max
+ * error against the true circle vs. a naive floor/ceil stair, which is
+ * what actually reads as jagged at this size. Caller frees the result. */
+static XRectangle *
+roundedrectrects(int w, int h, int r, int *n_out)
+{
+	XRectangle *rects = ecalloc(2 * r + 1, sizeof(XRectangle));
+	int n = 0, i;
+
+	for (i = 0; i < r; i++) {
+		double dy = r - (i + 0.5);
+		double under = (double)r * r - dy * dy;
+		int inset = under > 0 ? r - (int)(sqrt(under) + 0.5) : r;
+		if (inset < 0) inset = 0;
+		if (inset > r) inset = r;
+		rects[n].x = inset; rects[n].y = i;
+		rects[n].width = w - 2 * inset; rects[n].height = 1;
+		n++;
+		rects[n].x = inset; rects[n].y = h - 1 - i;
+		rects[n].width = w - 2 * inset; rects[n].height = 1;
+		n++;
+	}
+	rects[n].x = 0; rects[n].y = r;
+	rects[n].width = w; rects[n].height = h - 2 * r;
+	n++;
+	*n_out = n;
+	return rects;
+}
+
+void
+setcornershape(Client *c)
+{
+	int w = WIDTH(c), h = HEIGHT(c);
+	int r = (int)cornerradius;
+	int bw = (int)c->bw;
+	int rclip = r - bw;
+	XRectangle *rects;
+	int n;
+
+	/* Fullscreen fills the whole monitor edge-to-edge -- rounding it would
+	 * clip visible triangles out of the screen's own corners instead of
+	 * just the window, showing whatever's behind (root background) rather
+	 * than fixing anything. Also bail if the radius doesn't even fit the
+	 * window, rather than emitting rectangles with negative width. Both
+	 * shapes (see below) need resetting, not just one -- a window that
+	 * was rounded before going fullscreen would otherwise keep a stale
+	 * rounded ShapeClip clipping its own content after ShapeBounding is
+	 * reset back to a plain rectangle. */
+	if (c->isfullscreen || r <= 0 || 2 * r > w || 2 * r > h) {
+		XShapeCombineMask(dpy, c->win, ShapeBounding, 0, 0, None, ShapeSet);
+		XShapeCombineMask(dpy, c->win, ShapeClip, 0, 0, None, ShapeSet);
+		return;
+	}
+
+	/* ShapeBounding is the outer silhouette (content + border); its
+	 * coordinate space is relative to the window's own content origin
+	 * (0,0 = inside the border), not its outer edge -- the border itself
+	 * lives at negative coordinates (-bw..0 and w..w+bw) in that space,
+	 * so the rects (built as if (0,0) were the outer corner) have to be
+	 * shifted by -bw in both axes to land on the border instead of
+	 * missing it on the top/left edges entirely (right/bottom looked
+	 * fine only because the unshifted region simply overshot into
+	 * already-covered space rather than leaving a gap). */
+	rects = roundedrectrects(w, h, r, &n);
+	XShapeCombineRectangles(dpy, c->win, ShapeBounding, -bw, -bw, rects, n, ShapeSet, Unsorted);
+	free(rects);
+
+	/* Per the Shape extension spec, the border is what's drawn in the gap
+	 * between the effective bounding region and the effective clip region
+	 * -- ShapeBounding alone only rounds the *outer* silhouette. Left at
+	 * its default (a plain rectangle exactly matching the content area,
+	 * origin (0,0), no border offset needed here unlike above), the clip
+	 * region's corners stay square, so the border ring is bounded by a
+	 * curved outer edge and a square inner one: exactly the "smooth
+	 * outline, square ring" artifact this was missing. Give ShapeClip its
+	 * own rounded rect at the content's own size, radius shrunk by bw so
+	 * the ring keeps a uniform width all the way through the curve
+	 * (clamped to 0 for a border wider than the radius, where the ring's
+	 * inner edge necessarily has to be a sharp point). */
+	if (rclip < 0)
+		rclip = 0;
+	if (rclip > 0 && (2 * rclip <= c->w && 2 * rclip <= c->h)) {
+		rects = roundedrectrects(c->w, c->h, rclip, &n);
+		XShapeCombineRectangles(dpy, c->win, ShapeClip, 0, 0, rects, n, ShapeSet, Unsorted);
+		free(rects);
+	} else {
+		XShapeCombineMask(dpy, c->win, ShapeClip, 0, 0, None, ShapeSet);
+	}
 }
 
 void
@@ -739,8 +856,10 @@ destroynotify(XEvent *e)
 
 	if ((c = wintoclient(ev->window)))
 		unmanage(c, 1);
-	else
+	else {
 		removestrut(ev->window); /* no-op if it wasn't a tracked strut window */
+		removedockwin(ev->window); /* no-op if it wasn't a tracked dock window */
+	}
 }
 
 void
@@ -1329,7 +1448,8 @@ manage(Window w, XWindowAttributes *wa)
 		}
 		if (wtype == netatom[NetWMWindowTypeDock]) {
 			XSelectInput(dpy, w, PropertyChangeMask | StructureNotifyMask);
-			XMapWindow(dpy, w);
+			adddockwin(w);
+			XMapRaised(dpy, w);
 			updatestrut(w);
 			return;
 		}
@@ -1710,6 +1830,13 @@ restack(Monitor *m)
 				wc.sibling = c->win;
 			}
 	}
+	/* Quickshell's dock windows (bar/launcher/OSD/notifications) are never
+	 * managed clients (see manage()'s DOCK branch), so nothing above this
+	 * point knows they exist — left alone, any client mapped or raised
+	 * after a panel would bury it. Re-raise them last, every restack(),
+	 * so they stay pinned above all regular clients regardless of focus/
+	 * mapping order. */
+	raisedocks();
 	XSync(dpy, False);
 	while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 }
@@ -2107,10 +2234,13 @@ spawn(const Arg *arg)
 void
 tag(const Arg *arg)
 {
+	/* Moves the focused client to the target tag AND follows it there
+	 * (matching MangoWM's exchange semantics this was migrated from —
+	 * see commit ec597a4) by reusing view()'s own tagset-switch/focus/
+	 * arrange logic instead of duplicating it here. */
 	if (selmon->sel && arg->ui & TAGMASK) {
 		selmon->sel->tags = arg->ui & TAGMASK;
-		focus(NULL);
-		arrange(selmon);
+		view(arg);
 	}
 }
 
@@ -2291,6 +2421,7 @@ unmapnotify(XEvent *e)
 			unmanage(c, 0);
 	} else {
 		removestrut(ev->window); /* no-op if it wasn't a tracked strut window */
+		removedockwin(ev->window); /* no-op if it wasn't a tracked dock window */
 	}
 }
 
@@ -2444,6 +2575,41 @@ removestrut(Window w)
 			return;
 		}
 	}
+}
+
+void
+adddockwin(Window w)
+{
+	DockWin *d = ecalloc(1, sizeof(DockWin));
+	d->win = w;
+	d->next = dockwins;
+	dockwins = d;
+}
+
+void
+removedockwin(Window w)
+{
+	DockWin *d, *prev = NULL;
+
+	for (d = dockwins; d; prev = d, d = d->next) {
+		if (d->win == w) {
+			if (prev)
+				prev->next = d->next;
+			else
+				dockwins = d->next;
+			free(d);
+			return;
+		}
+	}
+}
+
+void
+raisedocks(void)
+{
+	DockWin *d;
+
+	for (d = dockwins; d; d = d->next)
+		XRaiseWindow(dpy, d->win);
 }
 
 void

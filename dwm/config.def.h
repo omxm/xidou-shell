@@ -3,6 +3,14 @@
 /* appearance */
 static const unsigned int borderpx  = 1;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
+/* Radius (px) dwm rounds every managed client's outer edge (content +
+ * border) to via the X Shape extension, so the native border actually
+ * matches picom's corner-radius on the content behind it -- picom itself
+ * has no way to round a window's native border (confirmed: not a real
+ * option in mainline picom, see session/picom.conf's own note). Same
+ * default as config.toml's [theme].radius and picom.conf's corner-radius
+ * today, independently set -- no shared source between the three yet. */
+static const unsigned int cornerradius = 10;
 static const int showbar            = 0;        /* 0 means no bar; Xidou's Quickshell bar owns this space */
 static const int topbar             = 1;        /* 0 means bottom bar */
 static const char *fonts[]          = { "monospace:size=10" };
