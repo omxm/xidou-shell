@@ -123,7 +123,8 @@ PanelWindow {
                         "Weather": weatherComponent,
                         "System": systemComponent,
                         "Network": networkComponent,
-                        "Notifications": notificationsComponent
+                        "Notifications": notificationsComponent,
+                        "Calendar": calendarComponent
                     })
 
                     Component { id: homeComponent; HomeSection {} }
@@ -134,6 +135,7 @@ PanelWindow {
                     Component { id: systemComponent; SystemSection {} }
                     Component { id: networkComponent; NetworkSection {} }
                     Component { id: notificationsComponent; NotificationsSection {} }
+                    Component { id: calendarComponent; CalendarSection {} }
                     Component {
                         id: placeholderComponent
                         PlaceholderSection { sectionName: root.sections[root.selectedIndex] }
