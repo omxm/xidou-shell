@@ -5,8 +5,10 @@ import "../config"
 import "../services"
 
 // App launcher: toggled by `xidou msg panel-toggle launcher` (see
-// dwm/config.h's super+d bind and bin/xidou), via PanelState.launcherVisible
+// dwm/config.h's super+d bind and bin/xidou), via PanelManager.isOpen()
 // rather than dwm-ipc — this is shell UI state, not window-manager state.
+// PanelManager also enforces that opening this closes any other dock panel
+// (control-center, etc.) instead of leaving both stacked.
 // Not anchored to any screen edge (unlike Bar, which reserves strut space):
 // PanelWindow has no native "centered floating window" concept since it's
 // modeled on layer-shell's edge-anchoring, so centering is done by anchoring
@@ -29,7 +31,7 @@ PanelWindow {
     readonly property int panelHeight: 360
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
-    visible: PanelState.launcherVisible && root.cfg.enabled
+    visible: PanelManager.isOpen("launcher") && root.cfg.enabled
     implicitWidth: panelWidth
     implicitHeight: panelHeight
     color: "transparent"
@@ -111,7 +113,7 @@ PanelWindow {
     function launchSelected() {
         if (selectedIndex >= 0 && selectedIndex < filteredApps.length) {
             filteredApps[selectedIndex].execute();
-            PanelState.launcherVisible = false;
+            PanelManager.close("launcher");
         }
     }
 
@@ -145,7 +147,7 @@ PanelWindow {
                     font.pixelSize: Theme.fontSize
                     clip: true
 
-                    Keys.onEscapePressed: PanelState.launcherVisible = false
+                    Keys.onEscapePressed: PanelManager.close("launcher")
                     Keys.onReturnPressed: root.launchSelected()
                     Keys.onEnterPressed: root.launchSelected()
                     Keys.onDownPressed: {

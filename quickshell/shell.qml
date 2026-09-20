@@ -65,7 +65,7 @@ ShellRoot {
         target: "panels"
 
         function toggle(name: string): void {
-            PanelState.toggle(name);
+            PanelManager.toggle(name);
         }
     }
 

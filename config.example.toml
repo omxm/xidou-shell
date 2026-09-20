@@ -54,7 +54,7 @@ timeout_ms = 5000          # default auto-dismiss; overridden per-notification w
 
 [panels.control_center]
 enabled = true
-keybind = "super+s"
+keybind = "super+e"
 
 [panels.launcher]
 enabled = true

@@ -6,8 +6,10 @@ import "../services"
 import "sections"
 
 // Control-center ("Home") panel: toggled by `xidou msg panel-toggle
-// control-center` (dwm's super+s bind, dwm/config.h) or a right-click on the
-// bar's dead zone (Bar.qml), via PanelState.controlCenterVisible.
+// control-center` (dwm's super+e bind, dwm/config.h) or a right-click on the
+// bar's dead zone (Bar.qml), via PanelManager.isOpen() — which also ensures
+// opening this closes any other dock panel (Launcher, etc.) instead of
+// leaving both stacked.
 //
 // Deliberately NOT a Noctalia clone: real Noctalia renders these as
 // edge-docked windows with concave corners against the screen edge. This
@@ -27,7 +29,7 @@ PanelWindow {
     ]
     property int selectedIndex: 0
 
-    visible: PanelState.controlCenterVisible && root.cfg.enabled
+    visible: PanelManager.isOpen("control-center") && root.cfg.enabled
     implicitWidth: panelWidth
     implicitHeight: panelHeight
     color: "transparent"
@@ -80,8 +82,14 @@ PanelWindow {
             anchors.fill: parent
             focus: true
 
-            Keys.onEscapePressed: PanelState.controlCenterVisible = false
+            Keys.onEscapePressed: PanelManager.close("control-center")
             Keys.onTabPressed: root.selectedIndex = (root.selectedIndex + 1) % root.sections.length
+            // Up/Down cycle sections the same way Tab does, alongside it
+            // (not replacing it) — same wraparound math as dwm's own
+            // cycletag(), computed directly rather than tracking "visited"
+            // sections.
+            Keys.onDownPressed: root.selectedIndex = (root.selectedIndex + 1) % root.sections.length
+            Keys.onUpPressed: root.selectedIndex = (root.selectedIndex - 1 + root.sections.length) % root.sections.length
 
             Row {
                 anchors.fill: parent

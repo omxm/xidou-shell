@@ -65,7 +65,7 @@ Singleton {
             timeout_ms: 5000  // default auto-dismiss; overridden per-notification when the sender sets its own expire timeout
         },
         panels: {
-            control_center: { enabled: true, keybind: "super+s" },
+            control_center: { enabled: true, keybind: "super+e" },
             launcher: { enabled: true, keybind: "super+d" },
             wallpaper: { enabled: true, keybind: "super+y", directories: ["~/Pictures/Wallpapers"] },
             clipboard: { enabled: true, keybind: "super+v" },

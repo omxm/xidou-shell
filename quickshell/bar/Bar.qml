@@ -120,7 +120,7 @@ PanelWindow {
     // panel's dead-zone tab can reassign what any click here does without
     // touching this MouseArea's own logic.
     function handleDeadZoneClick() {
-        PanelState.toggle("control-center");
+        PanelManager.toggle("control-center");
     }
 
     Item {

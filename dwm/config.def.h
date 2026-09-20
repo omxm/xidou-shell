@@ -207,7 +207,7 @@ static const Key keys[] = {
 	{ MODKEY|ShiftMask,             XK_e,      quit,             {0} }, /* moved off super+shift+q */
 	/* reserved for panels not built yet (Phase 4/5/6/7) — see the command
 	 * arrays above */
-	{ MODKEY,                       XK_s,      spawn,            {.v = controlcentertogglecmd } },
+	{ MODKEY,                       XK_e,      spawn,            {.v = controlcentertogglecmd } },
 	{ MODKEY,                       XK_comma,  spawn,            {.v = settingstogglecmd } },
 	{ MODKEY,                       XK_v,      spawn,            {.v = clipboardtogglecmd } },
 	{ MODKEY,                       XK_Tab,    spawn,            {.v = windowswitchercmd } },
