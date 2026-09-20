@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import "../config"
+import "../services"
 import "modules" as Modules
 
 // The bar panel: a single PanelWindow reserving strut space, top or bottom
@@ -114,10 +115,31 @@ PanelWindow {
         Modules.Power {}
     }
 
+    // Right-click on empty bar space opens Home — deliberately isolated into
+    // its own named function (not inlined in onClicked) so a future settings
+    // panel's dead-zone tab can reassign what any click here does without
+    // touching this MouseArea's own logic.
+    function handleDeadZoneClick() {
+        PanelState.toggle("control-center");
+    }
+
     Item {
         anchors.fill: parent
         anchors.leftMargin: Theme.fontSize / 2
         anchors.rightMargin: Theme.fontSize / 2
+
+        // Placed before the module Rows below so their own per-module
+        // MouseAreas still take precedence: Rows are only as wide as their
+        // content, not anchors.fill, so genuinely empty space (including the
+        // gaps between modules) falls through to this one.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.RightButton
+            onClicked: (mouse) => {
+                if (mouse.button === Qt.RightButton)
+                    bar.handleDeadZoneClick();
+            }
+        }
 
         Row {
             anchors.left: parent.left

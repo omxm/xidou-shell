@@ -11,10 +11,13 @@ Singleton {
     id: root
 
     property bool launcherVisible: false
+    property bool controlCenterVisible: false
 
     function toggle(name) {
         if (name === "launcher")
             root.launcherVisible = !root.launcherVisible;
+        else if (name === "control-center")
+            root.controlCenterVisible = !root.controlCenterVisible;
         else
             console.warn("[xidou] PanelState.toggle: unknown panel '" + name + "'");
     }

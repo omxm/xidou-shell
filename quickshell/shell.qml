@@ -6,6 +6,7 @@ import "config"
 import "services"
 import "bar"
 import "launcher"
+import "controlcenter"
 import "osd"
 import "notification"
 
@@ -49,6 +50,8 @@ ShellRoot {
     }
 
     Launcher {}
+
+    ControlCenter {}
 
     Osd {}
 
