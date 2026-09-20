@@ -8,6 +8,7 @@ import "bar"
 import "launcher"
 import "controlcenter"
 import "wallpaper"
+import "session"
 import "osd"
 import "notification"
 
@@ -55,6 +56,10 @@ ShellRoot {
     ControlCenter {}
 
     Wallpaper {}
+
+    Session {}
+
+    LockScreen {}
 
     Osd {}
 
@@ -115,6 +120,16 @@ ShellRoot {
 
         function toggleDnd(): void {
             Notifications.toggleDnd();
+        }
+    }
+
+    // dwm's super+l bind (dwm/config.h's sessionlockcmd) -- locks directly,
+    // bypassing the session menu entirely.
+    IpcHandler {
+        target: "session"
+
+        function lock(): void {
+            SessionActions.lock();
         }
     }
 

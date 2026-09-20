@@ -20,7 +20,8 @@ Singleton {
     property var openPanels: ({
         "launcher": false,
         "control-center": false,
-        "wallpaper": false
+        "wallpaper": false,
+        "session": false
     })
 
     function isOpen(name) {
@@ -49,6 +50,17 @@ Singleton {
             return;
         var next = Object.assign({}, root.openPanels);
         next[name] = false;
+        root.openPanels = next;
+    }
+
+    // For SessionActions.lock()/logout()/reboot()/shutdown() -- these need
+    // every dock panel gone (nothing left interactive behind/through the
+    // lock screen, nothing left open across a session that's about to end)
+    // without opening a replacement the way toggle(name) would.
+    function closeAll() {
+        var next = {};
+        for (var key in root.openPanels)
+            next[key] = false;
         root.openPanels = next;
     }
 }
