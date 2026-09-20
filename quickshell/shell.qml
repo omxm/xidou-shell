@@ -7,6 +7,7 @@ import "services"
 import "bar"
 import "launcher"
 import "controlcenter"
+import "wallpaper"
 import "osd"
 import "notification"
 
@@ -52,6 +53,8 @@ ShellRoot {
     Launcher {}
 
     ControlCenter {}
+
+    Wallpaper {}
 
     Osd {}
 

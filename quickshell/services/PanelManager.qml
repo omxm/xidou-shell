@@ -19,7 +19,8 @@ Singleton {
 
     property var openPanels: ({
         "launcher": false,
-        "control-center": false
+        "control-center": false,
+        "wallpaper": false
     })
 
     function isOpen(name) {

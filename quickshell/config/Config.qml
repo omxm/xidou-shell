@@ -36,7 +36,28 @@ Singleton {
             radius: 10,
             font_family: "Inter",
             icon_font_family: "Material Symbols Outlined",
-            font_size: 14
+            font_size: 14,
+            // Active matugen --type for wallpaper-driven generation -- must
+            // be one of scheme_presets' values below. Friendly display names
+            // live in config (not hardcoded in QML) specifically so the
+            // wallpaper-picker's preset dropdown can be renamed/reordered
+            // without a code change; matugen's own real values (confirmed
+            // against its --help, not guessed) have no "Soft"/"Vibrant"
+            // naming of their own -- that's Noctalia's UI convention, borrowed
+            // here as a naming style, not copied as literal flag values.
+            scheme_type: "scheme-tonal-spot",
+            scheme_presets: {
+                "Soft": "scheme-tonal-spot",
+                "Vibrant": "scheme-vibrant",
+                "Expressive": "scheme-expressive",
+                "Muted": "scheme-neutral",
+                "Monochrome": "scheme-monochrome",
+                "Playful": "scheme-fruit-salad",
+                "Rainbow": "scheme-rainbow",
+                "Faithful": "scheme-fidelity",
+                "Natural": "scheme-content",
+                "Smart": "scheme-smart"
+            }
         },
         bar: {
             position: "top",

@@ -22,6 +22,23 @@ radius = 10
 font_family = "Inter"
 icon_font_family = "Material Symbols Outlined"
 font_size = 14
+scheme_type = "scheme-tonal-spot"  # active matugen --type when source = "wallpaper"; must be one of theme.scheme_presets' values below
+
+# Friendly names for the wallpaper-picker's scheme-preset dropdown. matugen's
+# own --type values (right-hand side, confirmed against its --help) have no
+# "Soft"/"Vibrant" naming of their own -- rename or reorder these freely, no
+# code change needed.
+[theme.scheme_presets]
+Soft = "scheme-tonal-spot"
+Vibrant = "scheme-vibrant"
+Expressive = "scheme-expressive"
+Muted = "scheme-neutral"
+Monochrome = "scheme-monochrome"
+Playful = "scheme-fruit-salad"
+Rainbow = "scheme-rainbow"
+Faithful = "scheme-fidelity"
+Natural = "scheme-content"
+Smart = "scheme-smart"
 
 [bar]
 position = "top"           # top | bottom
