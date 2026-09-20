@@ -6,15 +6,19 @@ import "../services"
 
 // Wallpaper picker: toggled by `xidou msg panel-toggle wallpaper` (dwm's
 // super+y bind, dwm/config.h) via PanelManager.isOpen("wallpaper"). Same
-// window type/centering/corner style/focus workaround as Launcher.qml, and
-// deliberately the *same* fixed size (not a custom one) so every panel using
-// this "centered overlay" treatment has a consistent visual footprint.
+// window type/centering/corner style/focus workaround as Launcher.qml and
+// control-center, but sized to match control-center specifically (820x560,
+// not Launcher's 480x360) -- the two content-heavy panels share a footprint
+// rather than each picking its own size.
 PanelWindow {
     id: root
 
     readonly property var cfg: Config.data.panels.wallpaper
-    readonly property int panelWidth: 480
-    readonly property int panelHeight: 360
+    // Matches control-center's size (not Launcher's) so this panel and
+    // control-center -- the two content-heavy "centered overlay" panels --
+    // share a consistent footprint.
+    readonly property int panelWidth: 820
+    readonly property int panelHeight: 560
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
     readonly property var tabs: ["Built-in", "Wallpaper", "Community"]
