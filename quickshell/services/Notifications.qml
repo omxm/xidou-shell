@@ -17,14 +17,26 @@ Singleton {
 
     property bool dnd: false
 
-    // trackedNotifications doubles as "currently visible popups" for now --
-    // there's no notification history/center yet (not in Phase 4's scope),
-    // so a DND-suppressed notification is simply never tracked rather than
+    // trackedNotifications doubles as "currently visible popups" -- a
+    // DND-suppressed notification is simply never tracked rather than
     // tracked-but-hidden.
     readonly property alias active: server.trackedNotifications
 
+    // Phase 5's Notifications tab is the history/center this file's own
+    // comment used to flag as a future extension point -- plain {summary,
+    // body, appName, urgency, time} objects, not live Notification
+    // references, since those get destroyed once dismissed/expired and
+    // history needs to survive that. Capped so it can't grow unbounded
+    // over a long session.
+    readonly property int historyLimit: 50
+    property var history: []
+
     function toggleDnd() {
         root.dnd = !root.dnd;
+    }
+
+    function clearHistory() {
+        root.history = [];
     }
 
     NotificationServer {
@@ -41,6 +53,15 @@ Singleton {
         persistenceSupported: false
 
         onNotification: function (notification) {
+            var entry = {
+                summary: notification.summary || "",
+                body: notification.body || "",
+                appName: notification.appName || "",
+                urgency: notification.urgency,
+                time: Date.now()
+            };
+            root.history = [entry].concat(root.history).slice(0, root.historyLimit);
+
             if (root.dnd)
                 return;
             notification.tracked = true;
