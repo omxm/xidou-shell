@@ -124,7 +124,8 @@ PanelWindow {
                         "System": systemComponent,
                         "Network": networkComponent,
                         "Notifications": notificationsComponent,
-                        "Calendar": calendarComponent
+                        "Calendar": calendarComponent,
+                        "Media": mediaComponent
                     })
 
                     Component { id: homeComponent; HomeSection {} }
@@ -136,6 +137,7 @@ PanelWindow {
                     Component { id: networkComponent; NetworkSection {} }
                     Component { id: notificationsComponent; NotificationsSection {} }
                     Component { id: calendarComponent; CalendarSection {} }
+                    Component { id: mediaComponent; MediaSection {} }
                     Component {
                         id: placeholderComponent
                         PlaceholderSection { sectionName: root.sections[root.selectedIndex] }
