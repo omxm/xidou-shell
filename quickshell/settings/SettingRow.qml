@@ -35,7 +35,28 @@ Item {
     property var customOverridden: undefined // set a bool to bypass the tableHeader/settingKey/defaultValue comparison entirely
     property var customReset: null // set a function to bypass the default Config.setValue(tableHeader, settingKey, defaultValue) reset
 
-    readonly property var currentValue: (Config.data[tableHeader] || {})[settingKey]
+    // tableHeader can be dotted (e.g. "panels.wallpaper", matching exactly
+    // how it'd appear inside [brackets] in config.toml) -- a flat
+    // Config.data[tableHeader] lookup only works for a single-level name;
+    // Config.data["panels.wallpaper"] is not the same thing as
+    // Config.data.panels.wallpaper; it looks for one literal key with a
+    // dot in its name, which doesn't exist, silently returning undefined.
+    // Confirmed empirically: this stayed unnoticed through six categories
+    // because every one of them used a single-level tableHeader; Wallpaper
+    // was the first to need a nested one ("panels.wallpaper"), which read
+    // as permanently "overridden" until this walked the dots properly.
+    function resolveTable(header) {
+        var parts = header.split(".");
+        var node = Config.data;
+        for (var i = 0; i < parts.length; i++) {
+            if (!node)
+                return undefined;
+            node = node[parts[i]];
+        }
+        return node;
+    }
+
+    readonly property var currentValue: (root.resolveTable(root.tableHeader) || {})[settingKey]
     readonly property bool overridden: root.customOverridden !== undefined ? root.customOverridden : (JSON.stringify(root.currentValue) !== JSON.stringify(root.defaultValue))
 
     default property alias controlContent: controlSlot.data

@@ -13,6 +13,7 @@ import "osd" as OsdTabs
 import "notifications" as NotificationTabs
 import "bar" as BarTabs
 import "weather" as WeatherTabs
+import "wallpaper" as WallpaperTabs
 
 // Settings panel: toggled by `xidou msg settings toggle` (dwm's super+comma
 // bind, dwm/config.h's settingstogglecmd -- already reserved there ahead of
@@ -44,7 +45,7 @@ PanelWindow {
     readonly property int panelHeight: 600
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
-    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications", "Bar", "Weather"]
+    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications", "Bar", "Weather", "Wallpaper"]
     property int selectedCategoryIndex: 0
 
     // Category name -> its sub-tab list. Categories not listed here would
@@ -57,7 +58,8 @@ PanelWindow {
         "OSD": ["General"],
         "Notifications": ["General"],
         "Bar": ["General", "Modules"],
-        "Weather": ["General"]
+        "Weather": ["General"],
+        "Wallpaper": ["General"]
     })
     readonly property var currentSubTabs: root.subTabsByCategory[root.categories[root.selectedCategoryIndex]] || []
     property int selectedSubTabIndex: 0
@@ -335,6 +337,9 @@ PanelWindow {
                             },
                             "Weather": {
                                 "General": weatherGeneralTabComponent
+                            },
+                            "Wallpaper": {
+                                "General": wallpaperGeneralTabComponent
                             }
                         })
 
@@ -405,6 +410,13 @@ PanelWindow {
                         Component {
                             id: weatherGeneralTabComponent
                             WeatherTabs.GeneralTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: wallpaperGeneralTabComponent
+                            WallpaperTabs.GeneralTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }
