@@ -11,6 +11,7 @@ import "wallpaper"
 import "session"
 import "screenshot"
 import "clipboard"
+import "settings"
 import "osd"
 import "notification"
 
@@ -68,6 +69,8 @@ ShellRoot {
     ScreenshotConfirm {}
 
     Clipboard {}
+
+    Settings {}
 
     Osd {}
 
@@ -138,6 +141,19 @@ ShellRoot {
 
         function lock(): void {
             SessionActions.lock();
+        }
+    }
+
+    // dwm's super+comma bind (dwm/config.h's settingstogglecmd) -- its own
+    // dedicated target rather than going through "panels" above, same as
+    // screenshot/theme/notifications each get their own; still bridges
+    // straight into the shared PanelManager so it keeps the same
+    // mutual-exclusion-with-every-other-panel behavior as everything else.
+    IpcHandler {
+        target: "settings"
+
+        function toggle(): void {
+            PanelManager.toggle("settings");
         }
     }
 

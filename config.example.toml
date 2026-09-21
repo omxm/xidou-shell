@@ -96,6 +96,10 @@ enabled = true
 keybind = "super+escape"
 lock_keybind = "super+l"
 
+[panels.settings]
+enabled = true
+keybind = "super+comma"
+
 [startup]
 enabled = true
 logo = "~/.config/xidou/assets/logo.svg"

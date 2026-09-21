@@ -4,8 +4,8 @@ import QtQuick
 import Quickshell
 
 // Central visibility + mutual exclusivity for every dock panel (Launcher,
-// control-center, and whatever Phase 6/7 add: wallpaper, clipboard,
-// session). Exactly one dock panel is ever open at a time -- opening one
+// control-center, wallpaper, clipboard, session, settings). Exactly one
+// dock panel is ever open at a time -- opening one
 // closes whatever else was open instead of stacking, which is what left
 // Launcher and control-center both visible/stacked before this existed.
 //
@@ -22,7 +22,8 @@ Singleton {
         "control-center": false,
         "wallpaper": false,
         "session": false,
-        "clipboard": false
+        "clipboard": false,
+        "settings": false
     })
 
     function isOpen(name) {

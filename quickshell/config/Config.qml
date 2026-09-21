@@ -95,7 +95,8 @@ Singleton {
             wallpaper: { enabled: true, keybind: "super+y", directories: ["~/Pictures/Wallpapers"] },
             clipboard: { enabled: true, keybind: "super+v" },
             notification: { enabled: true, dnd_keybind: "super+n" },
-            session: { enabled: true, keybind: "super+escape", lock_keybind: "super+l" }
+            session: { enabled: true, keybind: "super+escape", lock_keybind: "super+l" },
+            settings: { enabled: true, keybind: "super+comma" }
         },
         startup: {
             enabled: true,
