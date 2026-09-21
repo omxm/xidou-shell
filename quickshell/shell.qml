@@ -9,6 +9,7 @@ import "launcher"
 import "controlcenter"
 import "wallpaper"
 import "session"
+import "screenshot"
 import "osd"
 import "notification"
 
@@ -60,6 +61,10 @@ ShellRoot {
     Session {}
 
     LockScreen {}
+
+    ScreenshotBackdrop {}
+
+    ScreenshotConfirm {}
 
     Osd {}
 
@@ -130,6 +135,20 @@ ShellRoot {
 
         function lock(): void {
             SessionActions.lock();
+        }
+    }
+
+    // dwm's Print / Ctrl+Print binds (dwm/config.h's screenshotfullcmd /
+    // screenshotregioncmd) land here.
+    IpcHandler {
+        target: "screenshot"
+
+        function fullscreen(): void {
+            Screenshot.fullscreen();
+        }
+
+        function region(): void {
+            Screenshot.region();
         }
     }
 
