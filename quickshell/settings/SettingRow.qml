@@ -21,6 +21,10 @@ Item {
     property string settingKey: ""
     property var defaultValue: undefined
     property bool showOverriddenOnly: false
+    // Override for a control taller than one line -- e.g. OSD/Notification
+    // Position, which stacks a vertical and a horizontal picker rather than
+    // needing a new composite-position widget shape.
+    property real rowHeight: Theme.fontSize * 2.6
 
     readonly property var currentValue: (Config.data[tableHeader] || {})[settingKey]
     readonly property bool overridden: JSON.stringify(root.currentValue) !== JSON.stringify(root.defaultValue)
@@ -33,7 +37,7 @@ Item {
     }
 
     visible: !root.showOverriddenOnly || root.overridden
-    height: visible ? Theme.fontSize * 2.6 : 0
+    height: visible ? root.rowHeight : 0
     width: parent ? parent.width : 0
 
     Row {

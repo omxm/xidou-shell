@@ -5,7 +5,11 @@ import "../config"
 import "../services"
 import "../controlcenter" as ControlCenter
 import "appearance"
-import "screenshot"
+// Namespaced (not bare) -- multiple categories each have their own
+// "General" sub-tab, and a bare import of both would collide on that
+// identical type name.
+import "screenshot" as ScreenshotTabs
+import "osd" as OsdTabs
 
 // Settings panel: toggled by `xidou msg settings toggle` (dwm's super+comma
 // bind, dwm/config.h's settingstogglecmd -- already reserved there ahead of
@@ -37,7 +41,7 @@ PanelWindow {
     readonly property int panelHeight: 600
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
-    readonly property var categories: ["Appearance", "Screenshot"]
+    readonly property var categories: ["Appearance", "Screenshot", "OSD"]
     property int selectedCategoryIndex: 0
 
     // Category name -> its sub-tab list. Categories not listed here would
@@ -46,7 +50,8 @@ PanelWindow {
     // convention of failing soft on anything not yet wired up.
     readonly property var subTabsByCategory: ({
         "Appearance": ["Theme", "Interface", "Accessibility", "Motion", "Borders", "Effects"],
-        "Screenshot": ["General"]
+        "Screenshot": ["General"],
+        "OSD": ["General"]
     })
     readonly property var currentSubTabs: root.subTabsByCategory[root.categories[root.selectedCategoryIndex]] || []
     property int selectedSubTabIndex: 0
@@ -311,6 +316,9 @@ PanelWindow {
                             },
                             "Screenshot": {
                                 "General": screenshotGeneralTabComponent
+                            },
+                            "OSD": {
+                                "General": osdGeneralTabComponent
                             }
                         })
 
@@ -345,7 +353,14 @@ PanelWindow {
 
                         Component {
                             id: screenshotGeneralTabComponent
-                            GeneralTab {
+                            ScreenshotTabs.GeneralTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: osdGeneralTabComponent
+                            OsdTabs.GeneralTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }
