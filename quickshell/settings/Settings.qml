@@ -303,7 +303,8 @@ PanelWindow {
                         // if a future category's sub-tab name collides.
                         readonly property var tabComponents: ({
                             "Theme": themeTabComponent,
-                            "Interface": interfaceTabComponent
+                            "Interface": interfaceTabComponent,
+                            "Borders": bordersTabComponent
                         })
 
                         Loader {
@@ -322,6 +323,13 @@ PanelWindow {
                         Component {
                             id: interfaceTabComponent
                             InterfaceTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: bordersTabComponent
+                            BordersTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }
