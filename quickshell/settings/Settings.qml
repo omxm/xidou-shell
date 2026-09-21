@@ -10,6 +10,7 @@ import "appearance"
 // identical type name.
 import "screenshot" as ScreenshotTabs
 import "osd" as OsdTabs
+import "notifications" as NotificationTabs
 
 // Settings panel: toggled by `xidou msg settings toggle` (dwm's super+comma
 // bind, dwm/config.h's settingstogglecmd -- already reserved there ahead of
@@ -41,7 +42,7 @@ PanelWindow {
     readonly property int panelHeight: 600
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
-    readonly property var categories: ["Appearance", "Screenshot", "OSD"]
+    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications"]
     property int selectedCategoryIndex: 0
 
     // Category name -> its sub-tab list. Categories not listed here would
@@ -51,7 +52,8 @@ PanelWindow {
     readonly property var subTabsByCategory: ({
         "Appearance": ["Theme", "Interface", "Accessibility", "Motion", "Borders", "Effects"],
         "Screenshot": ["General"],
-        "OSD": ["General"]
+        "OSD": ["General"],
+        "Notifications": ["General"]
     })
     readonly property var currentSubTabs: root.subTabsByCategory[root.categories[root.selectedCategoryIndex]] || []
     property int selectedSubTabIndex: 0
@@ -319,6 +321,9 @@ PanelWindow {
                             },
                             "OSD": {
                                 "General": osdGeneralTabComponent
+                            },
+                            "Notifications": {
+                                "General": notificationsGeneralTabComponent
                             }
                         })
 
@@ -361,6 +366,13 @@ PanelWindow {
                         Component {
                             id: osdGeneralTabComponent
                             OsdTabs.GeneralTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: notificationsGeneralTabComponent
+                            NotificationTabs.GeneralTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }
