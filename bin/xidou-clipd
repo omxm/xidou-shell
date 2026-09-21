@@ -1,0 +1,85 @@
+#!/usr/bin/env sh
+# Xidou clipboard history daemon.
+#
+# Loops on clipnotify (blocks until the CLIPBOARD selection changes, exits
+# once per change) -- the clipnotify+xclip idiom CLAUDE.md's lesson #5 calls
+# out as X11's own equivalent to Wayland's wl-clipboard tooling. Every entry
+# is written as its own file under CLIP_DIR rather than packed into one JSON
+# blob, so arbitrary clipboard content (any bytes, any length, embedded
+# quotes/newlines/binary) round-trips byte-for-byte -- xclip always reads
+# and writes the CLIPBOARD selection via plain file redirection here, never
+# through a shell string, so there is nothing to escape.
+#
+# The manifest ("index") is a plain newline list of "<ext> <timestamp>"
+# lines, newest first. quickshell/services/ClipboardHistory.qml watches it
+# with a FileView, the same reactive pattern Config.qml/ColorScheme.qml use
+# for files an external process owns -- this script is the only writer,
+# the shell only ever reads.
+#
+# Started from session/xidou-xinitrc's ensure_running block (like
+# pipewire/picom), not spawned ad hoc from a panel's QML -- see CLAUDE.md's
+# Architecture section on external daemon dependencies. Needs clipnotify
+# installed (AUR/extra depending on distro) in addition to xclip, which the
+# screenshot panel already depends on.
+set -eu
+
+CLIP_DIR="$HOME/.cache/xidou/clipboard"
+MANIFEST="$CLIP_DIR/index"
+MAX_ENTRIES=50
+
+mkdir -p "$CLIP_DIR"
+touch "$MANIFEST"
+
+while clipnotify -s clipboard; do
+	targets=$(xclip -o -selection clipboard -t TARGETS 2>/dev/null || true)
+	ts=$(date +%s%3N)
+
+	if printf '%s\n' "$targets" | grep -qx 'image/png'; then
+		ext=png
+		path="$CLIP_DIR/$ts.png"
+		xclip -o -selection clipboard -t image/png >"$path" 2>/dev/null || {
+			rm -f "$path"
+			continue
+		}
+	else
+		ext=txt
+		path="$CLIP_DIR/$ts.txt"
+		xclip -o -selection clipboard >"$path" 2>/dev/null || {
+			rm -f "$path"
+			continue
+		}
+	fi
+	[ -s "$path" ] || {
+		rm -f "$path"
+		continue
+	}
+
+	# Skip an exact duplicate of the most recent entry -- matches clipmenu's
+	# own dedup, otherwise a window merely re-asserting the same selection
+	# (common when refocusing an app) spams the history with copies.
+	last_line=$(head -n 1 "$MANIFEST" 2>/dev/null || true)
+	if [ -n "$last_line" ]; then
+		last_ext=${last_line% *}
+		last_ts=${last_line#* }
+		last_path="$CLIP_DIR/$last_ts.$last_ext"
+		if [ -f "$last_path" ] && cmp -s "$path" "$last_path"; then
+			rm -f "$path"
+			continue
+		fi
+	fi
+
+	{
+		printf '%s %s\n' "$ext" "$ts"
+		cat "$MANIFEST"
+	} >"$MANIFEST.tmp"
+	mv "$MANIFEST.tmp" "$MANIFEST"
+
+	# Trim to MAX_ENTRIES, deleting the backing files for anything dropped.
+	if [ "$(wc -l <"$MANIFEST")" -gt "$MAX_ENTRIES" ]; then
+		tail -n +$((MAX_ENTRIES + 1)) "$MANIFEST" | while read -r dext dts; do
+			rm -f "$CLIP_DIR/$dts.$dext"
+		done
+		head -n "$MAX_ENTRIES" "$MANIFEST" >"$MANIFEST.tmp"
+		mv "$MANIFEST.tmp" "$MANIFEST"
+	fi
+done

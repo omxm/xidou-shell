@@ -59,6 +59,11 @@ ensure_running wireplumber wireplumber
 # black wherever another window sits behind them instead of showing it
 # through. See session/picom.conf for the (deliberately minimal) config.
 ensure_running picom picom --config "$REPO_DIR/session/picom.conf"
+
+# Clipboard history (Phase 7) -- clipnotify+xclip loop, per CLAUDE.md's
+# explicit note on this exact dependency. Owns ~/.cache/xidou/clipboard/;
+# quickshell/services/ClipboardHistory.qml only ever reads it.
+ensure_running xidou-clipd xidou-clipd
 # ------------------------------------------------------------------------
 
 quickshell -p "$REPO_DIR/quickshell" &

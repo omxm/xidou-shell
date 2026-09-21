@@ -10,6 +10,7 @@ import "controlcenter"
 import "wallpaper"
 import "session"
 import "screenshot"
+import "clipboard"
 import "osd"
 import "notification"
 
@@ -65,6 +66,8 @@ ShellRoot {
     ScreenshotBackdrop {}
 
     ScreenshotConfirm {}
+
+    Clipboard {}
 
     Osd {}
 
