@@ -26,7 +26,12 @@ Singleton {
         printErrors: false
 
         onLoaded: root.parse(manifestFile.text())
-        onFileChanged: root.parse(manifestFile.text())
+        // fileChanged only means the manifest changed on disk, not that
+        // it's been re-read yet -- text() right after it fires can still
+        // return pre-change content. reload() forces the read; its
+        // completion re-fires onLoaded above. See the project memory on
+        // this exact FileView gotcha (found while building Config.setValue()).
+        onFileChanged: manifestFile.reload()
         onLoadFailed: root.entries = []
     }
 
