@@ -89,9 +89,61 @@ PanelWindow {
 
     property int selectedIndex: 0
 
+    // 3-mode Tab-cycle scaffolding (Stage B). Switchboard and Emoji Picker
+    // are empty stubs for now -- Switchboard's real content (only
+    // already-backed toggles: DND, Wi-Fi, Bluetooth, brightness, volume,
+    // Night Light, theme mode, wallpaper, screenshot, lock) and the Emoji
+    // Picker (needs font research first -- Material Symbols/Nerd Fonts
+    // can't render color emoji, per the lessons doc) are separate
+    // follow-ups once this scaffolding itself is confirmed working.
+    property string mode: "appSearch" // appSearch | switchboard | emoji
+    readonly property var modeOrder: ["appSearch", "switchboard", "emoji"]
+    readonly property var modeLabels: ({
+        appSearch: "App Search",
+        switchboard: "Switchboard",
+        emoji: "Emoji Picker"
+    })
+
+    function cycleMode() {
+        var idx = root.modeOrder.indexOf(root.mode);
+        root.mode = root.modeOrder[(idx + 1) % root.modeOrder.length];
+    }
+
+    // Escape from a non-default mode, or a second press of the launcher's
+    // own toggle keybind while one is active, steps back to App Search
+    // instead of closing the whole panel -- see requestToggle() below and
+    // Keys.onEscapePressed on both focus points further down.
+    function resetToAppSearch() {
+        root.mode = "appSearch";
+        searchField.text = "";
+        root.selectedIndex = 0;
+        searchField.forceActiveFocus();
+    }
+
+    // The panels IpcHandler (shell.qml, dwm's super+d bind) calls this
+    // instead of PanelManager.toggle("launcher") directly -- a second
+    // trigger while a non-default mode is active should reset to App
+    // Search rather than actually closing, which plain toggle()
+    // (open->close, used identically by every other panel) has no way to
+    // know about.
+    function requestToggle() {
+        if (PanelManager.isOpen("launcher") && root.mode !== "appSearch")
+            root.resetToAppSearch();
+        else
+            PanelManager.toggle("launcher");
+    }
+
+    onModeChanged: {
+        if (root.mode === "appSearch")
+            searchField.forceActiveFocus();
+        else
+            modeStub.forceActiveFocus();
+    }
+
     onFilteredAppsChanged: selectedIndex = 0
     onVisibleChanged: {
         if (visible) {
+            root.mode = "appSearch";
             searchField.text = "";
             selectedIndex = 0;
             searchField.forceActiveFocus();
@@ -130,137 +182,195 @@ PanelWindow {
             anchors.margins: Theme.fontSize
             spacing: Theme.fontSize / 2
 
-            Rectangle {
+            Text {
+                id: modeLabel
                 width: parent.width
-                height: Theme.fontSize * 2.2
-                radius: Theme.radius / 2
-                color: Theme.surfaceAlt
-                border.width: 1
-                border.color: Theme.border
-
-                TextInput {
-                    id: searchField
-                    anchors.fill: parent
-                    anchors.margins: Theme.fontSize / 2
-                    verticalAlignment: TextInput.AlignVCenter
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSize
-                    clip: true
-
-                    Keys.onEscapePressed: PanelManager.close("launcher")
-                    Keys.onReturnPressed: root.launchSelected()
-                    Keys.onEnterPressed: root.launchSelected()
-                    Keys.onDownPressed: {
-                        if (root.selectedIndex < root.filteredApps.length - 1)
-                            root.selectedIndex++;
-                    }
-                    Keys.onUpPressed: {
-                        if (root.selectedIndex > 0)
-                            root.selectedIndex--;
-                    }
-                }
+                text: root.modeLabels[root.mode] + "  ·  Tab to cycle"
+                color: Theme.accent
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSize * 0.8
+                font.bold: true
             }
 
-            ListView {
-                id: resultsList
+            Item {
+                id: contentArea
                 width: parent.width
-                height: parent.height - parent.spacing - (Theme.fontSize * 2.2)
-                clip: true
-                model: root.filteredApps
-                currentIndex: root.selectedIndex
+                height: parent.height - modeLabel.height - parent.spacing
 
-                readonly property real rowHeight: Theme.fontSize * 2.2
+                Column {
+                    id: appSearchContent
+                    anchors.fill: parent
+                    spacing: Theme.fontSize / 2
+                    visible: root.mode === "appSearch"
 
-                // Not highlightRangeMode/StrictlyEnforceRange -- tried that
-                // twice and confirmed empirically (via real screenshots,
-                // pixel-measured, not eyeballed) that it does NOT clamp
-                // contentY to the list's actual scrollable bounds the way
-                // its name implies. For currentIndex 0 in a long list it
-                // still centers item 0 in the preferred band and leaves a
-                // large blank gap above it, because contentY genuinely goes
-                // negative and nothing renders for a negative offset --
-                // there's no automatic edge-pinning at all, only "always
-                // keep the current item in this exact band."
-                //
-                // So this computes the target scroll position directly and
-                // clamps it to [0, contentHeight - height] by hand: center
-                // the current row when there's room to, but never scroll
-                // past either end of the actual content. interactive: false
-                // below is required for this -- a real mouse-drag/flick
-                // would otherwise sever this binding (QML drops a property
-                // binding on any external imperative write to it), and nothing
-                // currently drives this list by dragging anyway (keyboard
-                // Up/Down and click-to-launch only).
-                interactive: false
-                boundsBehavior: Flickable.StopAtBounds
-                contentY: {
-                    if (root.filteredApps.length === 0)
-                        return 0;
-                    var itemY = root.selectedIndex * rowHeight;
-                    var desired = itemY - (height - rowHeight) / 2;
-                    var maxY = Math.max(0, contentHeight - height);
-                    return Math.max(0, Math.min(desired, maxY));
-                }
+                    Rectangle {
+                        width: parent.width
+                        height: Theme.fontSize * 2.2
+                        radius: Theme.radius / 2
+                        color: Theme.surfaceAlt
+                        border.width: 1
+                        border.color: Theme.border
 
-                Behavior on contentY {
-                    NumberAnimation {
-                        duration: 120
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                delegate: Rectangle {
-                    id: delegateRoot
-                    required property var modelData
-                    required property int index
-
-                    width: resultsList.width
-                    height: resultsList.rowHeight
-                    radius: Theme.radius / 2
-                    color: index === root.selectedIndex ? Theme.accent : "transparent"
-
-                    Row {
-                        anchors.fill: parent
-                        anchors.leftMargin: Theme.fontSize / 2
-                        anchors.rightMargin: Theme.fontSize / 2
-                        spacing: Theme.fontSize / 2
-
-                        IconImage {
-                            anchors.verticalCenter: parent.verticalCenter
-                            implicitSize: Theme.fontSize * 1.4
-                            // DesktopEntry.icon is the raw, unresolved Icon=
-                            // value from the .desktop file (a bare
-                            // icon-theme name like "blueman", not a usable
-                            // path) -- unlike SystemTrayItem.icon (used
-                            // as-is in bar/modules/Tray.qml), which the
-                            // StatusNotifierItem protocol already hands
-                            // over pre-resolved. Confirmed empirically
-                            // (printed the raw values) rather than assumed
-                            // the two .icon properties meant the same kind
-                            // of string. Quickshell.iconPath() is the
-                            // actual theme-lookup step Tray.qml never
-                            // needed.
-                            source: Quickshell.iconPath(delegateRoot.modelData.icon)
-                        }
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - Theme.fontSize * 1.4 - parent.spacing
-                            elide: Text.ElideRight
-                            text: delegateRoot.modelData.name
-                            color: index === root.selectedIndex ? Theme.background : Theme.text
+                        TextInput {
+                            id: searchField
+                            anchors.fill: parent
+                            anchors.margins: Theme.fontSize / 2
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: Theme.text
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSize
+                            clip: true
+
+                            Keys.onTabPressed: root.cycleMode()
+                            Keys.onEscapePressed: PanelManager.close("launcher")
+                            Keys.onReturnPressed: root.launchSelected()
+                            Keys.onEnterPressed: root.launchSelected()
+                            Keys.onDownPressed: {
+                                if (root.selectedIndex < root.filteredApps.length - 1)
+                                    root.selectedIndex++;
+                            }
+                            Keys.onUpPressed: {
+                                if (root.selectedIndex > 0)
+                                    root.selectedIndex--;
+                            }
                         }
                     }
 
-                    MouseArea {
+                    ListView {
+                        id: resultsList
+                        width: parent.width
+                        height: parent.height - parent.spacing - (Theme.fontSize * 2.2)
+                        clip: true
+                        model: root.filteredApps
+                        currentIndex: root.selectedIndex
+
+                        readonly property real rowHeight: Theme.fontSize * 2.2
+
+                        // Not highlightRangeMode/StrictlyEnforceRange -- tried
+                        // that twice and confirmed empirically (via real
+                        // screenshots, pixel-measured, not eyeballed) that it
+                        // does NOT clamp contentY to the list's actual
+                        // scrollable bounds the way its name implies. For
+                        // currentIndex 0 in a long list it still centers item
+                        // 0 in the preferred band and leaves a large blank
+                        // gap above it, because contentY genuinely goes
+                        // negative and nothing renders for a negative offset
+                        // -- there's no automatic edge-pinning at all, only
+                        // "always keep the current item in this exact band."
+                        //
+                        // So this computes the target scroll position
+                        // directly and clamps it to [0, contentHeight -
+                        // height] by hand: center the current row when
+                        // there's room to, but never scroll past either end
+                        // of the actual content. interactive: false below is
+                        // required for this -- a real mouse-drag/flick would
+                        // otherwise sever this binding (QML drops a property
+                        // binding on any external imperative write to it),
+                        // and nothing currently drives this list by dragging
+                        // anyway (keyboard Up/Down and click-to-launch only).
+                        interactive: false
+                        boundsBehavior: Flickable.StopAtBounds
+                        contentY: {
+                            if (root.filteredApps.length === 0)
+                                return 0;
+                            var itemY = root.selectedIndex * rowHeight;
+                            var desired = itemY - (height - rowHeight) / 2;
+                            var maxY = Math.max(0, contentHeight - height);
+                            return Math.max(0, Math.min(desired, maxY));
+                        }
+
+                        Behavior on contentY {
+                            NumberAnimation {
+                                duration: 120
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        delegate: Rectangle {
+                            id: delegateRoot
+                            required property var modelData
+                            required property int index
+
+                            width: resultsList.width
+                            height: resultsList.rowHeight
+                            radius: Theme.radius / 2
+                            color: index === root.selectedIndex ? Theme.accent : "transparent"
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.leftMargin: Theme.fontSize / 2
+                                anchors.rightMargin: Theme.fontSize / 2
+                                spacing: Theme.fontSize / 2
+
+                                IconImage {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    implicitSize: Theme.fontSize * 1.4
+                                    // DesktopEntry.icon is the raw, unresolved
+                                    // Icon= value from the .desktop file (a
+                                    // bare icon-theme name like "blueman", not
+                                    // a usable path) -- unlike
+                                    // SystemTrayItem.icon (used as-is in
+                                    // bar/modules/Tray.qml), which the
+                                    // StatusNotifierItem protocol already
+                                    // hands over pre-resolved. Confirmed
+                                    // empirically (printed the raw values)
+                                    // rather than assumed the two .icon
+                                    // properties meant the same kind of
+                                    // string. Quickshell.iconPath() is the
+                                    // actual theme-lookup step Tray.qml never
+                                    // needed.
+                                    source: Quickshell.iconPath(delegateRoot.modelData.icon)
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - Theme.fontSize * 1.4 - parent.spacing
+                                    elide: Text.ElideRight
+                                    text: delegateRoot.modelData.name
+                                    color: index === root.selectedIndex ? Theme.background : Theme.text
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSize
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    root.selectedIndex = delegateRoot.index;
+                                    root.launchSelected();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Switchboard and Emoji Picker: empty stubs for now (Stage
+                // B is scaffolding only -- see the property comment above).
+                // One shared focus point since both are equally inert;
+                // whichever is visible is decided by root.mode.
+                Item {
+                    id: modeStub
+                    anchors.fill: parent
+                    visible: root.mode !== "appSearch"
+                    focus: root.mode !== "appSearch"
+
+                    Keys.onTabPressed: root.cycleMode()
+                    Keys.onEscapePressed: root.resetToAppSearch()
+
+                    Rectangle {
                         anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.selectedIndex = delegateRoot.index;
-                            root.launchSelected();
+                        radius: Theme.radius / 2
+                        color: Theme.surfaceAlt
+                        border.width: 1
+                        border.color: Theme.border
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: root.modeLabels[root.mode] + " — coming soon"
+                            color: Theme.textMuted
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSize
                         }
                     }
                 }

@@ -62,7 +62,9 @@ ShellRoot {
         }
     }
 
-    Launcher {}
+    Launcher {
+        id: launcherPanel
+    }
 
     ControlCenter {}
 
@@ -92,7 +94,16 @@ ShellRoot {
         target: "panels"
 
         function toggle(name: string): void {
-            PanelManager.toggle(name);
+            // launcher gets its own path: Launcher.qml's Stage B mode
+            // scaffolding needs a second trigger (dwm's super+d) to step
+            // back to App Search rather than close outright when a
+            // non-default mode is active -- plain PanelManager.toggle()
+            // (open<->close, identical for every other panel) has no way
+            // to know about that.
+            if (name === "launcher")
+                launcherPanel.requestToggle();
+            else
+                PanelManager.toggle(name);
         }
     }
 
