@@ -98,6 +98,18 @@ Singleton {
             spacing: 8,       // gap between stacked notification cards
             timeout_ms: 5000  // default auto-dismiss; overridden per-notification when the sender sets its own expire timeout
         },
+        motion: {
+            enabled: true,
+            duration: 0.15, // seconds; drives both open/show and close/hide legs
+            // Intensity, not an easing curve -- picom's own "appear"/
+            // "disappear" preset only exposes scale+duration, no curve
+            // param (confirmed against its manpage); real easing control
+            // would mean hand-writing hand Advanced-syntax animation
+            // scripts instead of using the preset at all. Explicit call:
+            // stay on the preset, ship intensity levels only. Real values
+            // live in lib/PicomSync.js's PRESET_SCALES, not duplicated here.
+            preset: "normal" // subtle | normal | pronounced
+        },
         screenshot: {
             freeze_during_selection: true,  // freeze the desktop behind a static backdrop during region-select, rather than re-capturing live
             confirm_selection: true,        // show the Save/Cancel preview dialog after a capture, rather than saving instantly

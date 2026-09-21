@@ -25,7 +25,14 @@ import "notification"
 ShellRoot {
     settings.watchFiles: true
 
-    Component.onCompleted: logTheme()
+    // The MotionSync reference forces its instantiation at shell boot --
+    // unlike Weather's singletons, nothing else always-loaded reads from it,
+    // so without this the config.toml -> picom.conf bridge would silently
+    // never exist until something else happened to touch MotionSync first.
+    Component.onCompleted: {
+        logTheme();
+        MotionSync.picomConfPath;
+    }
 
     Connections {
         target: Config
@@ -131,6 +138,19 @@ ShellRoot {
 
         function toggleDnd(): void {
             Notifications.toggleDnd();
+        }
+    }
+
+    // No dwm keybind yet (Home tab's toggle grid is the only entry point
+    // right now) -- exposed anyway for the same reason every other
+    // quick-toggle here is: consistent with notifications.toggleDnd(), and
+    // it's what let this feature be tested end-to-end via `quickshell ipc`
+    // instead of only through the panel UI.
+    IpcHandler {
+        target: "caffeine"
+
+        function toggle(): void {
+            CaffeineService.toggle();
         }
     }
 

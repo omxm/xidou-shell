@@ -33,6 +33,55 @@ ensure_running() {
     fi
 }
 
+# pipewire/wireplumber/pipewire-pulse are backgrounded with `&` below, not
+# exec'd, so a plain relogin (dwm/X exiting, then this whole script
+# re-running with a fresh dbus-daemon) never kills them -- they're
+# reparented to PID 1 and linger bound to a D-Bus session address that no
+# longer exists. wireplumber specifically needs a live bus to finish
+# initializing (see below) and dies once its own bus disappears, but bare
+# pipewire and pipewire-pulse tolerate a dead bus and keep running
+# regardless -- so ensure_running's plain "is a process named X alive"
+# check can't tell a healthy instance apart from one of these
+# session-orphaned husks. After enough relogins, the process actually
+# holding pipewire's socket can be exactly such an orphan, with no
+# wireplumber behind it and therefore no real device tree/mixer/routing --
+# confirmed empirically as the cause of a real "no audio" report.
+#
+# Fix: before starting anything, kill any pipewire/wireplumber/
+# pipewire-pulse process whose own DBUS_SESSION_BUS_ADDRESS (frozen in its
+# environment since the moment it was launched) doesn't match THIS
+# session's freshly-started bus. What's left afterward is either nothing,
+# or an instance that's still genuinely valid for this exact session.
+reap_stale_audio_daemon() {
+    name="$1"
+    for pid in $(pgrep -x "$name" 2>/dev/null || true); do
+        bus=$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p')
+        if [ "$bus" != "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+            kill "$pid" 2>/dev/null || true
+        fi
+    done
+}
+
+# Consumers before the producer -- not load-bearing (kill order doesn't
+# matter for tearing down), just tidy.
+reap_stale_audio_daemon pipewire-pulse
+reap_stale_audio_daemon wireplumber
+reap_stale_audio_daemon pipewire
+
+# kill is asynchronous -- give reaped processes a moment to actually exit
+# and release pipewire's socket before ensure_running below checks "is one
+# already running". Escalate to SIGKILL if something's stuck rather than
+# silently proceeding into the exact duplicate-instance state this whole
+# block exists to prevent.
+i=0
+while [ "$i" -lt 25 ] && pgrep -x pipewire >/dev/null 2>&1; do
+    sleep 0.2
+    i=$((i + 1))
+done
+if pgrep -x pipewire >/dev/null 2>&1; then
+    pkill -9 -x pipewire 2>/dev/null || true
+fi
+
 ensure_running pipewire pipewire
 ensure_running pipewire-pulse pipewire-pulse
 
@@ -41,8 +90,10 @@ ensure_running pipewire-pulse pipewire-pulse
 # component fails without one) — starting it here, inside this session's
 # own dbus-run-session context (see session/xidou.desktop's Exec line),
 # gives it a real one rather than whatever a previous, possibly-dead
-# session left behind. Wait briefly for pipewire's socket rather than
-# racing it with a blind sleep.
+# session left behind (the reap step above is what makes "previous,
+# possibly-dead session" not still be sitting on the socket by this point).
+# Wait briefly for pipewire's socket rather than racing it with a blind
+# sleep.
 i=0
 while [ "$i" -lt 25 ]; do
     if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pipewire-0" ]; then
@@ -60,11 +111,28 @@ ensure_running wireplumber wireplumber
 # through. See session/picom.conf for the (deliberately minimal) config.
 ensure_running picom picom --config "$REPO_DIR/session/picom.conf"
 
+# quickshell/services/MotionSync.qml needs picom.conf's real path to splice
+# its motion-managed animations block and to scope its reload signal (pkill
+# -f matched against this exact --config path, so an Xvfb test run pointed
+# at a throwaway file never touches this real picom process). Same
+# $XIDOU_CONFIG_PATH override convention Config.qml already uses.
+export XIDOU_PICOM_CONF="$REPO_DIR/session/picom.conf"
+
 # Clipboard history (Phase 7) -- clipnotify+xclip loop, per CLAUDE.md's
 # explicit note on this exact dependency. Owns ~/.cache/xidou/clipboard/;
 # quickshell/services/ClipboardHistory.qml only ever reads it.
 ensure_running xidou-clipd xidou-clipd
 # ------------------------------------------------------------------------
+
+# Restore the last-selected wallpaper. quickshell/wallpaper/Wallpaper.qml
+# sets the X11 root background via `feh --bg-fill`, which is a live X
+# property with no memory of its own across a session restart -- feh
+# already writes ~/.fehbg (its own standard restore script) on every
+# selection, this was just never sourced back on startup, so a fresh X
+# session always came up with a blank background until a wallpaper was
+# reselected by hand. One-shot action, not a background service, so it
+# doesn't belong in the ensure_running block above.
+[ -f "$HOME/.fehbg" ] && sh "$HOME/.fehbg"
 
 quickshell -p "$REPO_DIR/quickshell" &
 

@@ -82,7 +82,8 @@ Item {
                         Layout.fillHeight: true
                         icon: "" // coffee (caffeine / inhibit sleep)
                         label: "Caffeine"
-                        implemented: false
+                        active: CaffeineService.active
+                        onTriggered: CaffeineService.toggle()
                     }
 
                     ControlCenter.ToggleTile {

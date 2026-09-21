@@ -70,6 +70,11 @@ width = 320
 spacing = 8                # gap between stacked notification cards
 timeout_ms = 5000          # default auto-dismiss; overridden per-notification when the sender sets its own expire timeout
 
+[motion]
+enabled = true
+duration = 0.15            # seconds; drives both open/show and close/hide legs
+preset = "normal"          # subtle | normal | pronounced -- intensity of picom's appear/disappear scale+fade, not an easing curve (picom's preset has no curve param)
+
 [screenshot]
 freeze_during_selection = true  # freeze the desktop behind a static backdrop during region-select, rather than re-capturing live
 confirm_selection = true        # show the Save/Cancel preview dialog after a capture, rather than saving instantly
