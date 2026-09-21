@@ -178,6 +178,7 @@ Singleton {
             }
             root.backdropImagePath = backdropCaptureProc.targetPath;
             root.backdropVisible = true;
+            frozenSlopProc.command = ["slop", "-f", "%x %y %w %h"];
             frozenSlopProc.running = false;
             frozenSlopProc.running = true;
         }
