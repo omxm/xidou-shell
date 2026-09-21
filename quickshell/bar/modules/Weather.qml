@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Io
 import "../../config"
+import "../../services"
 
 // Open-Meteo current conditions (no API key needed). Location resolution
 // priority, same as config.toml documents it:
@@ -73,7 +74,7 @@ Item {
                     if (parsed.status === "success") {
                         root.latitude = parsed.lat;
                         root.longitude = parsed.lon;
-                        forecastTimer.start();
+                        root.triggerForecastFetch();
                     } else {
                         console.warn("[xidou] weather: ip geolocation failed: " + text);
                     }
@@ -95,7 +96,7 @@ Item {
                     if (parsed.results && parsed.results.length > 0) {
                         root.latitude = parsed.results[0].latitude;
                         root.longitude = parsed.results[0].longitude;
-                        forecastTimer.start();
+                        root.triggerForecastFetch();
                     } else {
                         console.warn("[xidou] weather: no geocoding match for city '" + root.cfg.city + "'");
                     }
@@ -134,14 +135,34 @@ Item {
         id: forecastTimer
         interval: 900000 // 15 minutes
         repeat: true
-        triggeredOnStart: true
         onTriggered: {
             forecast.running = false;
             forecast.running = true;
         }
     }
 
-    Component.onCompleted: {
+    // Runs the forecast fetch immediately and makes sure the periodic timer
+    // above is (still) running -- NOT forecastTimer.start(): once the timer
+    // is already running (true for every call after the very first), .start()
+    // is a no-op (it just sets running to true, which it already is), so a
+    // later re-resolution's forecastTimer.start() would silently do nothing
+    // until the next natural 15-minute tick. Confirmed empirically while
+    // wiring up the settings panel's "Refresh Now" -- this bug was
+    // previously unreachable, since resolveLocation() used to only ever run
+    // once per component lifetime.
+    function triggerForecastFetch() {
+        forecast.running = false;
+        forecast.running = true;
+        if (!forecastTimer.running)
+            forecastTimer.start();
+    }
+
+    // Re-run on WeatherRefresh's trigger() (settings panel's "Refresh Now",
+    // or `xidou msg weather refresh`) as well as at startup -- location is
+    // still only re-resolved on an explicit trigger, never continuously,
+    // for the same "don't hammer the geolocation/geocoding APIs" reason
+    // the file-level comment already gives.
+    function resolveLocation() {
         if (!cfg.enabled)
             return;
         if (cfg.auto_locate) {
@@ -149,7 +170,46 @@ Item {
         } else if (cfg.city && cfg.city.length > 0) {
             geocode.running = true;
         } else {
-            forecastTimer.start();
+            root.latitude = cfg.latitude;
+            root.longitude = cfg.longitude;
+            root.triggerForecastFetch();
+        }
+    }
+
+    // Component.onCompleted can fire before Config's own async file load
+    // completes (confirmed empirically: Config.ready reads false at that
+    // point on a normal cold start) -- reading `cfg` that early silently
+    // resolves against the hardcoded defaults (auto_locate=true) instead of
+    // the real config.toml, with nothing to ever self-correct once the real
+    // values load, since nothing previously re-triggered resolution after
+    // startup. hasResolvedOnce defers the initial resolution to Config's
+    // first *ready* reload instead, exactly once -- later reloads (e.g. an
+    // unrelated theme change) must not silently re-trigger a fresh
+    // geolocation/geocoding call; only WeatherRefresh's explicit trigger
+    // should do that after startup.
+    property bool hasResolvedOnce: false
+
+    Connections {
+        target: Config
+        function onReloaded() {
+            if (root.hasResolvedOnce || !Config.ready)
+                return;
+            root.hasResolvedOnce = true;
+            root.resolveLocation();
+        }
+    }
+
+    Connections {
+        target: WeatherRefresh
+        function onGenerationChanged() {
+            root.resolveLocation();
+        }
+    }
+
+    Component.onCompleted: {
+        if (Config.ready) {
+            root.hasResolvedOnce = true;
+            root.resolveLocation();
         }
     }
 

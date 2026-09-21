@@ -184,4 +184,17 @@ ShellRoot {
             ColorScheme.regenerate(imagePath, mode, "scheme-tonal-spot");
         }
     }
+
+    // Settings panel's "Refresh Now" (Weather category) and
+    // `xidou msg weather refresh` both land here -- see
+    // services/WeatherRefresh.qml for why this is a trigger the three
+    // weather displays each listen to, not a service that fetches anything
+    // itself.
+    IpcHandler {
+        target: "weather"
+
+        function refresh(): void {
+            WeatherRefresh.trigger();
+        }
+    }
 }

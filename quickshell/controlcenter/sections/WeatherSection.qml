@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Io
 import "../../config"
+import "../../services"
 import ".." as ControlCenter
 
 // Fuller forecast than Home's compact clock+weather card: current
@@ -53,7 +54,7 @@ Item {
                     if (parsed.status === "success") {
                         root.latitude = parsed.lat;
                         root.longitude = parsed.lon;
-                        forecastTimer.start();
+                        root.triggerForecastFetch();
                     }
                 } catch (e) {
                     console.warn("[xidou] control-center weather: failed to parse ip geolocation response: " + e);
@@ -73,7 +74,7 @@ Item {
                     if (parsed.results && parsed.results.length > 0) {
                         root.latitude = parsed.results[0].latitude;
                         root.longitude = parsed.results[0].longitude;
-                        forecastTimer.start();
+                        root.triggerForecastFetch();
                     }
                 } catch (e) {
                     console.warn("[xidou] control-center weather: failed to parse geocoding response: " + e);
@@ -124,22 +125,69 @@ Item {
         id: forecastTimer
         interval: 900000 // 15 minutes, same cadence as the bar's Weather module
         repeat: true
-        triggeredOnStart: true
         onTriggered: {
             forecast.running = false;
             forecast.running = true;
         }
     }
 
-    Component.onCompleted: {
+    // See bar/modules/Weather.qml's own triggerForecastFetch() for why this
+    // exists rather than just calling forecastTimer.start() -- that's a
+    // no-op once the timer is already running, which is true for every
+    // resolution after the very first.
+    function triggerForecastFetch() {
+        forecast.running = false;
+        forecast.running = true;
+        if (!forecastTimer.running)
+            forecastTimer.start();
+    }
+
+    // Re-run on WeatherRefresh's trigger() (settings panel's "Refresh Now",
+    // or `xidou msg weather refresh`) as well as at startup -- see
+    // bar/modules/Weather.qml's own resolveLocation() for why this stays
+    // an explicit trigger rather than continuous re-resolution.
+    function resolveLocation() {
         if (!cfg.enabled)
             return;
-        if (cfg.auto_locate)
+        if (cfg.auto_locate) {
             ipLocate.running = true;
-        else if (cfg.city && cfg.city.length > 0)
+        } else if (cfg.city && cfg.city.length > 0) {
             geocode.running = true;
-        else
-            forecastTimer.start();
+        } else {
+            root.latitude = cfg.latitude;
+            root.longitude = cfg.longitude;
+            root.triggerForecastFetch();
+        }
+    }
+
+    // See bar/modules/Weather.qml's own hasResolvedOnce for why this exists
+    // -- Component.onCompleted can fire before Config's async load
+    // completes, silently resolving against hardcoded defaults instead of
+    // the real config.toml with nothing to self-correct afterward.
+    property bool hasResolvedOnce: false
+
+    Connections {
+        target: Config
+        function onReloaded() {
+            if (root.hasResolvedOnce || !Config.ready)
+                return;
+            root.hasResolvedOnce = true;
+            root.resolveLocation();
+        }
+    }
+
+    Connections {
+        target: WeatherRefresh
+        function onGenerationChanged() {
+            root.resolveLocation();
+        }
+    }
+
+    Component.onCompleted: {
+        if (Config.ready) {
+            root.hasResolvedOnce = true;
+            root.resolveLocation();
+        }
     }
 
     ControlCenter.Card {

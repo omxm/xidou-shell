@@ -12,6 +12,7 @@ import "screenshot" as ScreenshotTabs
 import "osd" as OsdTabs
 import "notifications" as NotificationTabs
 import "bar" as BarTabs
+import "weather" as WeatherTabs
 
 // Settings panel: toggled by `xidou msg settings toggle` (dwm's super+comma
 // bind, dwm/config.h's settingstogglecmd -- already reserved there ahead of
@@ -43,7 +44,7 @@ PanelWindow {
     readonly property int panelHeight: 600
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
-    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications", "Bar"]
+    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications", "Bar", "Weather"]
     property int selectedCategoryIndex: 0
 
     // Category name -> its sub-tab list. Categories not listed here would
@@ -55,7 +56,8 @@ PanelWindow {
         "Screenshot": ["General"],
         "OSD": ["General"],
         "Notifications": ["General"],
-        "Bar": ["General", "Modules"]
+        "Bar": ["General", "Modules"],
+        "Weather": ["General"]
     })
     readonly property var currentSubTabs: root.subTabsByCategory[root.categories[root.selectedCategoryIndex]] || []
     property int selectedSubTabIndex: 0
@@ -330,6 +332,9 @@ PanelWindow {
                             "Bar": {
                                 "General": barGeneralTabComponent,
                                 "Modules": barModulesTabComponent
+                            },
+                            "Weather": {
+                                "General": weatherGeneralTabComponent
                             }
                         })
 
@@ -393,6 +398,13 @@ PanelWindow {
                         Component {
                             id: barModulesTabComponent
                             BarTabs.ModulesTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: weatherGeneralTabComponent
+                            WeatherTabs.GeneralTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }
