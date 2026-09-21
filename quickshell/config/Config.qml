@@ -106,6 +106,17 @@ Singleton {
 
     property var data: defaults
 
+    // The exact text `data` was last parsed from -- setValue() below reads
+    // this instead of configFile.text() as its base, so that chaining
+    // several setValue() calls back-to-back (e.g. a settings page's "reset
+    // all" resetting three keys in one go) doesn't race: confirmed
+    // empirically that configFile.text(), read again immediately after a
+    // setText() call, doesn't reliably reflect that write yet, so a second
+    // setValue() call built on top of it can silently discard the first
+    // call's change when it computes its own new text and writes it back.
+    // applyText() below keeps this in sync on every load AND every write.
+    property string cachedText: ""
+
     // True once the initial read has actually completed (loaded OR
     // load-failed) -- guards setValue() below. Before this, configFile.text()
     // can read back empty even though a real file exists on disk (the async
@@ -144,6 +155,7 @@ Singleton {
     }
 
     function applyText(text) {
+        root.cachedText = text;
         try {
             var parsed = Toml.parse(text);
             root.data = deepMerge(root.defaults, parsed);
@@ -169,7 +181,7 @@ Singleton {
             console.warn("[xidou] Config.setValue: ignoring write to " + tableHeader + "." + key + " — config hasn't finished its initial load yet");
             return;
         }
-        var newText = Toml.setValue(configFile.text(), tableHeader, key, value);
+        var newText = Toml.setValue(root.cachedText, tableHeader, key, value);
         configFile.setText(newText);
         root.applyText(newText);
     }

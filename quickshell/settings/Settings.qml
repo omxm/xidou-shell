@@ -4,6 +4,7 @@ import Quickshell.Io
 import "../config"
 import "../services"
 import "../controlcenter" as ControlCenter
+import "appearance"
 
 // Settings panel: toggled by `xidou msg settings toggle` (dwm's super+comma
 // bind, dwm/config.h's settingstogglecmd -- already reserved there ahead of
@@ -54,10 +55,13 @@ PanelWindow {
     property bool showOverriddenOnly: false
     property string searchText: searchField.text
 
+    // Delegates to the loaded tab's own resetAll() when it has one (real
+    // tabs like ThemeTab do; PlaceholderTab doesn't, so this is a silent
+    // no-op there rather than needing every unbuilt tab to stub the
+    // function out just to satisfy this call).
     function resetCurrentPage() {
-        console.log("[xidou] Settings: reset page requested for "
-            + root.categories[root.selectedCategoryIndex] + " > "
-            + root.currentSubTabs[root.selectedSubTabIndex]);
+        if (tabLoader.item && tabLoader.item.resetAll)
+            tabLoader.item.resetAll();
     }
 
     visible: PanelManager.isOpen("settings") && root.cfg.enabled
@@ -265,9 +269,29 @@ PanelWindow {
                         width: parent.width
                         height: parent.height - header.height - parent.spacing
 
+                        // Sub-tab name -> Component, same string-keyed
+                        // lookup pattern as ControlCenter.qml's
+                        // sectionComponents -- an unresolved name falls
+                        // back to the placeholder rather than needing every
+                        // future sub-tab to extend a growing list here.
+                        // Flat (not nested under a category key) since
+                        // "Appearance" is still the only category; revisit
+                        // if a future category's sub-tab name collides.
+                        readonly property var tabComponents: ({
+                            "Theme": themeTabComponent
+                        })
+
                         Loader {
+                            id: tabLoader
                             anchors.fill: parent
-                            sourceComponent: placeholderComponent
+                            sourceComponent: parent.tabComponents[root.currentSubTabs[root.selectedSubTabIndex]] || placeholderComponent
+                        }
+
+                        Component {
+                            id: themeTabComponent
+                            ThemeTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
                         }
 
                         Component {
