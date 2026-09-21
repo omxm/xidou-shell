@@ -12,7 +12,13 @@ import "../config"
 //
 // tableHeader/settingKey/defaultValue describe exactly what Config.setValue()
 // would take to write this row's value, so reset() can call it directly
-// without whatever placed this row needing to duplicate that wiring.
+// without whatever placed this row needing to duplicate that wiring. That
+// model assumes one row = one literal config key, which doesn't fit
+// something like a bar module's on/off state (derived from *membership* in
+// one of three array keys, not a key of its own) -- customOverridden/
+// customReset let a caller override just the "is this different from
+// default" check and the reset action while still getting the same
+// label/control-slot/badge chrome as every other row.
 Item {
     id: root
 
@@ -26,14 +32,22 @@ Item {
     // needing a new composite-position widget shape.
     property real rowHeight: Theme.fontSize * 2.6
 
+    property var customOverridden: undefined // set a bool to bypass the tableHeader/settingKey/defaultValue comparison entirely
+    property var customReset: null // set a function to bypass the default Config.setValue(tableHeader, settingKey, defaultValue) reset
+
     readonly property var currentValue: (Config.data[tableHeader] || {})[settingKey]
-    readonly property bool overridden: JSON.stringify(root.currentValue) !== JSON.stringify(root.defaultValue)
+    readonly property bool overridden: root.customOverridden !== undefined ? root.customOverridden : (JSON.stringify(root.currentValue) !== JSON.stringify(root.defaultValue))
 
     default property alias controlContent: controlSlot.data
 
     function reset() {
-        if (root.overridden)
-            Config.setValue(root.tableHeader, root.settingKey, root.defaultValue);
+        if (!root.overridden)
+            return;
+        if (root.customReset) {
+            root.customReset();
+            return;
+        }
+        Config.setValue(root.tableHeader, root.settingKey, root.defaultValue);
     }
 
     visible: !root.showOverriddenOnly || root.overridden

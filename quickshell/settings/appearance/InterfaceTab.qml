@@ -4,14 +4,11 @@ import "../../services"
 import ".." as Settings
 
 // Appearance > Interface: font settings (theme.font_family/font_size, used
-// throughout every panel via Theme.qml) and Bar Position (bar.position,
-// which Bar.qml reads reactively -- flips the bar between top/bottom
-// live). These are the most pervasively-used real config values available
-// for an "Interface" tab; bar module reordering (modules_left/center/right)
-// is left for a dedicated future pass -- rearranging an array is a bigger
-// feature (drag-reorder or add/remove chips) than wiring up an existing
-// scalar value, the same "build what's functional now" call already made
-// for Theme's Palette Source.
+// throughout every panel via Theme.qml). Bar Position moved out to the
+// dedicated Bar category's General tab (alongside Bar Height and the
+// module toggles) once Bar settings grew enough surface area to warrant
+// their own category -- keeping the same setting editable from two places
+// would just be confusing, so it lives in exactly one now.
 Item {
     id: root
 
@@ -20,7 +17,6 @@ Item {
     function resetAll() {
         fontFamilyRow.reset();
         fontSizeRow.reset();
-        barPositionRow.reset();
     }
 
     // Clamped to a range wide enough for this hardware's 1366x768 panel
@@ -61,25 +57,6 @@ Item {
                 maxValue: root.maxFontSize
                 suffix: "px"
                 onStepped: (newValue) => Config.setValue("theme", "font_size", newValue)
-            }
-        }
-
-        Settings.SettingRow {
-            id: barPositionRow
-            label: "Bar Position"
-            tableHeader: "bar"
-            settingKey: "position"
-            defaultValue: Config.defaults.bar.position
-            showOverriddenOnly: root.showOverriddenOnly
-
-            Settings.OptionRow {
-                width: parent.width
-                options: [
-                    { value: "top", label: "Top" },
-                    { value: "bottom", label: "Bottom" }
-                ]
-                currentValue: Config.data.bar.position
-                onOptionSelected: (value) => Config.setValue("bar", "position", value)
             }
         }
     }

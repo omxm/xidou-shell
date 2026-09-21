@@ -11,6 +11,7 @@ import "appearance"
 import "screenshot" as ScreenshotTabs
 import "osd" as OsdTabs
 import "notifications" as NotificationTabs
+import "bar" as BarTabs
 
 // Settings panel: toggled by `xidou msg settings toggle` (dwm's super+comma
 // bind, dwm/config.h's settingstogglecmd -- already reserved there ahead of
@@ -42,7 +43,7 @@ PanelWindow {
     readonly property int panelHeight: 600
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
-    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications"]
+    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications", "Bar"]
     property int selectedCategoryIndex: 0
 
     // Category name -> its sub-tab list. Categories not listed here would
@@ -53,7 +54,8 @@ PanelWindow {
         "Appearance": ["Theme", "Interface", "Accessibility", "Motion", "Borders", "Effects"],
         "Screenshot": ["General"],
         "OSD": ["General"],
-        "Notifications": ["General"]
+        "Notifications": ["General"],
+        "Bar": ["General", "Modules"]
     })
     readonly property var currentSubTabs: root.subTabsByCategory[root.categories[root.selectedCategoryIndex]] || []
     property int selectedSubTabIndex: 0
@@ -324,6 +326,10 @@ PanelWindow {
                             },
                             "Notifications": {
                                 "General": notificationsGeneralTabComponent
+                            },
+                            "Bar": {
+                                "General": barGeneralTabComponent,
+                                "Modules": barModulesTabComponent
                             }
                         })
 
@@ -373,6 +379,20 @@ PanelWindow {
                         Component {
                             id: notificationsGeneralTabComponent
                             NotificationTabs.GeneralTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: barGeneralTabComponent
+                            BarTabs.GeneralTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: barModulesTabComponent
+                            BarTabs.ModulesTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }
