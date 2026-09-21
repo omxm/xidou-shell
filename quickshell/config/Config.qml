@@ -98,6 +98,13 @@ Singleton {
             spacing: 8,       // gap between stacked notification cards
             timeout_ms: 5000  // default auto-dismiss; overridden per-notification when the sender sets its own expire timeout
         },
+        screenshot: {
+            freeze_during_selection: true,  // freeze the desktop behind a static backdrop during region-select, rather than re-capturing live
+            confirm_selection: true,        // show the Save/Cancel preview dialog after a capture, rather than saving instantly
+            remember_last_region: false,    // off by default: with no second keybind for "reselect", turning this on leaves no way back to a fresh selection short of restarting the shell
+            include_cursor: false,          // include the mouse pointer in the captured image
+            save_directory: "~/Pictures/Screenshots"
+        },
         panels: {
             control_center: { enabled: true, keybind: "super+e" },
             launcher: { enabled: true, keybind: "super+d" },

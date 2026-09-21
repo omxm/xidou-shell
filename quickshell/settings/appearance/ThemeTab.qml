@@ -65,43 +65,15 @@ Item {
             defaultValue: Config.defaults.theme.mode
             showOverriddenOnly: root.showOverriddenOnly
 
-            Row {
+            Settings.OptionRow {
                 width: parent.width
-                height: Theme.fontSize * 1.8
-                spacing: Theme.fontSize / 3
-
-                Repeater {
-                    model: [
-                        { value: "dark", label: "Dark" },
-                        { value: "light", label: "Light" },
-                        { value: "auto", label: "Auto" }
-                    ]
-                    delegate: Rectangle {
-                        id: modeOption
-                        required property var modelData
-
-                        width: (parent.width - 2 * (Theme.fontSize / 3)) / 3
-                        height: parent.height
-                        radius: Theme.radius / 2
-                        color: Config.data.theme.mode === modelData.value ? Theme.accent : Theme.surfaceAlt
-                        border.width: 1
-                        border.color: Theme.border
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: modeOption.modelData.label
-                            color: Config.data.theme.mode === modeOption.modelData.value ? Theme.background : Theme.textMuted
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSize * 0.85
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Config.setValue("theme", "mode", modeOption.modelData.value)
-                        }
-                    }
-                }
+                options: [
+                    { value: "dark", label: "Dark" },
+                    { value: "light", label: "Light" },
+                    { value: "auto", label: "Auto" }
+                ]
+                currentValue: Config.data.theme.mode
+                onOptionSelected: (value) => Config.setValue("theme", "mode", value)
             }
         }
 
@@ -113,42 +85,14 @@ Item {
             defaultValue: Config.defaults.theme.source
             showOverriddenOnly: root.showOverriddenOnly
 
-            Row {
+            Settings.OptionRow {
                 width: parent.width
-                height: Theme.fontSize * 1.8
-                spacing: Theme.fontSize / 3
-
-                Repeater {
-                    model: [
-                        { value: "builtin", label: "Built-in" },
-                        { value: "wallpaper", label: "Wallpaper" }
-                    ]
-                    delegate: Rectangle {
-                        id: sourceOption
-                        required property var modelData
-
-                        width: (parent.width - (Theme.fontSize / 3)) / 2
-                        height: parent.height
-                        radius: Theme.radius / 2
-                        color: Config.data.theme.source === modelData.value ? Theme.accent : Theme.surfaceAlt
-                        border.width: 1
-                        border.color: Theme.border
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: sourceOption.modelData.label
-                            color: Config.data.theme.source === sourceOption.modelData.value ? Theme.background : Theme.textMuted
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSize * 0.85
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Config.setValue("theme", "source", sourceOption.modelData.value)
-                        }
-                    }
-                }
+                options: [
+                    { value: "builtin", label: "Built-in" },
+                    { value: "wallpaper", label: "Wallpaper" }
+                ]
+                currentValue: Config.data.theme.source
+                onOptionSelected: (value) => Config.setValue("theme", "source", value)
             }
         }
 

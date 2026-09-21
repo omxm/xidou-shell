@@ -5,6 +5,7 @@ import "../config"
 import "../services"
 import "../controlcenter" as ControlCenter
 import "appearance"
+import "screenshot"
 
 // Settings panel: toggled by `xidou msg settings toggle` (dwm's super+comma
 // bind, dwm/config.h's settingstogglecmd -- already reserved there ahead of
@@ -36,15 +37,16 @@ PanelWindow {
     readonly property int panelHeight: 600
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
-    readonly property var categories: ["Appearance"]
+    readonly property var categories: ["Appearance", "Screenshot"]
     property int selectedCategoryIndex: 0
 
-    // Category name -> its sub-tab list. Categories not listed here (none
-    // yet) would just show no sub-tabs at all rather than erroring --
-    // matches Bar.qml's resolveModules()/ControlCenter's sectionComponents
+    // Category name -> its sub-tab list. Categories not listed here would
+    // just show no sub-tabs at all rather than erroring -- matches
+    // Bar.qml's resolveModules()/ControlCenter's sectionComponents
     // convention of failing soft on anything not yet wired up.
     readonly property var subTabsByCategory: ({
-        "Appearance": ["Theme", "Interface", "Accessibility", "Motion", "Borders", "Effects"]
+        "Appearance": ["Theme", "Interface", "Accessibility", "Motion", "Borders", "Effects"],
+        "Screenshot": ["General"]
     })
     readonly property var currentSubTabs: root.subTabsByCategory[root.categories[root.selectedCategoryIndex]] || []
     property int selectedSubTabIndex: 0
@@ -293,24 +295,31 @@ PanelWindow {
                         width: parent.width
                         height: parent.height - header.height - parent.spacing
 
-                        // Sub-tab name -> Component, same string-keyed
-                        // lookup pattern as ControlCenter.qml's
-                        // sectionComponents -- an unresolved name falls
-                        // back to the placeholder rather than needing every
+                        // Category name -> sub-tab name -> Component, same
+                        // string-keyed lookup pattern as ControlCenter.qml's
+                        // sectionComponents -- an unresolved name falls back
+                        // to the placeholder rather than needing every
                         // future sub-tab to extend a growing list here.
-                        // Flat (not nested under a category key) since
-                        // "Appearance" is still the only category; revisit
-                        // if a future category's sub-tab name collides.
+                        // Nested by category (not flat) since two real
+                        // categories now exist and a flat map would risk a
+                        // future sub-tab name collision across them.
                         readonly property var tabComponents: ({
-                            "Theme": themeTabComponent,
-                            "Interface": interfaceTabComponent,
-                            "Borders": bordersTabComponent
+                            "Appearance": {
+                                "Theme": themeTabComponent,
+                                "Interface": interfaceTabComponent,
+                                "Borders": bordersTabComponent
+                            },
+                            "Screenshot": {
+                                "General": screenshotGeneralTabComponent
+                            }
                         })
+
+                        readonly property var currentCategoryTabComponents: tabComponents[root.categories[root.selectedCategoryIndex]] || {}
 
                         Loader {
                             id: tabLoader
                             anchors.fill: parent
-                            sourceComponent: parent.tabComponents[root.currentSubTabs[root.selectedSubTabIndex]] || placeholderComponent
+                            sourceComponent: parent.currentCategoryTabComponents[root.currentSubTabs[root.selectedSubTabIndex]] || placeholderComponent
                         }
 
                         Component {
@@ -330,6 +339,13 @@ PanelWindow {
                         Component {
                             id: bordersTabComponent
                             BordersTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: screenshotGeneralTabComponent
+                            GeneralTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }

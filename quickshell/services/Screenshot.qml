@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../config"
 
 // Screenshot capture: shells out to maim (capture), slop (region select),
 // ImageMagick's `magick` (cropping a frozen backdrop), and xclip (clipboard)
@@ -13,22 +14,23 @@ import Quickshell.Io
 // screenshotregioncmd) land on `xidou msg screenshot fullscreen|region`,
 // routed here via shell.qml's "screenshot" IpcHandler.
 //
-// No settings panel exists yet to expose these, so the four behavior
-// toggles below are hardcoded sensible defaults for now (see CLAUDE.md's
-// note on deferring TOML-write-backed settings) rather than config.toml
-// keys nobody could actually change yet.
+// The four behavior toggles + save directory below are real config.toml
+// keys under [screenshot] (Config.qml's defaults), wired up to the
+// settings panel's Screenshot category -- readonly properties bound
+// reactively to Config.data, same pattern as every panel's own `cfg`.
 Singleton {
     id: root
 
-    readonly property bool freezeDuringSelection: true
-    readonly property bool confirmSelection: true
-    // Off by default: with no second keybind for "reselect", turning this on
-    // would leave no way back to a fresh selection short of restarting the
-    // shell -- see the file-level note above about deferred settings.
-    readonly property bool rememberLastRegion: false
-    readonly property bool includeCursor: false
-    readonly property string saveDirectory: Quickshell.env("HOME") + "/Pictures/Screenshots"
+    readonly property bool freezeDuringSelection: Config.data.screenshot.freeze_during_selection
+    readonly property bool confirmSelection: Config.data.screenshot.confirm_selection
+    readonly property bool rememberLastRegion: Config.data.screenshot.remember_last_region
+    readonly property bool includeCursor: Config.data.screenshot.include_cursor
+    readonly property string saveDirectory: root.expandHome(Config.data.screenshot.save_directory)
     readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/xidou"
+
+    function expandHome(p) {
+        return p.indexOf("~") === 0 ? (Quickshell.env("HOME") + p.slice(1)) : p;
+    }
 
     property var lastRegion: null // {x, y, w, h} -- session-only, never persisted to disk
 
