@@ -13,7 +13,16 @@ import "../lib/Toml.js" as Toml
 Singleton {
     id: root
 
-    readonly property string configPath: Quickshell.env("HOME") + "/.config/xidou/config.toml"
+    // Overridable via $XIDOU_CONFIG_PATH so a test instance (Xvfb runs, in
+    // particular) can point at a throwaway config file instead of ever
+    // touching the real one -- same convention as dwm's $XIDOU_DWM_SOCKET
+    // override (dwm/dwm.c) for the same reason: a test instance shouldn't
+    // share live state with a real one. Falls back to the real path when
+    // unset or empty.
+    readonly property string configPath: {
+        var override = Quickshell.env("XIDOU_CONFIG_PATH");
+        return (override && override.length > 0) ? override : (Quickshell.env("HOME") + "/.config/xidou/config.toml");
+    }
 
     readonly property var defaults: ({
         shell: {
