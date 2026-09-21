@@ -179,17 +179,41 @@ PanelWindow {
                         height: Theme.fontSize * 2.2
                         spacing: Theme.fontSize / 2
 
-                        SubTabBar {
-                            id: subTabBar
+                        // Horizontally scrollable rather than truncated or
+                        // wrapped -- keeps the header a fixed height (so it
+                        // doesn't grow the further sub-tabs push it) and
+                        // stays legible as more categories/sub-tabs are
+                        // added later, instead of clipping against
+                        // Overridden/Reset Page the way a plain fixed-width
+                        // Row did once the sub-tab strip's natural width
+                        // (which grows with Theme.fontSize too) exceeded
+                        // the space left after those two buttons.
+                        Flickable {
+                            id: subTabScroll
+                            width: header.width - overriddenToggle.width - resetPageButton.width - (header.spacing * 2)
                             height: parent.height
-                            tabs: root.currentSubTabs
-                            selectedIndex: root.selectedSubTabIndex
-                            onTabClicked: (index) => root.selectedSubTabIndex = index
-                        }
+                            contentWidth: subTabBar.width
+                            contentHeight: height
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            flickableDirection: Flickable.HorizontalFlick
 
-                        Item {
-                            width: header.width - subTabBar.width - overriddenToggle.width - resetPageButton.width - (header.spacing * 3)
-                            height: parent.height
+                            WheelHandler {
+                                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                                onWheel: function (event) {
+                                    subTabScroll.contentX = Math.max(0, Math.min(
+                                        Math.max(0, subTabScroll.contentWidth - subTabScroll.width),
+                                        subTabScroll.contentX - event.angleDelta.y));
+                                }
+                            }
+
+                            SubTabBar {
+                                id: subTabBar
+                                height: parent.height
+                                tabs: root.currentSubTabs
+                                selectedIndex: root.selectedSubTabIndex
+                                onTabClicked: (index) => root.selectedSubTabIndex = index
+                            }
                         }
 
                         Rectangle {
