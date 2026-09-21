@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Bluetooth
+import Quickshell.Networking
 import "../../config"
 import "../../services"
 import ".." as ControlCenter
@@ -62,7 +63,8 @@ Item {
                         Layout.fillHeight: true
                         icon: "" // wifi
                         label: "Wi-Fi"
-                        implemented: false
+                        active: Networking.wifiEnabled
+                        onTriggered: Networking.wifiEnabled = !Networking.wifiEnabled
                     }
 
                     ControlCenter.ToggleTile {
@@ -91,7 +93,8 @@ Item {
                         Layout.fillHeight: true
                         icon: "" // dark_mode (night light)
                         label: "Night Light"
-                        implemented: false
+                        active: NightLightService.active
+                        onTriggered: NightLightService.toggle()
                     }
 
                     ControlCenter.ToggleTile {

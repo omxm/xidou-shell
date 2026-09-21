@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
+import Quickshell.Networking
 import "config"
 import "services"
 import "bar"
@@ -141,11 +142,27 @@ ShellRoot {
         }
     }
 
-    // No dwm keybind yet (Home tab's toggle grid is the only entry point
-    // right now) -- exposed anyway for the same reason every other
-    // quick-toggle here is: consistent with notifications.toggleDnd(), and
-    // it's what let this feature be tested end-to-end via `quickshell ipc`
-    // instead of only through the panel UI.
+    // No dwm keybind for any of these three yet (Home tab's toggle grid is
+    // the only entry point right now) -- exposed anyway for the same
+    // reason every other quick-toggle here is: consistent with
+    // notifications.toggleDnd(), and it's what let each be tested
+    // end-to-end via `quickshell ipc` instead of only through the panel UI.
+    IpcHandler {
+        target: "wifi"
+
+        function toggle(): void {
+            Networking.wifiEnabled = !Networking.wifiEnabled;
+        }
+    }
+
+    IpcHandler {
+        target: "nightlight"
+
+        function toggle(): void {
+            NightLightService.toggle();
+        }
+    }
+
     IpcHandler {
         target: "caffeine"
 
