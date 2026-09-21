@@ -105,6 +105,13 @@ Singleton {
 
     property var data: defaults
 
+    // True once the initial read has actually completed (loaded OR
+    // load-failed) -- guards setValue() below. Before this, configFile.text()
+    // can read back empty even though a real file exists on disk (the async
+    // read just hasn't finished yet), and writing from that empty text would
+    // silently blow away the real file's content instead of editing it.
+    property bool ready: false
+
     signal reloaded()
 
     FileView {
@@ -113,13 +120,26 @@ Singleton {
         watchChanges: true
         printErrors: false
 
-        onLoaded: root.applyText(configFile.text())
+        onLoaded: {
+            // ready must flip before applyText() emits reloaded() -- a
+            // listener reacting to that signal (e.g. a settings panel)
+            // should already see a trustworthy `ready`.
+            root.ready = true;
+            root.applyText(configFile.text());
+        }
         onLoadFailed: function (error) {
             console.warn("[xidou] no readable config at " + root.configPath + " — using built-in defaults");
             root.data = root.defaults;
+            root.ready = true;
             root.reloaded();
         }
-        onFileChanged: root.applyText(configFile.text())
+        // fileChanged is only a notification that the file changed on disk
+        // -- confirmed empirically that configFile.text() right after it
+        // fires can still return the pre-change content, because nothing
+        // has actually re-read the file yet. reload() does that; its
+        // completion re-fires onLoaded above, which is what actually calls
+        // applyText().
+        onFileChanged: configFile.reload()
     }
 
     function applyText(text) {
@@ -132,6 +152,25 @@ Singleton {
             root.data = root.defaults;
         }
         root.reloaded();
+    }
+
+    // Single write entry point for the whole shell (the settings panel is
+    // the only intended caller) -- edits config.toml in place via
+    // Toml.setValue() rather than regenerating it from `data`, so comments
+    // and any manual edits survive. `tableHeader` is the exact dotted string
+    // that would appear inside the brackets, e.g. "theme" or
+    // "panels.clipboard". `data` is applied directly from the exact text
+    // just written for immediate feedback -- watchChanges' own
+    // reload()-based round-trip (above) will also pick this same write up
+    // and re-apply it a moment later, redundantly but harmlessly.
+    function setValue(tableHeader, key, value) {
+        if (!root.ready) {
+            console.warn("[xidou] Config.setValue: ignoring write to " + tableHeader + "." + key + " — config hasn't finished its initial load yet");
+            return;
+        }
+        var newText = Toml.setValue(configFile.text(), tableHeader, key, value);
+        configFile.setText(newText);
+        root.applyText(newText);
     }
 
     function isPlainObject(value) {
