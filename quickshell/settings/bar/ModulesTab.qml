@@ -268,11 +268,11 @@ Item {
             id: positionRow
             width: parent.width
             label: "Position"
-            customOverridden: root.currentSectionOf(parent.parent.moduleEntry.name) !== root.defaultSectionOf[parent.parent.moduleEntry.name]
+            customOverridden: root.currentSectionOf(parent.moduleEntry.name) !== root.defaultSectionOf[parent.moduleEntry.name]
             customReset: function () {
-                var section = root.defaultSectionOf[parent.parent.moduleEntry.name];
+                var section = root.defaultSectionOf[parent.moduleEntry.name];
                 if (section)
-                    root.moveModuleToSection(parent.parent.moduleEntry.name, section);
+                    root.moveModuleToSection(parent.moduleEntry.name, section);
             }
 
             Row {
@@ -348,9 +348,16 @@ Item {
         Component {
             id: placeholderWidgetComponent
             Settings.PlaceholderTab {
-                tabName: root.moduleList.find(function (m) {
+                // Falls back to {label: ""} for editingModule === "" -- the
+                // Loader above is unconditionally live even while this
+                // Column is invisible (visible:false only hides rendering,
+                // it doesn't stop a sibling Loader's sourceComponent from
+                // being instantiated and its bindings evaluated), so this
+                // binding runs continuously whenever the plain widget list
+                // is showing, not just while a real placeholder is visible.
+                tabName: (root.moduleList.find(function (m) {
                     return m.name === root.editingModule;
-                }).label + " widget settings"
+                }) || { label: "" }).label + " widget settings"
             }
         }
 
