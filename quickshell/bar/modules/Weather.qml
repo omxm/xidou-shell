@@ -14,6 +14,7 @@ Item {
     id: root
 
     readonly property var cfg: Config.data.weather
+    readonly property var widgetCfg: Config.data.bar_widgets.weather
 
     property real latitude: cfg.latitude
     property real longitude: cfg.longitude
@@ -21,9 +22,32 @@ Item {
     property string conditionText: ""
     property string icon: ""
 
-    implicitWidth: cfg.enabled && root.tempText ? (row.implicitWidth + Theme.fontSize) : 0
+    // hasData (did the last fetch actually resolve) is deliberately kept
+    // separate from displayText (what widgetCfg says to show once it has):
+    // a widget configured to show neither temperature nor condition should
+    // still count as "loaded", not look stuck/broken the way an empty
+    // tempText from a failed fetch would.
+    readonly property bool hasData: root.tempText !== ""
+
+    readonly property string rawLabel: {
+        var parts = [];
+        if (root.widgetCfg.show_temperature && root.tempText)
+            parts.push(root.tempText);
+        if (root.widgetCfg.show_condition && root.conditionText)
+            parts.push(root.conditionText);
+        return parts.join(" · ");
+    }
+
+    readonly property string displayText: {
+        var max = root.widgetCfg.max_length;
+        if (max > 0 && root.rawLabel.length > max)
+            return root.rawLabel.slice(0, max) + "…";
+        return root.rawLabel;
+    }
+
+    implicitWidth: cfg.enabled && root.hasData && root.displayText ? (row.implicitWidth + Theme.fontSize) : 0
     implicitHeight: parent ? parent.height : Theme.fontSize * 2
-    visible: cfg.enabled && root.tempText !== ""
+    visible: cfg.enabled && root.hasData && root.displayText !== ""
 
     function wmoDescription(code) {
         if (code === 0)
@@ -230,7 +254,7 @@ Item {
         Text {
             id: label
             anchors.verticalCenter: parent.verticalCenter
-            text: root.tempText
+            text: root.displayText
             color: Theme.textMuted
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSize

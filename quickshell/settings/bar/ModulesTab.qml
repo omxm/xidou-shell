@@ -326,10 +326,94 @@ Item {
             }
         }
 
-        Settings.PlaceholderTab {
+        // Widget-specific content -- real controls where the underlying
+        // value already has backing (Weather today), a PlaceholderTab
+        // fallback for every other widget, same "fail soft to placeholder"
+        // convention as Settings.qml's own tabComponents lookup.
+        Loader {
             width: parent.width
             height: parent.height - (Theme.fontSize * 1.8) - (Theme.fontSize * 2.6) - (parent.spacing * 2)
-            tabName: parent.moduleEntry.label + " widget settings"
+            sourceComponent: root.editingModule === "weather" ? weatherWidgetComponent : placeholderWidgetComponent
+        }
+
+        Component {
+            id: placeholderWidgetComponent
+            Settings.PlaceholderTab {
+                tabName: root.moduleList.find(function (m) {
+                    return m.name === root.editingModule;
+                }).label + " widget settings"
+            }
+        }
+
+        // Weather's real "Widget" section (Stage 3): max_length/
+        // show_condition/show_temperature under [bar_widgets.weather] --
+        // distinct from [weather] (location/units), since these only
+        // affect how the *bar's* copy renders, per bar/modules/Weather.qml's
+        // own "self-contained per-module" convention. show_condition wires
+        // up a value (conditionText) that bar module already computed but
+        // never displayed; the other two are genuinely new.
+        Component {
+            id: weatherWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    id: showTempRow
+                    width: parent.width
+                    label: "Show Temperature"
+                    tableHeader: "bar_widgets.weather"
+                    settingKey: "show_temperature"
+                    defaultValue: Config.defaults.bar_widgets.weather.show_temperature
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.weather.show_temperature
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.weather", "show_temperature", value)
+                    }
+                }
+
+                Settings.SettingRow {
+                    id: showConditionRow
+                    width: parent.width
+                    label: "Show Condition"
+                    tableHeader: "bar_widgets.weather"
+                    settingKey: "show_condition"
+                    defaultValue: Config.defaults.bar_widgets.weather.show_condition
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.weather.show_condition
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.weather", "show_condition", value)
+                    }
+                }
+
+                Settings.SettingRow {
+                    id: maxLengthRow
+                    width: parent.width
+                    label: "Max Length"
+                    tableHeader: "bar_widgets.weather"
+                    settingKey: "max_length"
+                    defaultValue: Config.defaults.bar_widgets.weather.max_length
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.NumberStepper {
+                        value: Config.data.bar_widgets.weather.max_length
+                        minValue: 0
+                        maxValue: 60
+                        onStepped: (newValue) => Config.setValue("bar_widgets.weather", "max_length", newValue)
+                    }
+                }
+            }
         }
     }
 }

@@ -85,6 +85,24 @@ Singleton {
             longitude: 0.0,
             units: "celsius" // celsius | fahrenheit
         },
+        // Per-bar-widget display settings -- distinct from [weather] above
+        // (location/units, shared across the bar module, Home tab's card,
+        // and control-center's own Weather tab) since these three only
+        // affect how the *bar's* copy of the widget renders, same
+        // "self-contained per-module" convention bar/modules/Weather.qml's
+        // own header comment already documents for the data-fetching side.
+        // Namespaced by widget name (nested table, not a flat
+        // bar_widgets_weather_max_length-style key) so future widgets with
+        // their own real display settings land in the same table without
+        // key collisions -- same shape as [panels] holding one sub-table
+        // per panel.
+        bar_widgets: {
+            weather: {
+                max_length: 0,          // 0 = unlimited; truncates the combined label to this many characters
+                show_condition: false,  // append the WMO condition word (e.g. "Cloudy") after the temperature
+                show_temperature: true  // false hides the temperature -- only meaningful combined with show_condition true, otherwise the widget just goes empty
+            }
+        },
         osd: {
             width: 220,
             height: 56,
