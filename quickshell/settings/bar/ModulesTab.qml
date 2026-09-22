@@ -335,7 +335,8 @@ Item {
         readonly property var widgetComponentsByName: ({
             "weather": weatherWidgetComponent,
             "clock": clockWidgetComponent,
-            "workspaces": workspacesWidgetComponent
+            "workspaces": workspacesWidgetComponent,
+            "media": mediaWidgetComponent
         })
 
         Loader {
@@ -546,6 +547,86 @@ Item {
                         ]
                         currentValue: Config.data.bar_widgets.workspaces.show_icons
                         onOptionSelected: (value) => Config.setValue("bar_widgets.workspaces", "show_icons", value)
+                    }
+                }
+            }
+        }
+
+        // Media's real "Widget" section: album_art_only/hide_artist/
+        // artist_first under [bar_widgets.media] -- all three reuse MPRIS
+        // data (trackArtUrl/trackTitle/trackArtist) bar/modules/Media.qml
+        // already has access to, same as control-center's MediaSection.qml
+        // independently does for its own art thumbnail.
+        Component {
+            id: mediaWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    id: albumArtOnlyRow
+                    width: parent.width
+                    label: "Album Art Only"
+                    tableHeader: "bar_widgets.media"
+                    settingKey: "album_art_only"
+                    defaultValue: Config.defaults.bar_widgets.media.album_art_only
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.media.album_art_only
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.media", "album_art_only", value)
+                    }
+                }
+
+                Settings.SettingRow {
+                    id: hideArtistRow
+                    width: parent.width
+                    label: "Hide Artist"
+                    tableHeader: "bar_widgets.media"
+                    settingKey: "hide_artist"
+                    defaultValue: Config.defaults.bar_widgets.media.hide_artist
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.media.hide_artist
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.media", "hide_artist", value)
+                    }
+                }
+
+                Settings.SettingRow {
+                    id: artistFirstRow
+                    width: parent.width
+                    label: "Artist First"
+                    tableHeader: "bar_widgets.media"
+                    settingKey: "artist_first"
+                    defaultValue: Config.defaults.bar_widgets.media.artist_first
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    // Reordering has nothing to reorder once the artist is
+                    // hidden -- dimmed and disabled rather than left
+                    // editable with no visible effect, same
+                    // "don't let the user edit a value that currently does
+                    // nothing" call ThemeTab.qml made for Wallpaper
+                    // Generation Scheme.
+                    Settings.OptionRow {
+                        width: parent.width
+                        enabled: !Config.data.bar_widgets.media.hide_artist
+                        opacity: enabled ? 1 : 0.5
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.media.artist_first
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.media", "artist_first", value)
                     }
                 }
             }

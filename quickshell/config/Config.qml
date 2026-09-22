@@ -110,6 +110,11 @@ Singleton {
                 hide_when_empty: false,
                 style: "regular",   // regular | minimal | focus_hint
                 show_icons: false   // only visible in practice under focus_hint -- the other two styles have no icon slot to show it in
+            },
+            media: {
+                album_art_only: false, // show only a small art thumbnail (or a fallback icon) instead of the title/artist text
+                hide_artist: false,    // title only -- overrides artist_first below, since there's no artist left to reorder
+                artist_first: false    // "Artist — Title" instead of the default "Title — Artist"
             }
         },
         osd: {
