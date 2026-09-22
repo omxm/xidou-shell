@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Widgets
 import "../config"
 import "../services"
+import "../lib/EmojiData.js" as EmojiData
 
 // App launcher: toggled by `xidou msg panel-toggle launcher` (see
 // dwm/config.h's super+d bind and bin/xidou), via PanelManager.isOpen()
@@ -62,8 +63,16 @@ PanelWindow {
     margins.top: Math.round((screen.height - barReservedHeight - panelHeight) / 2)
     margins.left: Math.round((screen.width - panelWidth) / 2)
 
+    function shQuote(s) {
+        return "'" + String(s).replace(/'/g, "'\\''") + "'";
+    }
+
     // DesktopEntries only needs filtering, not re-fetching, so the model is
-    // computed once here rather than re-queried per keystroke.
+    // computed once here rather than re-queried per keystroke. Sorted by
+    // UsageStats' recorded use count (most-used first), falling back to
+    // alphabetical for anything with zero uses -- DesktopEntry.id (the
+    // .desktop file's own stable id, e.g. "discord.desktop") is the count
+    // key, not .name, since name isn't guaranteed unique.
     readonly property var allApps: {
         var apps = [];
         var list = DesktopEntries.applications.values;
@@ -71,7 +80,13 @@ PanelWindow {
             if (!list[i].noDisplay)
                 apps.push(list[i]);
         }
-        apps.sort(function (a, b) { return a.name.localeCompare(b.name); });
+        apps.sort(function (a, b) {
+            var ca = UsageStats.getCount("apps", a.id);
+            var cb = UsageStats.getCount("apps", b.id);
+            if (ca !== cb)
+                return cb - ca;
+            return a.name.localeCompare(b.name);
+        });
         return apps;
     }
 
@@ -117,6 +132,8 @@ PanelWindow {
         root.mode = "appSearch";
         searchField.text = "";
         root.selectedIndex = 0;
+        emojiSearchField.text = "";
+        root.emojiSelectedIndex = 0;
         searchField.forceActiveFocus();
     }
 
@@ -136,6 +153,8 @@ PanelWindow {
     onModeChanged: {
         if (root.mode === "appSearch")
             searchField.forceActiveFocus();
+        else if (root.mode === "emoji")
+            emojiSearchField.forceActiveFocus();
         else
             modeStub.forceActiveFocus();
     }
@@ -146,6 +165,8 @@ PanelWindow {
             root.mode = "appSearch";
             searchField.text = "";
             selectedIndex = 0;
+            emojiSearchField.text = "";
+            emojiSelectedIndex = 0;
             searchField.forceActiveFocus();
             // Give the window a moment to actually map before trying to
             // focus it by title — xidou-focus-window can't find a window
@@ -165,9 +186,82 @@ PanelWindow {
 
     function launchSelected() {
         if (selectedIndex >= 0 && selectedIndex < filteredApps.length) {
-            filteredApps[selectedIndex].execute();
+            var app = filteredApps[selectedIndex];
+            UsageStats.recordUse("apps", app.id);
+            app.execute();
             PanelManager.close("launcher");
         }
+    }
+
+    // Emoji Picker (Stage: replaces the earlier stub). Parses the real
+    // system emoji-test.txt (package: unicode-emoji) via lib/EmojiData.js
+    // rather than a bundled JSON list -- see EmojiData.js's own header for
+    // why. A plain, non-watched FileView is enough since this is static
+    // system data, not something that changes at runtime.
+    readonly property var allEmoji: EmojiData.parse(emojiDataFile.text())
+
+    FileView {
+        id: emojiDataFile
+        path: "/usr/share/unicode/emoji/emoji-test.txt"
+        printErrors: false
+    }
+
+    property string emojiQuery: ""
+    property int emojiSelectedIndex: 0
+
+    // Same usage-frequency sort as allApps, keyed by the emoji character
+    // itself rather than an id (there's no separate identifier). Ties fall
+    // back to EmojiData's own `order` field -- the file's real CLDR display
+    // order -- not a second alphabetical sort, since emoji names are often
+    // not what a browsing (non-searching) picker should be ordered by.
+    readonly property var sortedEmoji: {
+        var list = root.allEmoji.slice();
+        list.sort(function (a, b) {
+            var ca = UsageStats.getCount("emoji", a.char);
+            var cb = UsageStats.getCount("emoji", b.char);
+            if (ca !== cb)
+                return cb - ca;
+            return a.order - b.order;
+        });
+        return list;
+    }
+
+    readonly property var filteredEmoji: {
+        var q = root.emojiQuery.trim().toLowerCase();
+        if (!q)
+            return root.sortedEmoji;
+        var out = [];
+        for (var i = 0; i < root.sortedEmoji.length; i++) {
+            if (root.sortedEmoji[i].name.indexOf(q) !== -1)
+                out.push(root.sortedEmoji[i]);
+        }
+        return out;
+    }
+
+    onFilteredEmojiChanged: emojiSelectedIndex = 0
+
+    Process {
+        id: emojiCopyProc
+    }
+
+    // Reuses ClipboardHistory.copy()'s exact write pattern: content goes
+    // through a file, never interpolated into the shell command string.
+    // Not xidou-clipd itself (that's the read-side history tracker) -- just
+    // the same xclip write mechanism it also uses. Since xidou-clipd
+    // watches clipnotify system-wide, this still shows up in clipboard
+    // history as a side effect, for free.
+    function copySelectedEmoji() {
+        if (root.emojiSelectedIndex < 0 || root.emojiSelectedIndex >= root.filteredEmoji.length)
+            return;
+        var entry = root.filteredEmoji[root.emojiSelectedIndex];
+        UsageStats.recordUse("emoji", entry.char);
+        var path = Quickshell.env("HOME") + "/.cache/xidou/emoji-clip";
+        var dir = Quickshell.env("HOME") + "/.cache/xidou";
+        var cmd = "mkdir -p " + root.shQuote(dir) + " && printf '%s' " + root.shQuote(entry.char) + " > " + root.shQuote(path) + " && xclip -selection clipboard -i < " + root.shQuote(path);
+        emojiCopyProc.command = ["sh", "-c", cmd];
+        emojiCopyProc.running = false;
+        emojiCopyProc.running = true;
+        PanelManager.close("launcher");
     }
 
     Rectangle {
@@ -345,15 +439,13 @@ PanelWindow {
                     }
                 }
 
-                // Switchboard and Emoji Picker: empty stubs for now (Stage
-                // B is scaffolding only -- see the property comment above).
-                // One shared focus point since both are equally inert;
-                // whichever is visible is decided by root.mode.
+                // Switchboard: still an empty stub -- its real content
+                // (only already-backed toggles) is separate follow-up work.
                 Item {
                     id: modeStub
                     anchors.fill: parent
-                    visible: root.mode !== "appSearch"
-                    focus: root.mode !== "appSearch"
+                    visible: root.mode === "switchboard"
+                    focus: root.mode === "switchboard"
 
                     Keys.onTabPressed: root.cycleMode()
                     Keys.onEscapePressed: root.resetToAppSearch()
@@ -371,6 +463,127 @@ PanelWindow {
                             color: Theme.textMuted
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSize
+                        }
+                    }
+                }
+
+                Column {
+                    id: emojiPickerContent
+                    anchors.fill: parent
+                    spacing: Theme.fontSize / 2
+                    visible: root.mode === "emoji"
+
+                    Rectangle {
+                        width: parent.width
+                        height: Theme.fontSize * 2.2
+                        radius: Theme.radius / 2
+                        color: Theme.surfaceAlt
+                        border.width: 1
+                        border.color: Theme.border
+
+                        TextInput {
+                            id: emojiSearchField
+                            anchors.fill: parent
+                            anchors.margins: Theme.fontSize / 2
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSize
+                            clip: true
+
+                            onTextChanged: root.emojiQuery = text
+
+                            Keys.onTabPressed: root.cycleMode()
+                            Keys.onEscapePressed: root.resetToAppSearch()
+                            Keys.onReturnPressed: root.copySelectedEmoji()
+                            Keys.onEnterPressed: root.copySelectedEmoji()
+                            Keys.onLeftPressed: {
+                                if (root.emojiSelectedIndex > 0)
+                                    root.emojiSelectedIndex--;
+                            }
+                            Keys.onRightPressed: {
+                                if (root.emojiSelectedIndex < root.filteredEmoji.length - 1)
+                                    root.emojiSelectedIndex++;
+                            }
+                            Keys.onDownPressed: {
+                                var next = root.emojiSelectedIndex + emojiGrid.columns;
+                                if (next < root.filteredEmoji.length)
+                                    root.emojiSelectedIndex = next;
+                            }
+                            Keys.onUpPressed: {
+                                var prev = root.emojiSelectedIndex - emojiGrid.columns;
+                                if (prev >= 0)
+                                    root.emojiSelectedIndex = prev;
+                            }
+                        }
+                    }
+
+                    GridView {
+                        id: emojiGrid
+                        width: parent.width
+                        height: parent.height - parent.spacing - (Theme.fontSize * 2.2)
+                        clip: true
+                        model: root.filteredEmoji
+                        currentIndex: root.emojiSelectedIndex
+
+                        readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
+                        cellWidth: Theme.fontSize * 2.6
+                        cellHeight: cellWidth
+
+                        // Same manually-clamped contentY as resultsList
+                        // above (see its comment for why highlightRangeMode
+                        // isn't used), just row-based instead of item-based:
+                        // the target row is floor(index / columns), not the
+                        // index itself.
+                        interactive: false
+                        boundsBehavior: Flickable.StopAtBounds
+                        contentY: {
+                            if (root.filteredEmoji.length === 0 || columns === 0)
+                                return 0;
+                            var row = Math.floor(root.emojiSelectedIndex / columns);
+                            var itemY = row * cellHeight;
+                            var desired = itemY - (height - cellHeight) / 2;
+                            var maxY = Math.max(0, contentHeight - height);
+                            return Math.max(0, Math.min(desired, maxY));
+                        }
+
+                        Behavior on contentY {
+                            NumberAnimation {
+                                duration: 120
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        delegate: Rectangle {
+                            id: emojiDelegateRoot
+                            required property var modelData
+                            required property int index
+
+                            width: emojiGrid.cellWidth
+                            height: emojiGrid.cellHeight
+                            radius: Theme.radius / 2
+                            color: index === root.emojiSelectedIndex ? Theme.accent : "transparent"
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: emojiDelegateRoot.modelData.char
+                                // Explicitly Noto Color Emoji, not
+                                // Theme.fontFamily (Inter has no emoji
+                                // glyphs at all) and not left to font
+                                // fallback -- confirmed installed via
+                                // fc-list rather than assumed.
+                                font.family: "Noto Color Emoji"
+                                font.pixelSize: Theme.fontSize * 1.4
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    root.emojiSelectedIndex = emojiDelegateRoot.index;
+                                    root.copySelectedEmoji();
+                                }
+                            }
                         }
                     }
                 }
