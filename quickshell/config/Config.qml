@@ -105,6 +105,11 @@ Singleton {
             clock: {
                 time_format: "24h", // 24h | 12h
                 timezone: ""         // IANA zone name (e.g. "America/New_York"); "" = system's local timezone
+            },
+            workspaces: {
+                hide_when_empty: false,
+                style: "regular",   // regular | minimal | focus_hint
+                show_icons: false   // only visible in practice under focus_hint -- the other two styles have no icon slot to show it in
             }
         },
         osd: {

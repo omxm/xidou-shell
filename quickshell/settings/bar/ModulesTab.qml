@@ -334,7 +334,8 @@ Item {
         // real Stage-3 sections.
         readonly property var widgetComponentsByName: ({
             "weather": weatherWidgetComponent,
-            "clock": clockWidgetComponent
+            "clock": clockWidgetComponent,
+            "workspaces": workspacesWidgetComponent
         })
 
         Loader {
@@ -471,6 +472,80 @@ Item {
                         value: Config.data.bar_widgets.clock.timezone
                         placeholder: "System default (e.g. America/New_York)"
                         onCommitted: (text) => Config.setValue("bar_widgets.clock", "timezone", text)
+                    }
+                }
+            }
+        }
+
+        // Workspaces' real "Widget" section: hide_when_empty/style/
+        // show_icons under [bar_widgets.workspaces]. Max Label Characters
+        // (from the same Noctalia reference screenshots) is deliberately
+        // NOT here -- confirmed against dwm/config.h that tags are always
+        // plain numbers 1-9 with no naming concept in this repo, so there
+        // is no "custom tag name" for a length cap to apply to.
+        Component {
+            id: workspacesWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    id: hideEmptyRow
+                    width: parent.width
+                    label: "Hide When Empty"
+                    tableHeader: "bar_widgets.workspaces"
+                    settingKey: "hide_when_empty"
+                    defaultValue: Config.defaults.bar_widgets.workspaces.hide_when_empty
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.workspaces.hide_when_empty
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.workspaces", "hide_when_empty", value)
+                    }
+                }
+
+                Settings.SettingRow {
+                    id: styleRow
+                    width: parent.width
+                    label: "Style"
+                    tableHeader: "bar_widgets.workspaces"
+                    settingKey: "style"
+                    defaultValue: Config.defaults.bar_widgets.workspaces.style
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: "regular", label: "Regular" },
+                            { value: "minimal", label: "Minimal" },
+                            { value: "focus_hint", label: "Focus Hint" }
+                        ]
+                        currentValue: Config.data.bar_widgets.workspaces.style
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.workspaces", "style", value)
+                    }
+                }
+
+                Settings.SettingRow {
+                    id: showIconsRow
+                    width: parent.width
+                    label: "Show Icons"
+                    tableHeader: "bar_widgets.workspaces"
+                    settingKey: "show_icons"
+                    defaultValue: Config.defaults.bar_widgets.workspaces.show_icons
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.workspaces.show_icons
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.workspaces", "show_icons", value)
                     }
                 }
             }

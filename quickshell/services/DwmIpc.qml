@@ -28,6 +28,15 @@ Singleton {
     property int focusedMonitor: 0
     property bool connected: false
 
+    // The currently-focused client window id per monitor -- seeded from
+    // get_monitors' clients.selected at startup, then kept live by
+    // client_focus_change_event (a subscription this file didn't use
+    // before Workspaces' Focus Hint style needed it). Distinct from
+    // monitorsByNum[n].clients.selected, which is only ever as fresh as
+    // the last full get_monitors call and goes stale the moment focus
+    // moves without a tag switch.
+    property var focusedWinIdByMonitor: ({})
+
     function tagStateFor(monNum) {
         var mon = monitorsByNum[monNum];
         return mon ? mon.tag_state : null;
@@ -79,6 +88,14 @@ Singleton {
                     }
                     root.monitorsByNum = byNum;
                     root.connected = true;
+
+                    // One-time seed (get_monitors only ever runs once, at
+                    // startup) -- client_focus_change_event keeps this
+                    // live from here on.
+                    var focusedByNum = {};
+                    for (var j = 0; j < parsed.length; j++)
+                        focusedByNum[parsed[j].num] = parsed[j].clients ? parsed[j].clients.selected : 0;
+                    root.focusedWinIdByMonitor = focusedByNum;
                 } catch (e) {
                     console.warn("[xidou] dwm-msg get_monitors: failed to parse output: " + e);
                 }
@@ -105,7 +122,7 @@ Singleton {
 
     Process {
         id: subscribe
-        command: [root.dwmMsg, "--ignore-reply", "subscribe", "tag_change_event", "monitor_focus_change_event"]
+        command: [root.dwmMsg, "--ignore-reply", "subscribe", "tag_change_event", "monitor_focus_change_event", "client_focus_change_event"]
         running: true
 
         stdout: SplitParser {
@@ -191,6 +208,11 @@ Singleton {
             }
         } else if (event.monitor_focus_change_event) {
             root.focusedMonitor = event.monitor_focus_change_event.new_monitor_number;
+        } else if (event.client_focus_change_event) {
+            var c = event.client_focus_change_event;
+            var focusedByNum2 = Object.assign({}, root.focusedWinIdByMonitor);
+            focusedByNum2[c.monitor_number] = c.new_win_id || 0;
+            root.focusedWinIdByMonitor = focusedByNum2;
         }
     }
 
