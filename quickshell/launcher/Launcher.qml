@@ -1,9 +1,14 @@
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
+import Quickshell.Bluetooth
+import Quickshell.Networking
+import Quickshell.Services.Pipewire
 import "../config"
 import "../services"
+import "../controlcenter" as ControlCenter
 import "../lib/EmojiData.js" as EmojiData
 
 // App launcher: toggled by `xidou msg panel-toggle launcher` (see
@@ -134,6 +139,7 @@ PanelWindow {
         root.selectedIndex = 0;
         emojiSearchField.text = "";
         root.emojiSelectedIndex = 0;
+        root.switchboardSelectedIndex = 0;
         searchField.forceActiveFocus();
     }
 
@@ -156,7 +162,7 @@ PanelWindow {
         else if (root.mode === "emoji")
             emojiSearchField.forceActiveFocus();
         else
-            modeStub.forceActiveFocus();
+            switchboardContent.forceActiveFocus();
     }
 
     onFilteredAppsChanged: selectedIndex = 0
@@ -167,6 +173,7 @@ PanelWindow {
             selectedIndex = 0;
             emojiSearchField.text = "";
             emojiSelectedIndex = 0;
+            switchboardSelectedIndex = 0;
             searchField.forceActiveFocus();
             // Give the window a moment to actually map before trying to
             // focus it by title — xidou-focus-window can't find a window
@@ -262,6 +269,95 @@ PanelWindow {
         emojiCopyProc.running = false;
         emojiCopyProc.running = true;
         PanelManager.close("launcher");
+    }
+
+    // Switchboard: a fixed 4x3 grid of quick actions, every one of them
+    // reusing a service that already has real backing elsewhere (Home tab's
+    // toggle grid, the bar's Volume module, Screenshot/SessionActions) --
+    // no new backend logic except brightness (Brightness.qml is read-only
+    // telemetry, so up/down here shells out to bin/xidou-brightness
+    // directly, same as dwm's own brightness keybinds do).
+    readonly property var sink: Pipewire.defaultAudioSink
+
+    PwObjectTracker {
+        objects: root.sink ? [root.sink] : []
+    }
+
+    property int switchboardSelectedIndex: 0
+    readonly property int switchboardColumns: 4
+
+    function toggleWifi() {
+        Networking.wifiEnabled = !Networking.wifiEnabled;
+    }
+
+    function toggleBluetooth() {
+        if (Bluetooth.defaultAdapter)
+            Bluetooth.defaultAdapter.enabled = !Bluetooth.defaultAdapter.enabled;
+    }
+
+    function toggleMute() {
+        if (root.sink && root.sink.audio)
+            root.sink.audio.muted = !root.sink.audio.muted;
+    }
+
+    function adjustBrightness(direction) {
+        brightnessProc.command = ["xidou-brightness", direction];
+        brightnessProc.running = false;
+        brightnessProc.running = true;
+    }
+
+    // Cycles the same three values ThemeTab.qml's OptionRow offers, through
+    // the same Config.setValue() call -- Theme.qml already reacts to
+    // Config.data.theme.mode live, so there's nothing else to trigger.
+    readonly property var themeModeOrder: ["dark", "light", "auto"]
+
+    function cycleThemeMode() {
+        var idx = root.themeModeOrder.indexOf(Config.data.theme.mode);
+        var next = root.themeModeOrder[(idx + 1) % root.themeModeOrder.length];
+        Config.setValue("theme", "mode", next);
+    }
+
+    function openWallpaperPanel() {
+        PanelManager.toggle("wallpaper");
+    }
+
+    // Closes the launcher first and waits for picom's real "disappear"
+    // animation (session/picom.conf's motion block, driven by
+    // Config.data.motion.duration/enabled) to actually finish before
+    // capturing -- confirmed empirically (a fixed 100ms guess landed a
+    // half-faded launcher in the capture, since that preset's default
+    // duration alone is already 150ms). Reacts to the same config the
+    // Settings > Appearance > Motion tab writes, so this stays correct if
+    // that duration changes instead of drifting from a hardcoded guess.
+    function takeScreenshot() {
+        PanelManager.close("launcher");
+        screenshotDelayTimer.start();
+    }
+
+    Timer {
+        id: screenshotDelayTimer
+        interval: (Config.data.motion.enabled ? Config.data.motion.duration * 1000 : 0) + 60
+        onTriggered: Screenshot.fullscreen()
+    }
+
+    // SessionActions.lock() already closes every panel itself.
+    function lockSession() {
+        SessionActions.lock();
+    }
+
+    readonly property var switchboardActions: [toggleWifi, toggleBluetooth, CaffeineService.toggle, NightLightService.toggle, Notifications.toggleDnd, toggleMute, function () {
+            adjustBrightness("down");
+        }, function () {
+            adjustBrightness("up");
+        }, cycleThemeMode, openWallpaperPanel, takeScreenshot, lockSession]
+
+    function triggerSwitchboardTile(index) {
+        if (index >= 0 && index < root.switchboardActions.length)
+            root.switchboardActions[index]();
+    }
+
+    Process {
+        id: brightnessProc
     }
 
     Rectangle {
@@ -439,30 +535,166 @@ PanelWindow {
                     }
                 }
 
-                // Switchboard: still an empty stub -- its real content
-                // (only already-backed toggles) is separate follow-up work.
+                // Switchboard: a 4x3 grid of already-backed quick
+                // actions/toggles, reusing ControlCenter.ToggleTile (the
+                // same component Home tab's grid uses) so it looks and
+                // behaves identically rather than being a second,
+                // differently-styled toggle widget. Keyboard nav mirrors
+                // the emoji grid below (index math by column count), with
+                // Return/click both routed through triggerSwitchboardTile()
+                // so there's exactly one place each action actually runs.
                 Item {
-                    id: modeStub
+                    id: switchboardContent
                     anchors.fill: parent
                     visible: root.mode === "switchboard"
                     focus: root.mode === "switchboard"
 
                     Keys.onTabPressed: root.cycleMode()
                     Keys.onEscapePressed: root.resetToAppSearch()
+                    Keys.onReturnPressed: root.triggerSwitchboardTile(root.switchboardSelectedIndex)
+                    Keys.onEnterPressed: root.triggerSwitchboardTile(root.switchboardSelectedIndex)
+                    Keys.onLeftPressed: {
+                        if (root.switchboardSelectedIndex > 0)
+                            root.switchboardSelectedIndex--;
+                    }
+                    Keys.onRightPressed: {
+                        if (root.switchboardSelectedIndex < switchboardGrid.children.length - 1)
+                            root.switchboardSelectedIndex++;
+                    }
+                    Keys.onUpPressed: {
+                        var prev = root.switchboardSelectedIndex - root.switchboardColumns;
+                        if (prev >= 0)
+                            root.switchboardSelectedIndex = prev;
+                    }
+                    Keys.onDownPressed: {
+                        var next = root.switchboardSelectedIndex + root.switchboardColumns;
+                        if (next < switchboardGrid.children.length)
+                            root.switchboardSelectedIndex = next;
+                    }
 
-                    Rectangle {
+                    GridLayout {
+                        id: switchboardGrid
                         anchors.fill: parent
-                        radius: Theme.radius / 2
-                        color: Theme.surfaceAlt
-                        border.width: 1
-                        border.color: Theme.border
+                        columns: root.switchboardColumns
+                        rowSpacing: Theme.fontSize / 2
+                        columnSpacing: Theme.fontSize / 2
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.modeLabels[root.mode] + " — coming soon"
-                            color: Theme.textMuted
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSize
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: ""
+                            label: "Wi-Fi"
+                            active: Networking.wifiEnabled
+                            keyboardFocused: root.switchboardSelectedIndex === 0
+                            onTriggered: root.triggerSwitchboardTile(0)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: Bluetooth.defaultAdapter && Bluetooth.defaultAdapter.enabled ? "" : ""
+                            label: "Bluetooth"
+                            active: Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false
+                            keyboardFocused: root.switchboardSelectedIndex === 1
+                            onTriggered: root.triggerSwitchboardTile(1)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: ""
+                            label: "Caffeine"
+                            active: CaffeineService.active
+                            keyboardFocused: root.switchboardSelectedIndex === 2
+                            onTriggered: root.triggerSwitchboardTile(2)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: ""
+                            label: "Night Light"
+                            active: NightLightService.active
+                            keyboardFocused: root.switchboardSelectedIndex === 3
+                            onTriggered: root.triggerSwitchboardTile(3)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: Notifications.dnd ? "" : ""
+                            label: "DND"
+                            active: Notifications.dnd
+                            keyboardFocused: root.switchboardSelectedIndex === 4
+                            onTriggered: root.triggerSwitchboardTile(4)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: (root.sink && root.sink.audio && root.sink.audio.muted) ? "" : ""
+                            label: "Mute"
+                            active: root.sink && root.sink.audio ? root.sink.audio.muted : false
+                            keyboardFocused: root.switchboardSelectedIndex === 5
+                            onTriggered: root.triggerSwitchboardTile(5)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: ""
+                            label: "Dimmer"
+                            keyboardFocused: root.switchboardSelectedIndex === 6
+                            onTriggered: root.triggerSwitchboardTile(6)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: ""
+                            label: "Brighter"
+                            keyboardFocused: root.switchboardSelectedIndex === 7
+                            onTriggered: root.triggerSwitchboardTile(7)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: ({
+                                "dark": "",
+                                "light": "",
+                                "auto": ""
+                            })[Config.data.theme.mode] || ""
+                            label: "Theme: " + Config.data.theme.mode.charAt(0).toUpperCase() + Config.data.theme.mode.slice(1)
+                            keyboardFocused: root.switchboardSelectedIndex === 8
+                            onTriggered: root.triggerSwitchboardTile(8)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: ""
+                            label: "Wallpaper"
+                            keyboardFocused: root.switchboardSelectedIndex === 9
+                            onTriggered: root.triggerSwitchboardTile(9)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: ""
+                            label: "Screenshot"
+                            keyboardFocused: root.switchboardSelectedIndex === 10
+                            onTriggered: root.triggerSwitchboardTile(10)
+                        }
+
+                        ControlCenter.ToggleTile {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon: ""
+                            label: "Lock"
+                            keyboardFocused: root.switchboardSelectedIndex === 11
+                            onTriggered: root.triggerSwitchboardTile(11)
                         }
                     }
                 }

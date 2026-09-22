@@ -15,13 +15,20 @@ Rectangle {
     // still visually correct, but clicking just warns instead of no-oping
     // silently, so it's obvious in the log rather than looking broken.
     property bool implemented: true
+    // Set by a keyboard-navigable grid (e.g. Launcher's Switchboard mode)
+    // to show which tile arrow keys currently point at -- distinct from
+    // `active` (the tile's real on/off state), so a tile can be both
+    // keyboard-focused and off, or active and not focused. Defaults to
+    // false and changes nothing for callers that never set it (Home tab's
+    // grid is mouse-only).
+    property bool keyboardFocused: false
 
     signal triggered()
 
     radius: Theme.radius / 2
     color: active ? Theme.accent : Theme.surfaceAlt
-    border.width: 1
-    border.color: Theme.border
+    border.width: keyboardFocused ? 2 : 1
+    border.color: keyboardFocused ? Theme.accent : Theme.border
 
     Column {
         anchors.centerIn: parent
