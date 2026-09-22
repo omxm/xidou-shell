@@ -16,7 +16,16 @@ Item {
     id: root
 
     readonly property var cfg: Config.data.bar_widgets.media
-    readonly property var player: Mpris.players.length > 0 ? Mpris.players[0] : null
+    // Mpris.players is an UntypedObjectModel, not a plain array -- .values is
+    // the real accessor (same pattern DesktopEntries.applications.values
+    // already uses in Launcher.qml). The old Mpris.players.length/[0] here
+    // silently evaluated to undefined/false, so this widget always read "no
+    // player" regardless of any real MPRIS source -- a Phase 1 bug, not
+    // something today's Stage 3 work introduced. Confirmed via quickshell's
+    // own verbose Mpris debug logging, which showed its backend correctly
+    // discovering and updating a real player the whole time; this was
+    // purely a QML-side bug (same one fixed in NowPlayingCard.qml).
+    readonly property var player: Mpris.players.values.length > 0 ? Mpris.players.values[0] : null
 
     // Material Symbols Outlined codepoints for "pause" / "play_arrow", from
     // Google's upstream codepoints file.

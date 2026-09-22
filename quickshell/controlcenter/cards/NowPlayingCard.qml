@@ -4,12 +4,20 @@ import "../../config"
 import ".." as ControlCenter
 
 // Larger now-playing display than the bar's compact Media.qml, but the same
-// data source (Mpris.players[0] — there's no separate project-authored MPRIS
-// service to share; Mpris itself is the shared singleton both already read).
+// data source (Mpris.players.values[0] — there's no separate project-authored
+// MPRIS service to share; Mpris itself is the shared singleton both already
+// read). Mpris.players is an UntypedObjectModel, not a plain array -- .values
+// is the real accessor (same pattern DesktopEntries.applications.values
+// already uses in Launcher.qml); .length/[0] directly silently evaluate to
+// undefined/false, so this always read as "no player" regardless of any
+// real MPRIS source. Confirmed via quickshell's own verbose Mpris debug
+// logging, which showed its backend correctly discovering and updating a
+// real player the whole time -- this was purely a QML-side bug, matching
+// the identical one just fixed in bar/modules/Media.qml.
 ControlCenter.Card {
     id: root
 
-    readonly property var player: Mpris.players.length > 0 ? Mpris.players[0] : null
+    readonly property var player: Mpris.players.values.length > 0 ? Mpris.players.values[0] : null
 
     // Material Symbols Outlined codepoints: play_arrow / pause / skip_next / skip_previous.
     readonly property string playIcon: root.player && root.player.isPlaying ? "" : ""
