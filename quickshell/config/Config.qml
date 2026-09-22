@@ -101,6 +101,10 @@ Singleton {
                 max_length: 0,          // 0 = unlimited; truncates the combined label to this many characters
                 show_condition: false,  // append the WMO condition word (e.g. "Cloudy") after the temperature
                 show_temperature: true  // false hides the temperature -- only meaningful combined with show_condition true, otherwise the widget just goes empty
+            },
+            clock: {
+                time_format: "24h", // 24h | 12h
+                timezone: ""         // IANA zone name (e.g. "America/New_York"); "" = system's local timezone
             }
         },
         osd: {

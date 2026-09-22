@@ -327,13 +327,20 @@ Item {
         }
 
         // Widget-specific content -- real controls where the underlying
-        // value already has backing (Weather today), a PlaceholderTab
-        // fallback for every other widget, same "fail soft to placeholder"
-        // convention as Settings.qml's own tabComponents lookup.
+        // value already has backing, a PlaceholderTab fallback for every
+        // other widget, same "fail soft to placeholder" convention as
+        // Settings.qml's own tabComponents lookup. Map (not a growing
+        // ternary chain) since this list only grows as more widgets get
+        // real Stage-3 sections.
+        readonly property var widgetComponentsByName: ({
+            "weather": weatherWidgetComponent,
+            "clock": clockWidgetComponent
+        })
+
         Loader {
             width: parent.width
             height: parent.height - (Theme.fontSize * 1.8) - (Theme.fontSize * 2.6) - (parent.spacing * 2)
-            sourceComponent: root.editingModule === "weather" ? weatherWidgetComponent : placeholderWidgetComponent
+            sourceComponent: parent.widgetComponentsByName[root.editingModule] || placeholderWidgetComponent
         }
 
         Component {
@@ -411,6 +418,59 @@ Item {
                         minValue: 0
                         maxValue: 60
                         onStepped: (newValue) => Config.setValue("bar_widgets.weather", "max_length", newValue)
+                    }
+                }
+            }
+        }
+
+        // Clock's real "Widget" section: time_format/timezone under
+        // [bar_widgets.clock] -- both genuinely new (bar/modules/Clock.qml
+        // previously hardcoded "HH:mm" with no timezone concept at all).
+        // Timezone is free text (an IANA zone name, e.g. "America/
+        // New_York"), same "no upfront validation against a real list"
+        // precedent as Weather's City field -- an invalid zone just makes
+        // the real `date` binary silently fall back to UTC (confirmed
+        // empirically), which is an acceptable failure mode for a free-text
+        // field, not something worth building zone-name validation for.
+        Component {
+            id: clockWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    id: timeFormatRow
+                    width: parent.width
+                    label: "Time Format"
+                    tableHeader: "bar_widgets.clock"
+                    settingKey: "time_format"
+                    defaultValue: Config.defaults.bar_widgets.clock.time_format
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: "24h", label: "24-Hour" },
+                            { value: "12h", label: "12-Hour" }
+                        ]
+                        currentValue: Config.data.bar_widgets.clock.time_format
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.clock", "time_format", value)
+                    }
+                }
+
+                Settings.SettingRow {
+                    id: timezoneRow
+                    width: parent.width
+                    label: "Timezone"
+                    tableHeader: "bar_widgets.clock"
+                    settingKey: "timezone"
+                    defaultValue: Config.defaults.bar_widgets.clock.timezone
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.TextCommitField {
+                        width: parent.width
+                        value: Config.data.bar_widgets.clock.timezone
+                        placeholder: "System default (e.g. America/New_York)"
+                        onCommitted: (text) => Config.setValue("bar_widgets.clock", "timezone", text)
                     }
                 }
             }
