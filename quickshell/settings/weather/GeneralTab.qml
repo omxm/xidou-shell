@@ -3,8 +3,11 @@ import "../../config"
 import "../../services"
 import ".." as Settings
 
-// Weather > General: the real, standalone [weather] table from Phase 1
-// (auto_locate, city, latitude, longitude, units). Unlike every category
+// System > Weather: the real, standalone [weather] table from Phase 1
+// (auto_locate, city, latitude, longitude, units). Lives under System, not
+// as its own top-level category, since this data is shared across the bar
+// module, Home tab's card, and control-center's own Weather tab -- not
+// something that belongs to the bar specifically. Unlike every category
 // built so far, changing these alone has no live effect -- all three
 // weather displays (bar/modules/Weather.qml, control-center's
 // WeatherSection.qml/ClockWeatherCard.qml) resolve location and fetch the

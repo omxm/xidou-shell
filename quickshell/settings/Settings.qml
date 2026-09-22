@@ -45,7 +45,7 @@ PanelWindow {
     readonly property int panelHeight: 600
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
-    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications", "Bar", "Weather", "Wallpaper"]
+    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications", "Bar", "System", "Wallpaper"]
     property int selectedCategoryIndex: 0
 
     // Category name -> its sub-tab list. Categories not listed here would
@@ -58,7 +58,13 @@ PanelWindow {
         "OSD": ["General"],
         "Notifications": ["General"],
         "Bar": ["General", "Modules"],
-        "Weather": ["General"],
+        // Weather lives here, not as its own category -- its settings
+        // (location/units/auto_locate) are shared across the bar module,
+        // Home tab's card, and control-center's own Weather tab, not
+        // something that belongs to any one of them. More system-wide
+        // settings join this array as they get real backing, same as
+        // Appearance's own sub-tab list grew.
+        "System": ["Weather"],
         "Wallpaper": ["General"]
     })
     readonly property var currentSubTabs: root.subTabsByCategory[root.categories[root.selectedCategoryIndex]] || []
@@ -335,8 +341,8 @@ PanelWindow {
                                 "General": barGeneralTabComponent,
                                 "Modules": barModulesTabComponent
                             },
-                            "Weather": {
-                                "General": weatherGeneralTabComponent
+                            "System": {
+                                "Weather": weatherGeneralTabComponent
                             },
                             "Wallpaper": {
                                 "General": wallpaperGeneralTabComponent
