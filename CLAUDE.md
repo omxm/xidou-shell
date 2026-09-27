@@ -152,10 +152,76 @@ panel that wasn't in the original plan:
   - **Screenshot**: General — real.
   - **OSD**: General — real.
   - **Notifications**: General — real.
-  - **Bar**: General, and Modules (per-module list with a gear icon opening a
-    per-widget detail panel — Workspaces, Clock, Weather, Media all have their real
-    Widget sections built out; others fall back to a `PlaceholderTab` inside that
-    per-widget panel until wired).
+  - **Bar**: General (Enabled, Position, Auto-Hide off/on/smart, Reserve Space —
+    Auto-Hide collapses the bar to a 3px hover-reveal sliver at the screen edge rather
+    than a fully-invisible polled reveal; Smart mode only auto-hides while dwm-ipc's
+    `tag_state.occupied & .selected` says the viewed tag actually has a client on it;
+    Reserve Space is forced to behave as off, and greyed out in the UI, whenever
+    Auto-Hide isn't Off), Layout (`[bar.layout]`: Thickness — relocated here from
+    General, still `bar.height` underneath — Content Scale (a real `scale:` transform
+    per widget, with the wrapper resized to the scaled footprint so Row spacing doesn't
+    overlap neighbors), Font Scale (multiplies just `font.pixelSize` across all 12 bar
+    module files, independent of Content Scale), Ends Margin + Edge Margin (together
+    these make the "floating bar" look — shortened from both ends and lifted off the
+    screen edge at once), Opposite Edge Margin, Content Padding, Panel Overlap
+    (Advanced, lets windows tile under the bar's edge by reducing the reserved strut)),
+    Shape (`[bar.shape]` — before this, the bar had zero corner-rounding capability at
+    all; `PanelWindow.color` is now transparent with an inner `Rectangle` doing the real
+    painting, same pattern `Osd.qml` already used, with Qt 6.7+'s per-corner radius
+    properties directly since this project's Qt is 6.11.2. Corner Radius (uniform) plus
+    four per-corner overrides, each defaulting to -1/"Auto" meaning "inherit the uniform
+    value" — 0 is a real, different, selectable state (explicitly square). Corner Flow
+    flares the anchored edge's two corners out to the true screen corner with a genuine
+    concave cut (`QtQuick.Shapes` odd-even fill: a square XOR a full circle centered at
+    the true corner — a plain additive quarter-disk was tried first and rejected, since
+    layered on an already-rounded corner it just fully refills the square with no visible
+    curve at all); only meaningful when Layout's Ends Margin AND Edge Margin are both 0,
+    greyed out otherwise. Border/Border Width. All radii are clamped at render time to
+    half of the bar's *current* height, using the live Auto-Hide-aware height, not the
+    configured Thickness — so the 3px auto-hide sliver never renders a distorted corner),
+    Effects (`[bar.effects]`: Background Opacity — a plain alpha multiplier on the
+    background Rectangle from Shape's work; Shadow — the shell's first real shadow
+    anywhere, `QtQuick.Effects.MultiEffect` (native since Qt 6.5, no
+    Qt5Compat.GraphicalEffects needed at this project's Qt 6.11.2) applied via
+    `layer.effect` on an unclipped wrapper `Item` one level above the background
+    Rectangle — `layer.enabled` + `clip: true` on the *same* item silently clips the
+    shadow to nothing, confirmed empirically; Contact Shadow — purely aesthetic, no
+    "a panel is docked against the bar" concept exists anywhere in the shell, so it's
+    a fixed gradient at the bar's own edge as a child of the background Rectangle so
+    it's cropped to Shape's rounded corners for free. Note for future Xvfb/headless
+    testing: picom's GLX backend compositing a window that itself uses `layer.effect`
+    can render the whole window blank in a software-GL sandbox (confirmed by disabling
+    picom, which restored correct rendering) — likely specific to non-accelerated
+    Xvfb, not expected on real hardware, but worth knowing if a future shadow-adjacent
+    effect appears to vanish under a test compositor.), Widgets (`[bar.widgets]` — the
+    bar-wide DEFAULT layer a future per-widget Presentation override layer, still
+    deferred, is meant to sit on top of: Font Family/Weight (label text only, never
+    icon glyphs — Material Symbols' own variable-font weight axis is untouched),
+    Widget Spacing (replaces 3 hardcoded `Theme.fontSize / 2` Row spacings), Widget
+    Color/Icon Color (surgically replace only the "normal/active-state" `Theme.text`
+    leaf across the ~9 affected lines in 5 module files — Weather/Cpu/Mem/Dnd/
+    Workspaces/Logo intentionally keep their own textMuted/warning/accent/brand colors
+    untouched, since a blanket override would erase real state feedback; icon and
+    label were always tied to the identical color expression before this, so letting
+    them diverge is new), and Hover Highlight (the shell's first hover feedback
+    anywhere on the bar — a `HoverHandler` + highlight `Rectangle` added to the same
+    `capsuleModuleComponent` wrapper Capsules already introduced, working whether
+    Capsules are on or off). This completes all 8 of the original Bar tabs: General,
+    Layout, Shape, Effects, Widgets, Capsules, (Widget List and Dead Zone were already
+    done beforehand).), and Modules (per-module list with a gear icon opening a
+    per-widget detail panel — Workspaces, Clock, Weather, Media, Volume, Bluetooth,
+    Tray, Mem, CPU, and Power all have real Widget sections built out; Logo and DND
+    are the two modules still falling back to `PlaceholderTab` inside that per-widget
+    panel). The Modules list also supports in-lane reordering (up/down arrow buttons
+    per row, swapping with the adjacent module in the same lane's array) — distinct
+    from the gear panel's Start/Center/End buttons, which move a module *between*
+    lanes. Capsules (`[bar.capsules]`, bar-wide): Widget Capsules on/off, Thickness,
+    Radius, Fill (Theme role), Padding, Border, Opacity — wraps every module's
+    background in a pill shape via `Bar.qml`'s shared `capsuleModuleComponent`. Bar-wide
+    only; a per-widget Presentation override layer (letting one module opt out of or
+    override these) is separate, larger deferred work. Capsule Foreground (recoloring
+    each widget's text/icon to contrast the fill) is deferred too — it would touch
+    every module file's `Text.color`, real cross-cutting scope not bundled here.
   - **System**: Weather (deliberately lives here, not its own category, since
     location/units/auto_locate are shared across the bar module, Home tab's card, and
     control-center's Weather section).
@@ -166,9 +232,9 @@ panel that wasn't in the original plan:
 ## What's still open
 
 - **Presentation/Behavior per-widget override layer** — the bar Modules tab's
-  per-widget gear panel currently only has real Widget-specific sections for
-  Workspaces/Clock/Weather/Media; a generic Presentation/Behavior override layer for
-  the rest (and for modules beyond those four) is not built.
+  per-widget gear panel now has real Widget-specific sections for every module
+  except Logo and DND; a generic Presentation/Behavior override layer for those two
+  is not built.
 - **Settings panel placeholders**: Appearance > Accessibility/Motion/Effects.
 - **Control-center placeholder**: Screen Time section.
 - **Final phase — startup/splash screen**: logo + wordmark + dismissible "Start"
