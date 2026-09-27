@@ -207,8 +207,10 @@ panel that wasn't in the original plan:
     anywhere on the bar — a `HoverHandler` + highlight `Rectangle` added to the same
     `capsuleModuleComponent` wrapper Capsules already introduced, working whether
     Capsules are on or off). This completes all 8 of the original Bar tabs: General,
-    Layout, Shape, Effects, Widgets, Capsules, (Widget List and Dead Zone were already
-    done beforehand).), and Modules (per-module list with a gear icon opening a
+    Layout, Shape, Effects, Widgets, Capsules. Widget List is on/off + lane moves +
+    up/down reorder (see Modules below); Dead Zone is NOT done — only a hardcoded
+    right-click → control-center handler, `Bar.qml`'s `handleDeadZoneClick()`, with no
+    config key or Settings UI.), and Modules (per-module list with a gear icon opening a
     per-widget detail panel — Workspaces, Clock, Weather, Media, Volume, Bluetooth,
     Tray, Mem, CPU, and Power all have real Widget sections built out; Logo and DND
     are the two modules still falling back to `PlaceholderTab` inside that per-widget
@@ -231,16 +233,30 @@ panel that wasn't in the original plan:
 
 ## What's still open
 
-Full backlog, cross-referenced against the code, with effort tiers, dependencies, and
-open decisions: `docs/ROADMAP.md`. Note its section 1.1: the Bar tabs described above
-(Layout/Shape/Effects/Widgets/Capsules, Auto-Hide, etc.) were not in the pushed code as
-of `32b5354` — reconcile before building on them.
+Full backlog, cross-referenced against the code (last re-verified against `a941b03`),
+with effort tiers, dependencies, and open decisions: `docs/ROADMAP.md`. Items below
+are the headline ones; the roadmap is the complete list.
 
 - **Presentation/Behavior per-widget override layer** — the bar Modules tab's
   per-widget gear panel now has real Widget-specific sections for every module
   except Logo and DND; a generic Presentation/Behavior override layer for those two
   is not built.
-- **Settings panel placeholders**: Appearance > Accessibility/Motion/Effects.
+- **Bar Dead Zone settings**: click actions on empty bar space are hardcoded (right
+  click → control-center); no config key or tab yet.
+- **Bar widget click model**: each module still owns its own `MouseArea`; there's no
+  shared left/right/middle/scroll dispatch in `capsuleModuleComponent` yet, and the
+  bar-wide widget styling expressions are repeated in all 12 module files.
+- **Window gaps have no Settings UI**: `[layout] gap_inner/gap_outer` + dwm's
+  `setgappih`/`setgappoh` IPC exist (`a941b03`), but they're only pushed once at
+  session start by an `awk` block in `session/xidou-xinitrc`.
+- **Lock screen hardening**: the PAM lock takes no X keyboard/pointer grab, so dwm's
+  root keybinds likely still fire while locked, and a Quickshell crash drops the lock.
+  Must be fixed before any idle auto-lock is built (inferred from code, not yet
+  confirmed on the real session).
+- **`[panels.*].keybind` config keys are not read by anything** — dwm's `config.h`
+  hardcodes every bind.
+- **Settings panel placeholders**: Appearance > Accessibility/Motion/Effects (Motion's
+  backend, `services/MotionSync.qml`, already exists — only the tab is missing).
 - **Control-center placeholder**: Screen Time section.
 - **Final phase — startup/splash screen**: logo + wordmark + dismissible "Start"
   button, same design language as every other panel. Not started.

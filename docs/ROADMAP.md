@@ -3,7 +3,8 @@
 Working roadmap for はる and future Claude Code sessions. Planning only: nothing in this
 document has been implemented as part of writing it.
 
-- **Written:** 2026-09-27, against `master` at `32b5354` (pushed state of `omxm/xidou-shell`).
+- **Written:** 2026-09-27, against `master` at `32b5354`; **re-verified** the same day
+  against `a941b03` (the bar overhaul commit — see 1.1).
 - **Source:** はる's backlog "アイデア集&改善ポイント #1 / #2" plus the ChatGPT idea list
   (items marked [却下] are excluded; items marked [微妙] are listed at the end as parked).
 - **Method:** every backlog item was cross-referenced against the actual code, not
@@ -36,7 +37,7 @@ made, write the answer inline next to the question, so the next session doesn't 
 | `[HW]` | Depends on X1CG5 hardware facts (battery sysfs, backlight, touchpad, TLP, GPU, external monitor). Cannot even be designed with confidence until the hardware inventory (T0-3) exists. |
 
 **Status words:** *Done* (built and in pushed code), *Partial* (some of it exists — the
-remaining delta is what's planned), *Not started*, *Claimed, unpushed* (see T0-1).
+remaining delta is what's planned), *Not started*.
 
 ---
 
@@ -45,36 +46,41 @@ remaining delta is what's planned), *Not started*, *Claimed, unpushed* (see T0-1
 These came out of comparing the backlog, CLAUDE.md, and the code. Several of them change
 the order things should be done in.
 
-### 1.1 CLAUDE.md describes bar work that is not in the pushed repo
+### 1.1 Bar overhaul: resolved, re-verified against `a941b03`
 
-The most recent commit (`32b5354`, "docs: update CLAUDE.md to reflect current project
-state") adds a long description of a finished bar overhaul: General (Enabled, Auto-Hide
-off/on/smart, Reserve Space), Layout, Shape (per-corner radius, Corner Flow), Effects
-(opacity, shadow, contact shadow), Widgets (font/weight/spacing/colors/hover), Capsules,
-in-lane up/down reordering, and per-widget sections for Volume/Bluetooth/Tray/Mem/CPU/
-Power.
+The first pass of this document (against `32b5354`) found that CLAUDE.md described a
+finished bar overhaul the pushed code didn't contain. はる confirmed it was uncommitted
+local work; it is now on `master` as `a941b03`, and this document was re-checked against
+it. What the code now actually has:
 
-None of that exists in the pushed code:
+- **Settings > Bar** tabs: General (Enabled, Position, Auto-Hide off/on/smart, Reserve
+  Space), Layout, Shape, Effects, Widgets, Modules, Capsules — all real, matching
+  CLAUDE.md.
+- **Per-widget sections** (Modules > gear): Weather, Clock, Workspaces, Media, Volume
+  (show %), Bluetooth (show count), Tray (icon size only), Mem/CPU (warning threshold),
+  Power (show %, low threshold). Logo and DND still fall back to `PlaceholderTab`.
+- **In-lane reordering**: up/down buttons. `ModulesTab.qml`'s header explicitly argues
+  *against* drag-and-drop, because the list is one flat catalog, not grouped by lane.
+  The backlog's Start/Center/End tabs would change that premise — see M9.
+- **`capsuleModuleComponent`** in `Bar.qml` now wraps every module (capsule background,
+  content scale, hover highlight via `HoverHandler`). It does *not* dispatch clicks:
+  each module still owns its own `MouseArea`. That makes F5 smaller than planned.
+- **New, not mentioned in CLAUDE.md:** window gaps. `[layout] gap_inner/gap_outer` in
+  config, `setgappih`/`setgappoh` dwm IPC commands, and an `awk` block in
+  `session/xidou-xinitrc` that pushes them once at session start. No Settings UI yet —
+  see L14 and 1.7.
 
-- `quickshell/settings/bar/` contains only `GeneralTab.qml` (Position, Height) and
-  `ModulesTab.qml`.
-- `Settings.qml`'s `subTabsByCategory` lists Bar as `["General", "Modules"]` only.
-- `Config.qml` has no `bar.layout`, `bar.shape`, `bar.effects`, `bar.widgets`,
-  `bar.capsules`, `auto_hide`, or `reserve_space` keys.
-- `Bar.qml` still paints with `color: Theme.background` directly (no inner Rectangle, no
-  `MultiEffect`, no `HoverHandler`, no `capsuleModuleComponent`).
-- `ModulesTab.qml`'s header comment still says reordering is "explicitly out of scope".
-- `bar_widgets` in `Config.qml` only has weather/clock/workspaces/media.
+Two things from the first pass still hold after the re-check:
 
-It also says "Widget List and Dead Zone were already done beforehand." In the code, Dead
-Zone is one hardcoded right-click → control-center handler (`Bar.qml:122`
-`handleDeadZoneClick`) with no settings UI, and Widget List is on/off + move between
-lanes.
-
-**Most likely explanation:** the work exists on はる's machine and was never committed or
-pushed. **Action (T0-1) before anything bar-related starts:** push that work, or, if it
-was lost, correct CLAUDE.md. This roadmap does *not* re-propose those tabs — it treats
-them as "Claimed, unpushed" and marks every item that builds on them.
+- **Dead Zone is not done.** CLAUDE.md says "Widget List and Dead Zone were already done
+  beforehand", but Dead Zone is still one hardcoded right-click → control-center handler
+  (`Bar.qml` `handleDeadZoneClick`) with no config key and no Settings UI. M10 stands,
+  and CLAUDE.md has been corrected.
+- **Widget styling is copy-pasted per module.** Each of the 12 module files now repeats
+  the same expressions for `bar.widgets.font_family`, the `font_weight` string → `Font.*`
+  mapping, `layout.font_scale`, and `color`/`icon_color` fallbacks. That's fine at 12
+  modules; at the ~30 the backlog wants (L8, M11) it becomes the thing that drifts. F5
+  now includes extracting shared `BarLabel`/`BarIcon` components.
 
 ### 1.2 The lock screen is probably not secure yet
 
@@ -168,6 +174,22 @@ doesn't do that: `showhide()` (`dwm/dwm.c:2195`) hides clients by `XMoveWindow` 
   thumbnails for an overview (H2) are therefore possible from a small C helper, without
   needing Quickshell's screencopy support (which I believe is Wayland-only — verify).
 
+### 1.7 Window gaps: the first real "dwm setting from config" — and two rough edges
+
+`a941b03` added window gaps the way H4 proposes doing all dwm settings: a runtime IPC
+setter in dwm (`setgappih`/`setgappoh`) fed from config.toml. That's a good precedent.
+Two things to tidy before it becomes the pattern:
+
+- **Only applied once, at session start, by `awk` in xinitrc.** Changing `[layout]`
+  does nothing until relogin, and the `awk` block is a second, hand-rolled TOML reader
+  (it ignores `$XIDOU_CONFIG_PATH`, and it would misread a value written with a trailing
+  comment containing digits). Once a Settings UI exists (L14), the natural home for
+  "push to dwm" is the shell: on `Config.reloaded`, call `dwm-msg run_command
+  setgappih …` — live, and the xinitrc block can then be deleted.
+- **Naming:** top-level `[layout]` (window gaps) and `[bar.layout]` (bar geometry) are
+  unrelated but read as siblings. Worth deciding before more dwm settings land in
+  `[layout]` (decision D24).
+
 ---
 
 ## 2. Status of every backlog item
@@ -183,12 +205,12 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 3 | Templates / per-app theming tab (Settings only) | Not started | M4 |
 | 4 | Animations (research + "I want animations") | **Partial**: picom open/close done; Motion backend done; tab placeholder; tag switch not animated | L1, M21, H3 |
 | 5 | Wallpaper directories in Settings | **Done** (Wallpaper > General) | — |
-| 6 | Everything (dwm config, resolution, scale) in Settings | Not started (dwm config is compile-time) | H4, H5 |
+| 6 | Everything (dwm config, resolution, scale) in Settings | **Partial**: window gaps are config-driven via dwm IPC (`a941b03`) but have no Settings UI and apply only at session start; everything else in dwm is still compile-time | L14, H4, H5 |
 | 7 | Overridden / Reset UI, long-press or double-click reset | **Partial**: badge + one-click reset exist (right side of row) | L5 |
 | 8 | Screenshot settings | **Mostly done**; missing separate "copy to clipboard" / "save to file" toggles | L3 |
 | 9 | Lock screen | **Partial**: PAM lock exists; hardening needed (1.2) | M1 |
 | 10 | Settings panel separate from control-center | **Done** | — |
-| 11 | Bar customization (general … dead zone) | **Claimed, unpushed** for General/Layout/Shape/Effects/Widgets/Capsules (1.1). Widget List UX and Dead Zone UI **not started**. | T0-1, M9, M10, section 6 |
+| 11 | Bar customization (general … dead zone) | **Done** for General/Layout/Shape/Effects/Widgets/Capsules (`a941b03`). **Partial** for Widget List (on/off, lane moves, up/down reorder — no lane tabs, add-picker, multi-select, drag). Dead Zone UI **not started** (1.1). | M9, M10, section 6 |
 | 12 | Battery widget (health, AC, profile, time, thresholds, laptop/desktop detect) | **Partial**: CC Power shows %, status, time, health; bar shows % + icon; `hasBattery` check exists | M3 |
 | 13 | `super+Esc` session menu with 1–5 keys | **Done** except slot 3 | L2 |
 | 14 | Idle settings with gradual dimming | Not started | M2 |
@@ -196,10 +218,10 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 16 | GTK settings (nwg-look) inside Settings | Not started | M6 |
 | 17 | Screen Time in control-center | Placeholder only | M20 |
 | 18 | System monitor in control-center | **Partial**: CPU/mem/disk exist | M13 |
-| 19 | Widget overhaul | Not started (vague — decomposed) | F5, M8, M9 |
+| 19 | Widget overhaul | **Partial**: bar-wide styling layer, capsules, hover, per-widget sections done (`a941b03`); click model and shared widget components not | F5, M8, M9 |
 | 20 | Overview / window switcher (`super+Tab`) | Not started (dwm bind reserved; no IpcHandler listens) | M14, H2 |
 | 21 | Workspaces: only occupied/focused, styles, numbers vs dots | **Done** (hide_when_empty, regular/minimal/focus_hint, icons) | — |
-| 22 | Tray drawer (collapsible), open/closed default | Not started; also right-click has no menu | M7 |
+| 22 | Tray drawer (collapsible), open/closed default | Not started (Tray's gear panel has icon size only); right-click still has no menu | M7 |
 | 23 | Xidou icon and logo | Not started (Logo module is a placeholder wordmark) | M24 |
 | 24 | Launcher Switchboard (chip, many actions, ←→ sliders) | **Partial**: 4×3 grid mode exists, Tab cycles 3 modes | M12 |
 | 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | Decision | H8 |
@@ -255,12 +277,10 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 
 Small things that unblock or de-risk everything else. Do these first.
 
-### T0-1 Reconcile CLAUDE.md with the pushed code — Light `[HW]` (needs はる's machine)
-- **What:** find out whether the bar overhaul in 1.1 exists locally. If yes, commit and
-  push it. If no, rewrite the Bar bullet in CLAUDE.md to match the code.
-- **Blocks:** M8, M9, M10, M7 (Tray per-widget section), H1, and anything touching
-  `Bar.qml`. Building any of those on the pushed `Bar.qml` would create a merge
-  conflict with the unpushed work.
+### T0-1 Reconcile CLAUDE.md with the pushed code — **Done** (2026-09-27)
+- はる pushed the bar overhaul as `a941b03`; re-verified in 1.1. CLAUDE.md's one
+  remaining inaccuracy (Dead Zone described as done) was corrected in the same commit
+  as this update. Nothing is blocked on this any more.
 
 ### T0-2 Make `[panels.*].keybind` honest — Light `[CLOUD]`
 - **What:** mark them in `config.example.toml` and `Config.qml` as "documentation only,
@@ -314,12 +334,15 @@ Small things that unblock or de-risk everything else. Do these first.
   Motion System ends up being a search-and-replace later.
 
 ### F5 Common bar widget wrapper — Moderate `[CLOUD]`
-- **What:** one wrapper every bar module sits in, owning: left/right/middle click
-  dispatch, scroll dispatch, hover highlight, tooltip, and capsule background. The
-  unpushed `capsuleModuleComponent` (1.1) may already be most of this — build on it
-  after T0-1, don't duplicate it.
+- **Already there** (`a941b03`): `Bar.qml`'s `capsuleModuleComponent` wraps every
+  module with capsule background, content scale, and hover highlight.
+- **What's left:** (1) move click/scroll handling out of each module's own `MouseArea`
+  into the wrapper as left/right/middle/scroll slots that modules *declare* actions
+  for; (2) tooltips; (3) extract shared `BarLabel`/`BarIcon` components so the
+  font-family/weight/scale/color expressions now copy-pasted into all 12 module files
+  (1.1) live in one place. Do (3) before adding new widgets, not after.
 - **Unblocks:** M8 (click model), L8/M11 (new widgets reuse it for free).
-- **Depends on:** T0-1.
+- **Depends on:** nothing now. Could drop to Light once started — the wrapper exists.
 
 ### F6 Sound service — Light `[SESSION]`
 - **What:** a `SoundFx` singleton with `play(eventName)`, global enable, volume, and
@@ -361,6 +384,8 @@ make. Write the answer next to the question when decided.
 | D21 | Multiple bars: what differs per bar? | everything / subset | Position, monitor, modules, and the Layout/Shape/Effects/Widgets/Capsules tables; theme stays global. | H1 |
 | D22 | Gestures: which gestures → which actions? | — | 3-finger swipe L/R → adjacent tag *by explicit number*; 3-finger up → switcher/overview; 3-finger down → close panels; 4-finger → your choice. | M23 |
 | D23 | Health auto-fix: what may it do without asking? | restart user daemons only / anything | Only restart user-level daemons it itself started (pipewire family, picom, xidou-clipd). Never touch system services. | M16 |
+| D24 | Top-level `[layout]` (window gaps) vs `[bar.layout]`: keep, or rename before more dwm settings join it? | keep / `[windows]` / `[wm]` | Rename to `[windows]` now, while only two keys and one reader exist; keep reading `[layout]` as a fallback for one release. | L14, H4 |
+| D25 | Widget List: is drag-and-drop wanted, or are up/down buttons enough once lanes are separate tabs? | drag / buttons only | Buttons first (they exist), lane tabs + "+" picker + multi-select; add drag only if it still feels missing. | M9 |
 
 ---
 
@@ -420,7 +445,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - What: launcher, settings, session, screenshot, wallpaper, control-center, caffeine,
   nightlight, theme_mode, notifications (with unread badge), spacer, text. Each is an
   icon (and optional label) whose click calls something that already exists.
-- Depends on: F5 (so they get click dispatch/hover/capsules for free), T0-1.
+- Depends on: F5 (so they get click dispatch/hover/capsules and shared styling for free).
 - Verify: `[CLOUD]`.
 
 **L9 — Clipboard search**
@@ -443,14 +468,24 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - Verify: `[CLOUD]`.
 
 **L12 — Per-widget panel for Logo and DND**
-- What: the two modules without a real Widget section (per CLAUDE.md; verify after
-  T0-1). Logo: which image/wordmark, click action. DND: show when off or only when on.
-- Depends on: T0-1. Verify: `[CLOUD]`.
+- What: the two modules whose gear panel is still a `PlaceholderTab` (confirmed in
+  `a941b03`). Logo: which image/wordmark, click action. DND: show when off or only when
+  on.
+- Depends on: nothing. Logo's image option pairs naturally with M24. Verify: `[CLOUD]`.
 
 **L13 — Icon polish**
 - What: per D12. Material Symbols' FILL axis (0→1) for on/active states is a
   `font.variableAxes` change, not a new font.
 - Verify: `[SESSION]` (it's purely a matter of taste).
+
+**L14 — Window gaps in Settings**
+- What: a Settings page for `[layout] gap_inner/gap_outer` (backing already exists:
+  config keys + dwm IPC). Apply live from the shell on change (`dwm-msg run_command
+  setgappih/setgappoh`) and on shell startup, then delete xinitrc's `awk` block (1.7).
+- Placement: there's no dwm/"Windows" category yet — this would be its first real tab,
+  and where Window Rules (H4) and Scratchpad (M18) settings later go.
+- Decisions: D24 (naming). Verify: `[CLOUD]` with a test dwm on `$XIDOU_DWM_SOCKET`;
+  `[SESSION]` for look.
 
 ### 5.2 Moderate
 
@@ -528,7 +563,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   mozc and blueman expect a context menu. Use the item's menu (`hasMenu` / `menu`) with
   Quickshell's menu opener. (b) A collapsible drawer: pinned items shown, the rest behind
   a chevron; per-item "pinned/hidden" in the Tray gear panel; drawer default open/closed.
-- Depends on: T0-1 (CLAUDE.md claims a Tray per-widget section exists unpushed).
+- Builds on: the Tray gear panel from `a941b03` (currently icon size only).
 - Verify: `[SESSION]` (tray items and menus need real apps; menus as popups on X11 are
   exactly the kind of thing that behaves differently under Xvfb).
 
@@ -536,16 +571,21 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - What: every widget gets left/right/middle/scroll slots. Default per D6: left → its CC
   section, right → its quick action (e.g. Volume: right = mute, which is today's left).
   Each slot picks from an action registry (shared with Switchboard, M12).
-- Depends on: F2, F5, T0-1. Verify: `[CLOUD]`.
+- Depends on: F2, F5. Verify: `[CLOUD]`.
 
 **M9 — Widget List UX (the backlog's "widget list" tab)**
 - What: Start / Center / End sub-tabs; each lists its modules in order with drag handle,
   checkbox (multi-select delete), and gear. "+" at the top right of each tab opens an
   add-picker sorted by previously-added / frequency (reuse `UsageStats.qml`, as the
   backlog suggests).
-- Drag-and-drop: QML `DragHandler` + `DropArea` in a `ListView`; keep the up/down buttons
-  (claimed unpushed) as the keyboard path.
-- Depends on: T0-1. Verify: `[CLOUD]` for logic; drag feel `[SESSION]`.
+- Drag-and-drop: QML `DragHandler` + `DropArea` in a `ListView`; keep the existing
+  up/down buttons as the keyboard path.
+- Note: `ModulesTab.qml`'s header deliberately rejected drag-and-drop *for a flat,
+  ungrouped catalog*. Grouping by lane is what makes drag worth its cost, so this item
+  revisits that call rather than contradicting it — but if はる is happy with up/down
+  buttons, the lane tabs + "+" picker + multi-select are the real value and drag can be
+  dropped (decision D25).
+- Depends on: nothing now. Verify: `[CLOUD]` for logic; drag feel `[SESSION]`.
 
 **M10 — Dead Zone tab**
 - What: Bar > Dead Zone: left / right / middle click and scroll up/down on empty bar
@@ -621,7 +661,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - Verify: `[CLOUD]` for checks; fixes `[SESSION]`.
 
 **M17 — Theme export / import**
-- What: export `[theme]` (+ the bar look tables once T0-1 lands) to a standalone
+- What: export `[theme]` (+ the `[bar.*]` look tables) to a standalone
   `.toml`; import merges it via `Config.setValue` chains (remember the
   `cachedText`/chaining lesson in `Config.qml`). A file picker needs an X11-friendly
   approach (Quickshell has no native file dialog on this setup — a simple in-shell
@@ -679,7 +719,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 
 **M25 — Appearance > Effects tab**
 - What: per D20. Probably picom-level (shadows, blur behind panels — needs `glx`) plus
-  panel-level opacity. The bar's own Effects tab (unpushed) is a precedent for the QML
+  panel-level opacity. The bar's own Effects tab (`a941b03`) is a precedent for the QML
   side.
 - Depends on: T0-3, D20. Verify: `[SESSION]` (and note CLAUDE.md's warning that picom
   GLX + `layer.effect` can render blank under Xvfb).
@@ -693,7 +733,10 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   picker (+ Add, Duplicate, Delete, Export, Import). Two bars on the same edge must
   stack struts correctly — the strut logic lives in dwm (`37c9415`), so check it handles
   multiple dock windows on one edge.
-- Depends on: F3, T0-1, D21. Verify: logic `[CLOUD]`; strut stacking `[SESSION]`.
+- Depends on: F3, D21. Note the bar's config is now much larger (`[bar.layout]`,
+  `.shape`, `.effects`, `.widgets`, `.capsules`) — all of it moves under each
+  `[[bars]]` entry, which makes the migration bigger than it looked before `a941b03`.
+  Verify: logic `[CLOUD]`; strut stacking `[SESSION]`.
 
 **H2 — Overview (GNOME-style)**
 - What: full-screen panel showing every tag as a group of window thumbnails; click to
@@ -715,8 +758,9 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 
 **H4 — dwm runtime settings: gaps/borders/layout params, window rules, keybinds**
 - What: dwm reads everything from `config.h` at compile time. To edit from Settings:
-  (a) numeric settings (border width, corner radius, gaps, mfact, nmaster) via new IPC
-  setters + a startup read of `~/.config/xidou/dwm.toml` (or the main config);
+  (a) numeric settings (border width, corner radius, mfact, nmaster) via new IPC
+  setters, following the gaps precedent from `a941b03` (1.7) — but pushed live from the
+  shell, not from xinitrc;
   (b) window rules from a runtime list instead of `rules[]`; (c) keybinds from a runtime
   table — the largest part, since dwm grabs keys by keysym at startup and on mapping
   changes. Also unify the three independent corner radii (dwm `cornerradius`, picom
@@ -805,10 +849,6 @@ All of them: muted during DND, one global volume, one global off switch.
 
 ```mermaid
 graph LR
-  T01[T0-1 reconcile bar work] --> F5[F5 widget wrapper]
-  T01 --> M9[M9 widget list UX]
-  T01 --> M7[M7 tray]
-  T01 --> H1[H1 multiple bars]
   T03[T0-3 HW inventory] --> M3[M3 battery/power]
   T03 --> M2
   T03 --> M23[M23 gestures]
@@ -822,11 +862,11 @@ graph LR
   F1 --> H4[H4 dwm runtime config / rules / keybinds]
   F2[F2 CC open-to-section] --> M8[M8 click model]
   F2 --> L7[L7 notif stacking]
-  F3[F3 TOML arrays of tables] --> H1
+  F3[F3 TOML arrays of tables] --> H1[H1 multiple bars]
   F3 --> H4
   F4[F4 Motion tokens] --> M21[M21 motion system + a11y]
   F4 --> L1[L1 Motion tab]
-  F5 --> M8
+  F5[F5 widget wrapper] --> M8
   F5 --> L8[L8 button widgets]
   F5 --> M11
   F6[F6 sound service] --> M22[M22 sound effects]
@@ -839,6 +879,7 @@ graph LR
   M14 --> H2
   L9[L9 clipboard search] --> M15[M15 clipboard categories]
   L11[L11 screenshot action bar] --> H6[H6 editor]
+  L14[L14 gaps settings] -.pattern.-> H4
   M6[M6 GTK settings / xsettingsd] -.nicer.-> M4[M4 templates]
 ```
 
@@ -849,14 +890,16 @@ graph LR
 Priority is: safety first, then foundations that many items share, then things used
 every day, then looks, then big bets. Within a milestone, order is flexible.
 
-**Milestone 0 — housekeeping (next session, needs はる at the machine for T0-1/T0-3)**
-T0-1, T0-2, T0-3.
+**Milestone 0 — housekeeping (needs はる at the machine for T0-3)**
+~~T0-1~~ (done), T0-2, T0-3.
 
 **Milestone A — safety and foundations**
 M1 (lock hardening), F1, F2, F4, M16 (Health — cheap, and it's the philosophy).
 
 **Milestone B — the bar, finished properly**
-F5, M12's action registry (the list, before its UI), M8, M9, M10, M7, L8, L12, M3.
+F5 (shared components first), M12's action registry (the list, before its UI), M8,
+M9, M10, M7, L8, L12, L14, M3. The styling layer is done; this milestone is about
+behavior and adding widgets.
 
 **Milestone C — daily comfort**
 L4, L2, L3, L7, M2, M12 (Switchboard UI), L9, L11, L6, L5, M14.
