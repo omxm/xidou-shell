@@ -825,12 +825,28 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
      evaluated in the same picom frame (plausible from source, unverified). If not,
      this path fails.
    - **Gate result (2026-09-27, real X1CG5, throwaway config in `/tmp/xidou-h3/`,
-     no dwm/config.toml/picom.conf changes) — gate passes.** Simulated the exact
-     dwm sequence (set an X property immediately before moving the window) using
-     `xprop`/`xdotool` on a manually-floated test kitty window (tiled clients ignore
-     `xdotool windowmove`, so floating was needed to get a real geometry change —
-     an artifact of manual simulation, not something the real dwm patch will need to
-     work around, since dwm moves its own clients directly).
+     no dwm/config.toml/picom.conf changes) — REVISED, unresolved.** The first pass
+     below reported "gate passes, no race observed," from one successful run. A
+     second round of testing the same day, with more repetitions and a genuinely
+     back-to-back (zero-gap) property-write-then-move, got an **inconsistent**
+     result: `c2_match_once` sometimes failed to match (`result = 0`) even though
+     `xprop` read back the correct property value moments later. Adding a settle
+     delay between the property write and the move made the match reliable across
+     every config variant tried; removing the delay (closer to what dwm's own
+     back-to-back `XChangeProperty` + `XMoveWindow` would look like) reproduced the
+     failure at least once. **The zero-gap case is therefore still an open
+     question, not a confirmed pass** — treat the "no race observed" framing below
+     as describing the easy (settled) case only.
+     - This was **not** a Xephyr-specific artifact — the inconsistency reproduced
+       on the real display too, using the manual `xprop`/`xdotool` simulation
+       (see below for why the real dwm C implementation itself was never actually
+       tested for this specific case).
+     - Simulated the exact dwm sequence (set an X property immediately before
+       moving the window) using `xprop`/`xdotool` on a manually-floated test
+       kitty window (tiled clients ignore `xdotool windowmove`, so floating was
+       needed to get a real geometry change — an artifact of manual simulation,
+       not something the real dwm patch will need to work around, since dwm moves
+       its own clients directly).
      - The property must be **ATOM-typed** (`xprop -f PROP 32a -set PROP AtomName`),
        matched in picom as `PROP = 'AtomName'` — the same pattern picom's own
        `_NET_WM_STATE` examples use. A `STRING`-typed property with a string-literal
@@ -859,11 +875,68 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
        `rules`, or find another way to scope the directional animations — introducing
        `rules` naively alongside the current config would silently break corner
        rounding and whatever else still uses old-style conditions.
-     - Not tested: real dwm setting the property (this used manual `xprop` writes as
-       a stand-in), so the dwm-side half of the patch — actually calling
-       `XChangeProperty` before `XMoveWindow` in `showhide()`/`resize()` — is still
-       unverified beyond the source reading in this document. That part still needs
-       building and testing for real.
+     - The dwm-side half of the patch (an actual `XChangeProperty` call, with an
+       explicit per-write `XSync`, right before `XMoveWindow` in `showhide()`,
+       direction computed in `view()` from an explicit old/new tag-index
+       comparison — never a next/prev abstraction, per lesson #6) was written and
+       built as a throwaway test binary and validated correct, repeatedly, inside
+       an isolated Xephyr nested X session (`xorg-server-xephyr`, installed for
+       this purpose) with a real test dwm process (own IPC socket, own display) --
+       `xprop` on the test client showed the exact expected directional atom
+       value after every tag switch, across many repeated switches, with no real
+       X session ever touched.
+     - **What's still unresolved: whether picom actually detects that dwm-written
+       property in time, for the true zero-gap case.** Xephyr's own picom rules
+       match failed to pick it up in that same session, but by then it was
+       already unclear whether that was a real timing race or an artifact of the
+       richer test config (see above) -- the question was never cleanly
+       re-isolated in Xephyr afterward. See "Real-dwm-swap attempt" below for why
+       this could not be settled by testing the live session instead.
+   - **Real-dwm-swap attempt (2026-09-27) -- do not repeat this method.** With
+     はる physically at the X1CG5 and both directions of the rollback commands
+     written out in advance, we tried answering the zero-gap question against
+     the actual production dwm process by killing it and immediately `exec`-ing
+     the patched test binary on the same display, planning to reverse the same
+     way. **The race was lost before the test binary even completed
+     `XOpenDisplay`** -- `dwm: cannot open display` -- because `xinit` tears down
+     the X server as soon as its client (dwm, which `session/xidou-xinitrc`
+     `exec`s directly, so dwm *is* xinit's client with no supervisor in between)
+     exits; there was no window in which a second process could reconnect. The
+     whole session (X server, dwm, Quickshell, every window) went down; はる
+     recovered via the display manager's greeter/re-login rather than the
+     planned manual `startx`, and confirmed the real session came back normal
+     afterward. No repo files were touched by this; `git status` was clean
+     throughout.
+     - **Conclusion: this specific technique (kill the live dwm + race an exec
+       against it) is not viable for testing anything on the live session** -- it
+       fails faster than a same-machine `kill && exec` shell pipeline can win,
+       every time, not just sometimes. It answered "is a bare race safe?" (no)
+       rather than the zero-gap timing question it was meant to answer.
+     - **Separate, deferred idea surfaced by this failure**: dwm currently has no
+       hot-reload/self-restart mechanism (`quit()` just sets `running = 0`; no
+       `execvp(argv[0], ...)` path exists anywhere). If a dwm binary could be
+       swapped safely in the future (for testing patches like this one, or for
+       config/behavior changes generally), it would need dwm to `execvp` itself
+       *from inside its own process* -- e.g. a new IPC `restart` command that
+       calls `cleanup()` then `execvp(dwm_argv0, dwm_argv)` before the process
+       ever exits, so there is no window where the process is gone and xinit
+       could react. This is a real, separate, deliberate feature worth
+       considering later (also useful any time a build needs reloading during
+       normal development) -- not something to build as a side effect of this
+       animation investigation.
+   - **Where this leaves H3 step 2, as of 2026-09-27**: the dwm patch itself is
+     validated (Xephyr, repeatable, correct in both directions). The picom-side
+     zero-gap detection question is **unresolved** -- neither confirmed nor
+     ruled out -- and the one method that could settle it without further risk
+     (re-isolating the question inside Xephyr with the *real* dwm C
+     implementation driving zero-gap switches, instead of the shell-process
+     `xprop`/`xdotool` simulation that introduced its own scheduling jitter) was
+     not completed this session. Recommended framing going forward: **treat
+     open/close animations and the existing non-directional tag-slide (H3 step 1)
+     as solid and usable; treat directional tag-slide (step 2's whole point) as
+     status unknown/deferred** until that Xephyr re-test is done, or until はる
+     decides the open question isn't worth resolving before shipping something
+     simpler (e.g. the alternatives in step 4).
 3. **Same mechanism for relayout moves** (open/close/swap), with a separate script.
 4. **Alternatives, only if 2 fails:**
    - (a) dwm interpolates `XMoveWindow` itself on a timerfd. Coordinated and
