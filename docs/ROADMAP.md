@@ -1041,6 +1041,65 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
        one-line fix in `ev_property_notify()` would be to also mark
        `(atom, false)` when `cursor == toplevel_cursor`. Not needed here, because
        `@` sidesteps it.
+   - **picom side written (2026-09-27, `session/picom.conf`).** It does two things:
+     - It migrates the config to `rules`: `rounded-corners-exclude` becomes
+       corner-radius-0 rules for `dock` and `override_redirect`, plus an explicit
+       `fullscreen` rule, because old-style mode excluded fullscreen implicitly and
+       rules mode doesn't.
+     - It adds four `@`-suffixed directional rules. The comment block in
+       `picom.conf` is the contract with dwm: `tag-in-from-right`, `tag-in-from-left`,
+       `tag-out-to-left` and `tag-out-to-right`, and anything else means no slide.
+       dwm must rewrite the property before every move it makes. These names
+       replace the throwaway patch's `tag-in-left`-style names.
+
+     **Both sides slide** by one monitor width, with ease-out
+     `cubic-bezier(0.25, 1, 0.5, 1)` over 0.25 s. The global `animations` block
+     that MotionSync manages is untouched, and `rules` sits outside its markers.
+     **Inert until dwm writes `_XIDOU_MOTION`.** The dwm half isn't in the repo;
+     the earlier patch was a throwaway.
+   - **Verified in a cloud Xvfb** (picom v13 built from source, xrender):
+     - The config parses with 0 warnings or errors, and the old-style/rules
+       conflict warning is gone.
+     - Corner parity, checked with `picom-inspect --monitor` against the previous
+       config: normal 10 → 10, dock 0 → 0, override-redirect (no `WM_STATE`, like
+       Quickshell's panels) 0 → 0, fullscreen 0 (implicit) → 0 (rule).
+     - The slide, using this exact config with `duration` stretched to 2 s. Two
+       dwm-like windows were driven with `xprop` then `xdotool windowmove`, both
+       directions, and frames were captured at 0.15/0.3/0.5/0.9/2.6 s. Outgoing and
+       incoming windows moved the same way, and the gap between them stayed
+       exactly 580 px in every frame, so the tags move as one rigid surface.
+     - **Outgoing windows are drawn while sliding out.** v13 decides visibility in
+       `layer_from_window()` (`renderer/layout.c`) from the animated position. The
+       off-screen check in `paint_preprocess()` only sets `w->to_paint`, which
+       rendering doesn't read. (A source-only reading of that check had predicted
+       the opposite. The frames settled it.)
+     - Not verified: real hardware, the real dwm patch, how 0.25 s and the curve
+       feel, the glx backend, and rapid switching.
+   - **Known limits.**
+     - With several monitors, an outgoing window is already off-screen when its
+       animation starts, so `window-monitor-*` falls back to the whole screen. The
+       outgoing slide is then too long and uncropped. On one monitor it is exact.
+     - Duration and curve are hardcoded in `picom.conf`, not read from
+       `config.toml`'s `[motion]`. Settings > Motion wiring is a follow-up.
+   - **Handoff for the X1CG5** (はる's local Claude Code, same ground rules as the
+     step 1 handoff).
+     - **A. Migration parity** (needs no dwm change). Check out this branch in a
+       worktree so the running session's own `session/picom.conf` isn't touched.
+       Swap the real picom for one started from the worktree's `picom.conf` with
+       `--log-level warn --log-file /tmp/xidou-h3/step2.log`. Stop picom by PID;
+       `pkill` fails in the Claude Code sandbox. Then check:
+       - The log is empty.
+       - Tiled windows are still rounded.
+       - The bar is flush.
+       - Quickshell panels show no double-rounded seam.
+       - A fullscreen window has square corners.
+
+       Afterwards, restore the real picom exactly as in step 1, H.
+     - **B. Directional slide.** This needs dwm to write the contract values, which
+       the repo's dwm can't do yet. With no dwm patch, only a manual simulation on
+       a floating window is possible (`xprop -f _XIDOU_MOTION 32a -set ...`, then
+       move it). That checks the look of one window's slide, not a full tag switch.
+       The real check waits for the dwm half.
 3. **Same mechanism for relayout moves** (open/close/swap), with a separate script.
 4. **Alternatives, only if 2 fails:**
    - (a) dwm interpolates `XMoveWindow` itself on a timerfd. Coordinated and
