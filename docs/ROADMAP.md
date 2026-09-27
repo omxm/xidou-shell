@@ -1126,19 +1126,32 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
      Captured frames of the 2 → 1 and 1 → 2 switches show the real tiled
      layout sliding as one surface, in the right direction. The dwm log showed
      no X errors.
-   - **Known gaps in the dwm half.**
-     - **An incoming client whose tile changed while it was hidden snaps into
-       place instead of sliding.** Seen once in testing: xclock last shown
-       half-width in a two-tag view, shown alone at full width. picom gives a
-       move plus resize the `size` trigger, which takes priority over
-       `position`, and there is no `size` rule. It never slides the wrong way.
-       Possible fix, not done here to keep `picom.conf` as agreed: add `"size"`
-       to the `tag-in-*` rules' triggers. That needs its own check for stale
-       content during the slide.
-     - `cycleview` (super+x/z, super+scroll) wraps from tag 9 to tag 1. By tag
-       number that is "to a lower tag", so pressing *next* at the end slides
-       the other way. This is the consequence of the explicit-tag-number rule;
-       changing it would mean passing the key's intent into `view()`.
+   - **Fixed: an incoming client whose tile changed while it was hidden used to
+     snap into place instead of sliding.** Example: xclock last shown
+     half-width in a two-tag view, then shown alone at full width. dwm moves and
+     resizes it in the same arrange, and picom gives that the `size` trigger,
+     which outranks `position`. The `tag-in-*` rules now list
+     `triggers = [ "position", "size" ]`; the `tag-out-*` rules don't need it,
+     since hiding never resizes. Cloud Xvfb A/B, same scenario, patched dwm,
+     picom v13, 2 s duration:
+
+     | | Before (`position` only) | After (`position`, `size`) |
+     |---|---|---|
+     | Animations on the switch | 1 (xlogo out) | 2 (xlogo out; xclock in via `size`) |
+     | xclock at t = 0.15 / 0.3 s | full width at once (6..1274), covering xlogo's slide | sliding in; its left edge stays 12 px (the dwm gap) right of xlogo's right edge (1036/1048, 738/750) |
+     | Gap relayout right after | 0 animations | 0 animations (dwm cleared the value) |
+     | Plain switch, no resize | `position`, both windows | `position`, both windows (unchanged) |
+
+     No stale or garbled content was visible in the captured frames. The client
+     repaints at its new size while it is still off-screen.
+   - **Accepted limitation: wraparound direction.** `cycleview` (super+x/z,
+     super+scroll) wraps from tag 9 to tag 1. By tag number that is "to a lower
+     tag", so pressing *next* at the end slides the other way (and 1 → 9 on
+     *previous* slides as "to a higher tag"). This is the direct consequence of
+     deciding direction by explicit tag number (lesson #6), not a bug. A direct
+     9 ↔ 1 jump is rare next to adjacent-tag switching, so there is no
+     special-case wraparound logic. Revisit only if it turns out to bother in
+     daily use; the fix would be passing the key's intent into `view()`.
    - **Handoff for the X1CG5** (はる's local Claude Code, same ground rules as the
      step 1 handoff). The dwm patch and the migrated `picom.conf` are tested
      together, Xephyr first. **Never kill or replace the live dwm process.**
@@ -1159,12 +1172,25 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
         Drive switches only with the worktree's `dwm/dwm-msg` and that socket
         exported. A bare `dwm-msg` without the socket variable talks to the real
         dwm.
+
+        **Keep the socket path short (under 108 bytes).** If
+        `XIDOU_DWM_SOCKET` is longer than `sun_path`, both dwm and dwm-msg
+        *silently fall back to the real `/tmp/dwm.sock`*. The test dwm's
+        `ipc_create_socket()` then `unlink()`s the live session's socket and
+        binds its own there. `xidou msg` keybinds and the bar's IPC would talk
+        to the test dwm, and when it exits the live session's IPC is gone until
+        relogin. Seen in the cloud sandbox with a long scratchpad path (no real
+        dwm there, so no harm). `/tmp/xidou-h3/dwm-test.sock` is safe. After
+        starting the test dwm, check that its stderr has no `too long` line and
+        that `/tmp/dwm.sock`'s inode (`ls -i`) hasn't changed.
      3. Check in Xephyr:
         - `xprop -display :2 -id <win> _XIDOU_MOTION` shows the values from the
           table above.
         - The picom log shows the matches and `Starting animation position`
-          lines, and no warnings.
-        - はる watches both directions at 0.25 s.
+          lines, and no warnings. An incoming window whose tile changed while
+          hidden logs `Starting animation size` instead; that is expected.
+        - はる watches both directions at 0.25 s. Include the resize case:
+          view tags 1+2 together, go back to 1, then switch to 2.
         - Migration parity: tiled windows are rounded, and a fullscreen window
           (dwm's fullscreen toggle) has square corners.
         - For the curve comparison, copy the worktree's `picom.conf` to
