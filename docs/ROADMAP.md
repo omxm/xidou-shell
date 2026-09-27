@@ -824,6 +824,46 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
    - First gate: confirm that the property change and the geometry change are
      evaluated in the same picom frame (plausible from source, unverified). If not,
      this path fails.
+   - **Gate result (2026-09-27, real X1CG5, throwaway config in `/tmp/xidou-h3/`,
+     no dwm/config.toml/picom.conf changes) — gate passes.** Simulated the exact
+     dwm sequence (set an X property immediately before moving the window) using
+     `xprop`/`xdotool` on a manually-floated test kitty window (tiled clients ignore
+     `xdotool windowmove`, so floating was needed to get a real geometry change —
+     an artifact of manual simulation, not something the real dwm patch will need to
+     work around, since dwm moves its own clients directly).
+     - The property must be **ATOM-typed** (`xprop -f PROP 32a -set PROP AtomName`),
+       matched in picom as `PROP = 'AtomName'` — the same pattern picom's own
+       `_NET_WM_STATE` examples use. A `STRING`-typed property with a string-literal
+       match (`PROP = 'text'`) silently never matched (`c2_match_once` logged
+       `result = 0` every time) — worth remembering for the real patch instead of
+       rediscovering it.
+     - A **rule-scoped** `animations` block (`rules = ({ match = "..."; animations =
+       (...) })`, the mechanism the plan above assumes) does nothing on its own.
+       picom only appears to track per-frame position deltas when at least one
+       **top-level** `animations` entry also declares `triggers = [ "position" ]`
+       (confirmed by adding a no-op 0.01s top-level position entry, after which the
+       rule-scoped directional one started firing). The real patch's config needs a
+       top-level `position` entry present (even a trivial one) alongside the
+       rule-scoped directional ones — not discussed in the plan above, now recorded
+       here so step 2 doesn't have to re-discover it.
+     - Once both of the above were in place, log evidence directly answers the risk
+       question: `c2_match_once` (confirming the window's `_XIDOU_MOTION` value) and
+       `win_process_animation_and_state_change`'s `Starting animation position` both
+       log at the **identical millisecond timestamp** for the same window — i.e. by
+       the time picom decides to start the position animation, it already sees the
+       property value set immediately beforehand. No race observed.
+     - Caveat: mixing the new-style `rules` list with picom.conf's existing old-style
+       per-option conditions (this repo's `rounded-corners-exclude` etc.) triggers a
+       picom warning that the old-style options are then silently ignored entirely.
+       The real patch must either migrate every old-style option in `picom.conf` into
+       `rules`, or find another way to scope the directional animations — introducing
+       `rules` naively alongside the current config would silently break corner
+       rounding and whatever else still uses old-style conditions.
+     - Not tested: real dwm setting the property (this used manual `xprop` writes as
+       a stand-in), so the dwm-side half of the patch — actually calling
+       `XChangeProperty` before `XMoveWindow` in `showhide()`/`resize()` — is still
+       unverified beyond the source reading in this document. That part still needs
+       building and testing for real.
 3. **Same mechanism for relayout moves** (open/close/swap), with a separate script.
 4. **Alternatives, only if 2 fails:**
    - (a) dwm interpolates `XMoveWindow` itself on a timerfd. Coordinated and
