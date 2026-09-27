@@ -73,9 +73,15 @@ inventoried into this file yet.
   mirroring the MangoWM/Noctalia convention. Keybind migration from MangoWM/Noctalia
   muscle memory is done (`ec597a4`), including directional focus/swap
   (`super+<arrow>` / `super+shift+<arrow>`, `2112a35`).
-- dwm itself also grew: window-open/close animations, rounded borders via X Shape,
-  dock-window stacking, tag-follow-on-move. It remains a tiling engine, not the
+- dwm itself also grew: rounded borders via X Shape, dock-window stacking,
+  tag-follow-on-move, window gaps (IPC-settable). It remains a tiling engine, not the
   project's main deliverable — the shell is.
+- **dwm has no animation code at all.** Window open/close animations are entirely
+  picom's (`animations` block in `session/picom.conf`, regenerated from `[motion]` by
+  `services/MotionSync.qml`). A tag switch is not animated: dwm hides clients by
+  `XMoveWindow` to `-2 * WIDTH(c)` off-screen (`showhide()`), which none of the
+  configured picom triggers react to. See `docs/ROADMAP.md` H3 for what it would
+  take to animate that.
 
 ### Shell: Quickshell (Qt/QML) on X11
 
@@ -229,7 +235,8 @@ panel that wasn't in the original plan:
     control-center's Weather section).
   - **Wallpaper**: General (Directories).
 - Toggles wired to real backing: Wi-Fi and Night Light (Home tab), Caffeine.
-- Window-open/close animations; session-lifecycle bugs around panel open/close fixed.
+- Window-open/close animations (picom's, not dwm's); session-lifecycle bugs around
+  panel open/close fixed.
 
 ## What's still open
 

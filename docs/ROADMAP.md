@@ -173,6 +173,8 @@ doesn't do that: `showhide()` (`dwm/dwm.c:2195`) hides clients by `XMoveWindow` 
 - Windows on hidden tags stay **mapped**, so their XComposite pixmaps stay valid. Live
   thumbnails for an overview (H2) are therefore possible from a small C helper, without
   needing Quickshell's screencopy support (which I believe is Wayland-only — verify).
+- Follow-up investigation (2026-09-27): see H3 — the trigger should fire, but without a
+  dwm change the result would look uncoordinated.
 
 ### 1.7 Window gaps: the first real "dwm setting from config" — and two rough edges
 
@@ -746,15 +748,114 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - Depends on: F1, M14 (reuse its model), D16. Verify: `[SESSION]` (compositor
   interaction with picom must be checked on the real GPU).
 
-**H3 — Tag-switch and window-move animations**
-- Step 1 (cheap): real-session experiment with a picom `geometry` trigger (1.6). If it
-  animates tag switches acceptably, add it to the MotionSync-managed block and stop here.
-- Step 2 (only if step 1 fails): animate in dwm itself — interpolate `XMoveWindow` over
-  a few frames on tag switch and on arrange. Known risks: flicker without compositor
-  sync, and every intermediate position triggers client redraws. Likely needs to be
-  opt-in.
-- Step 3 (not recommended): picom fork (1.5 #4).
-- Depends on: T0-3 (backend), D19. Verify: `[SESSION]` only.
+**H3 — Tag-switch and window-move animations ("Niri-style")**
+
+Feasibility investigation, 2026-09-27. Source reading only: this repo's `dwm/dwm.c`
+and picom upstream HEAD (`3502b29`, 2026-09-20). **Nothing has been observed on real
+hardware yet**, and the installed picom version on the X1CG5 is unknown. Every picom
+claim below is "true of upstream HEAD" until step 1 confirms it locally.
+
+*What dwm does on a tag switch (confirmed from source)*
+- `view()` → `focus(NULL)` → `arrange()` → `showhide(m->stack)` → `arrangemon()` →
+  `restack()`.
+- `showhide()` (`dwm.c:2195`) issues one `XMoveWindow` per client. Hide:
+  `XMoveWindow(win, WIDTH(c) * -2, c->y)` — y kept, x set to minus twice the
+  client's own width (border included). Show: `XMoveWindow(win, c->x, c->y)`. `c->x`
+  is never overwritten on hide, so a shown client returns exactly where it was. No
+  unmap, no resize to zero.
+- The layout's `resize()` calls are no-ops when geometry is unchanged
+  (`applysizehints()` returns false, `dwm.c:471`), so a plain tag switch sends pure
+  position changes. The `showhide` moves are unsynced and flush together at
+  `restack()`'s `XSync`.
+- dwm contains no animation code; today's open/close animations are all picom's.
+  `picom.conf` configures only `open`/`show`/`close`/`hide` — no position/size/
+  geometry trigger is in use anywhere, so tag switches are currently instant.
+
+*Would picom's `position` trigger fire? (upstream source)*
+- Yes, by construction. `win_process_animation_and_state_change()` (`src/wm/win.c`)
+  compares each window's previous-frame geometry with its current geometry once per
+  frame. A mapped window that only moved gets `ANIMATION_TRIGGER_POSITION`. X events
+  are drained before each frame, so dwm's single flush should start all windows'
+  animations in the same frame (worst case one frame apart).
+- Caveats: the `size`/`position` triggers and `saved-image-blend` are marked
+  EXPERIMENTAL in the manpage. The trigger fires on every dwm-initiated move — relayout
+  on open/close, mfact, directional swap, and every motion event of a mouse drag, which
+  would restart the animation continuously. `size` has priority when both size and
+  position change.
+
+*Predicted look with no dwm change (to be confirmed in step 1)*
+- Displacement differs per window: the hide target is `-2 × own width`, so windows of
+  different widths travel different distances in the same duration, and relative
+  positions distort mid-animation.
+- Outgoing windows slide left, while incoming windows arrive from the left moving
+  right, so the two sets cross. The direction is the same whichever tag you go to.
+- picom animates windows independently, with no group concept. The previous "each
+  window animates on its own" ceiling still applies, just through a different
+  trigger.
+- Key insight: per-window picom animations *read* as one cohesive slide only when
+  every window's displacement vector is identical. Start frame, duration, and easing
+  can already be aligned; displacement is what must be made uniform.
+
+*Script-language limits (upstream)*
+- Expressions support only `+ - * / ^`: no conditionals, no min/max. So one script
+  cannot tell a tag-switch move from a relayout move.
+- Context variables do include `window-x-before`/`-y-before` and `window-monitor-*`.
+  Output variables include `offset-x/y` and `crop-*`.
+- Curves: `linear`, `cubic-bezier`, `steps` — no spring.
+- Window `rules` can match X properties and assign per-window `animations`.
+
+*Steps (each needs はる's approval before it starts)*
+
+1. **Real-hardware baseline — not done yet.** Needs the X1CG5; a cloud container has
+   neither picom nor the real session.
+   - Record `picom --version`.
+   - Run a *throwaway* picom config (not the repo's `session/picom.conf`) that adds a
+     minimal `position` animation: offset from `window-x-before - window-x` to 0,
+     ~0.3 s, linear.
+   - Switch between two tags holding windows of different widths, then between an
+     occupied and an empty tag. Record: does it fire at all, is the crossing visible,
+     how uneven are the speeds, what happens on rapid repeated switches, and what does
+     a mouse drag of a floating window look like.
+   - Do it on both the current `xrender` backend and `glx` (performance, see T0-3).
+   - A screen recording is the evidence. Write the outcome here.
+2. **dwm marker patch + picom rules** (only if step 1 shows the trigger works).
+   - Before every geometry change dwm makes, set `_XIDOU_MOTION` on the client:
+     `tag-in-left`, `tag-out-right`, `layout`, `drag`, ... Direction comes from
+     comparing old and new tag numbers — explicit numbers, never next/prev
+     (lesson #6).
+   - picom rules match the property. Tag scripts animate `offset-x` by exactly
+     ±monitor width (incoming: `±window-monitor-width → 0`; outgoing: from
+     `window-x-before - window-x` to that minus/plus monitor width), cropped to the
+     monitor. This makes displacement uniform, so the slide reads as one surface.
+   - `drag` gets no animation.
+   - Optionally wrap `showhide` in `XGrabServer`/`XUngrabServer` so all changes reach
+     picom in one batch.
+   - First gate: confirm that the property change and the geometry change are
+     evaluated in the same picom frame (plausible from source, unverified). If not,
+     this path fails.
+3. **Same mechanism for relayout moves** (open/close/swap), with a separate script.
+4. **Alternatives, only if 2 fails:**
+   - (a) dwm interpolates `XMoveWindow` itself on a timerfd. Coordinated and
+     interruptible, but not vsync-aligned with picom, so judder is likely.
+   - (b) A Quickshell overlay slides before/after snapshots. Perfectly rigid, and
+     gesture-trackable in principle, but capture latency delays the start —
+     needs measuring.
+   - (c) A picom fork — not recommended (1.5 #4).
+
+*Out of reach via picom, even if step 2 succeeds*
+- 1:1 touchpad tracking: animations are time-driven from a trigger, with no external
+  progress input.
+- Smooth retargeting on rapid switches: a new trigger restarts from the script's start
+  values, and there's no "current animated offset" variable, so the window visibly
+  jumps.
+- Spring physics.
+- Input during animation lands on final positions.
+- Empty tags show motion on one side only.
+- Niri's defining scrolling-column *layout* is a layout, not an animation. A scrolling
+  dwm layout would, as a side effect, produce uniform displacements that picom's
+  per-window animations render cohesively, but it's a new-layout-sized project.
+
+- Depends on: T0-3 (backend, picom version), D19. Verify: `[SESSION]` + `[HW]` only.
 
 **H4 — dwm runtime settings: gaps/borders/layout params, window rules, keybinds**
 - What: dwm reads everything from `config.h` at compile time. To edit from Settings:
