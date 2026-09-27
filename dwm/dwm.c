@@ -2245,16 +2245,27 @@ setupepoll(void)
 	 * since that ends up in an unbounded strcpy(); previously
 	 * unreachable from outside the process (ipcsockpath is a fixed
 	 * config.h literal), an env var makes the length externally
-	 * controlled for the first time. */
+	 * controlled for the first time.
+	 *
+	 * A path that is too long disables IPC; it must never fall back to
+	 * ipcsockpath. That default is the live session's socket, and
+	 * ipc_create_socket() unlink()s whatever is at its path before
+	 * binding, so a fallback would silently take over the live dwm's IPC
+	 * from a test instance. dwm keeps running without IPC, as it already
+	 * does when ipc_init() fails. */
 	{
 		const char *sockpath = getenv("XIDOU_DWM_SOCKET");
+		const size_t maxlen = sizeof(((struct sockaddr_un *)0)->sun_path) - 1;
+
 		if (!sockpath || !*sockpath)
 			sockpath = ipcsockpath;
-		else if (strlen(sockpath) >= sizeof(((struct sockaddr_un *)0)->sun_path)) {
-			fprintf(stderr, "XIDOU_DWM_SOCKET too long, falling back to %s\n", ipcsockpath);
-			sockpath = ipcsockpath;
+		else if (strlen(sockpath) > maxlen) {
+			fprintf(stderr, "dwm: XIDOU_DWM_SOCKET too long (%zu bytes, max %zu); "
+				"IPC disabled, not falling back to %s\n",
+				strlen(sockpath), maxlen, ipcsockpath);
+			sockpath = NULL;
 		}
-		if (ipc_init(sockpath, epoll_fd, ipccommands, LENGTH(ipccommands)) < 0) {
+		if (sockpath && ipc_init(sockpath, epoll_fd, ipccommands, LENGTH(ipccommands)) < 0) {
 			fputs("Failed to initialize IPC\n", stderr);
 		}
 	}
