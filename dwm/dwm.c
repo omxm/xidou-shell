@@ -69,6 +69,8 @@ enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMWindowTypeDialog, NetWMWindowTypeDock, NetWMStrutPartial, NetWMStrut,
        NetClientList, NetLast }; /* EWMH atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
+enum { XidouMotion, XidouTagInFromRight, XidouTagInFromLeft,
+       XidouTagOutToLeft, XidouTagOutToRight, XidouLast }; /* _XIDOU_MOTION and its values */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
 
@@ -110,6 +112,8 @@ struct Client {
 	int bw, oldbw;
 	unsigned int tags;
 	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
+	int isshown; /* on-screen as of the last showhide() */
+	Atom motion; /* last value written to _XIDOU_MOTION, None if absent; see setmotion() */
 	Client *next;
 	Client *snext;
 	Monitor *mon;
@@ -271,6 +275,7 @@ static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
 static void setlayoutsafe(const Arg *arg);
 static void setmfact(const Arg *arg);
+static void setmotion(Client *c, Atom motion);
 static void setgappih(const Arg *arg);
 static void setgappoh(const Arg *arg);
 static void setup(void);
@@ -280,6 +285,7 @@ static void showhide(Client *c);
 static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
+static int tagswitchdir(unsigned int from, unsigned int to);
 static void tile(Monitor *m);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
@@ -341,7 +347,8 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[PropertyNotify] = propertynotify,
 	[UnmapNotify] = unmapnotify
 };
-static Atom wmatom[WMLast], netatom[NetLast];
+static Atom wmatom[WMLast], netatom[NetLast], xidouatom[XidouLast];
+static int motiondir = 0; /* set by view() for its own arrange(); see tagswitchdir() */
 static int epoll_fd;
 static int dpy_fd;
 static int running = 1;
@@ -818,8 +825,10 @@ configurerequest(XEvent *e)
 				c->y = m->my + (m->mh / 2 - HEIGHT(c) / 2); /* center in y direction */
 			if ((ev->value_mask & (CWX|CWY)) && !(ev->value_mask & (CWWidth|CWHeight)))
 				configure(c);
-			if (ISVISIBLE(c))
+			if (ISVISIBLE(c)) {
+				setmotion(c, None);
 				XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
+			}
 		} else
 			configure(c);
 	} else {
@@ -1504,6 +1513,9 @@ manage(Window w, XWindowAttributes *wa)
 	attachstack(c);
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
+	/* A window kept across a dwm restart may still carry a value from the
+	 * previous instance; clear it so c->motion (None) matches the window. */
+	XDeleteProperty(dpy, c->win, xidouatom[XidouMotion]);
 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
 	setclientstate(c, NormalState);
 	if (c->mon == selmon)
@@ -1731,6 +1743,12 @@ resizeclient(Client *c, int x, int y, int w, int h)
 	c->oldw = c->w; c->w = wc.width = w;
 	c->oldh = c->h; c->h = wc.height = h;
 	wc.border_width = c->bw;
+	/* Outside a tag switch this is an ordinary move: clear any tag-switch
+	 * value so picom doesn't replay the slide. During one, keep the value
+	 * showhide() just set, so an incoming client that the layout also
+	 * shifts still slides in. */
+	if (!motiondir)
+		setmotion(c, None);
 	XConfigureWindow(dpy, c->win, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
 	configure(c);
 	XSync(dpy, False);
@@ -2040,6 +2058,30 @@ setlayoutsafe(const Arg *arg)
 	}
 }
 
+/* _XIDOU_MOTION tells picom why a client is about to move, so that
+ * session/picom.conf's rules can give a tag switch a directional slide.
+ * picom reads the property when it sees the move, so it must be written
+ * before the move, on every move; a stale tag-switch value would replay
+ * the slide on the next unrelated move. picom.conf's comments hold the
+ * value contract; docs/ROADMAP.md H3 has the background.
+ *
+ * Only writes when the value changes, so steady-state moves (layout,
+ * mouse drag) cost no extra X traffic. Ordering needs no XSync: X
+ * processes this connection's requests in order, so picom always gets
+ * the PropertyNotify before the ConfigureNotify of the move. */
+void
+setmotion(Client *c, Atom motion)
+{
+	if (c->motion == motion)
+		return;
+	c->motion = motion;
+	if (motion == None)
+		XDeleteProperty(dpy, c->win, xidouatom[XidouMotion]);
+	else
+		XChangeProperty(dpy, c->win, xidouatom[XidouMotion], XA_ATOM, 32,
+			PropModeReplace, (unsigned char *) &motion, 1);
+}
+
 /* arg > 1.0 will set mfact absolutely */
 void
 setmfact(const Arg *arg)
@@ -2130,6 +2172,11 @@ setup(void)
 	netatom[NetWMStrutPartial] = XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False);
 	netatom[NetWMStrut] = XInternAtom(dpy, "_NET_WM_STRUT", False);
 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
+	xidouatom[XidouMotion] = XInternAtom(dpy, "_XIDOU_MOTION", False);
+	xidouatom[XidouTagInFromRight] = XInternAtom(dpy, "tag-in-from-right", False);
+	xidouatom[XidouTagInFromLeft] = XInternAtom(dpy, "tag-in-from-left", False);
+	xidouatom[XidouTagOutToLeft] = XInternAtom(dpy, "tag-out-to-left", False);
+	xidouatom[XidouTagOutToRight] = XInternAtom(dpy, "tag-out-to-right", False);
 	/* init cursors */
 	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
 	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
@@ -2231,8 +2278,17 @@ showhide(Client *c)
 {
 	if (!c)
 		return;
+	/* During a tag switch (motiondir != 0), only clients whose visibility
+	 * actually changes get a tag-in or tag-out value; one that stays
+	 * visible or stays hidden gets None. Tracking isshown, rather than
+	 * testing the old tagset, keeps this right for tag(), which retags
+	 * the client before calling view(). */
 	if (ISVISIBLE(c)) {
 		/* show clients top down */
+		setmotion(c, motiondir && !c->isshown
+			? xidouatom[motiondir > 0 ? XidouTagInFromRight : XidouTagInFromLeft]
+			: None);
+		c->isshown = 1;
 		XMoveWindow(dpy, c->win, c->x, c->y);
 		if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) && !c->isfullscreen)
 			resize(c, c->x, c->y, c->w, c->h, 0);
@@ -2240,6 +2296,10 @@ showhide(Client *c)
 	} else {
 		/* hide clients bottom up */
 		showhide(c->snext);
+		setmotion(c, motiondir && c->isshown
+			? xidouatom[motiondir > 0 ? XidouTagOutToLeft : XidouTagOutToRight]
+			: None);
+		c->isshown = 0;
 		XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
 	}
 }
@@ -2324,6 +2384,19 @@ tagmon(const Arg *arg)
 	if (!selmon->sel || !mons->next)
 		return;
 	sendmon(selmon->sel, dirtomon(arg->i));
+}
+
+/* Direction of a tag switch from explicit tag numbers, never a next/prev
+ * notion (CLAUDE.md lesson #6): 1 when moving to a higher tag, -1 to a
+ * lower one. 0 unless both tagsets are a single tag -- with several tags
+ * visible (super+0, toggleview) "higher" has no meaning, so no slide. For
+ * single-bit masks, comparing the masks compares the tag numbers. */
+int
+tagswitchdir(unsigned int from, unsigned int to)
+{
+	if (!from || !to || (from & (from - 1)) || (to & (to - 1)))
+		return 0;
+	return (to > from) - (to < from);
 }
 
 void
@@ -2869,13 +2942,19 @@ updatewmhints(Client *c)
 void
 view(const Arg *arg)
 {
+	unsigned int oldtags = selmon->tagset[selmon->seltags];
+
 	if ((arg->ui & TAGMASK) == selmon->tagset[selmon->seltags])
 		return;
 	selmon->seltags ^= 1; /* toggle sel tagset */
 	if (arg->ui & TAGMASK)
 		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
+	/* motiondir is only ever non-zero inside this arrange(), where
+	 * showhide() turns it into _XIDOU_MOTION values. */
+	motiondir = tagswitchdir(oldtags, selmon->tagset[selmon->seltags]);
 	focus(NULL);
 	arrange(selmon);
+	motiondir = 0;
 }
 
 Client *

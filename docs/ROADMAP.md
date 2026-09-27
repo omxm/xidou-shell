@@ -1052,11 +1052,13 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
        dwm must rewrite the property before every move it makes. These names
        replace the throwaway patch's `tag-in-left`-style names.
 
-     **Both sides slide** by one monitor width, with ease-out
-     `cubic-bezier(0.25, 1, 0.5, 1)` over 0.25 s. The global `animations` block
-     that MotionSync manages is untouched, and `rules` sits outside its markers.
-     **Inert until dwm writes `_XIDOU_MOTION`.** The dwm half isn't in the repo;
-     the earlier patch was a throwaway.
+     **Both sides slide** by one monitor width over 0.25 s, carried over from
+     step 1's approved value. The curve is ease-out,
+     `cubic-bezier(0.25, 1, 0.5, 1)`, and that part is **provisional**: step 1
+     was seen with a linear curve and はる hasn't seen ease-out yet. Compare it
+     against linear during the X1CG5 verification before settling it. The global
+     `animations` block that MotionSync manages is untouched, and `rules` sits
+     outside its markers. The dwm half is described below.
    - **Verified in a cloud Xvfb** (picom v13 built from source, xrender):
      - The config parses with 0 warnings or errors, and the old-style/rules
        conflict warning is gone.
@@ -1073,33 +1075,117 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
        off-screen check in `paint_preprocess()` only sets `w->to_paint`, which
        rendering doesn't read. (A source-only reading of that check had predicted
        the opposite. The frames settled it.)
-     - Not verified: real hardware, the real dwm patch, how 0.25 s and the curve
-       feel, the glx backend, and rapid switching.
+     - Not verified: real hardware, how 0.25 s and the curve feel, the glx
+       backend, and rapid switching. The dwm patch was verified together with
+       this config later; see below.
    - **Known limits.**
      - With several monitors, an outgoing window is already off-screen when its
        animation starts, so `window-monitor-*` falls back to the whole screen. The
        outgoing slide is then too long and uncropped. On one monitor it is exact.
      - Duration and curve are hardcoded in `picom.conf`, not read from
        `config.toml`'s `[motion]`. Settings > Motion wiring is a follow-up.
-   - **Handoff for the X1CG5** (はる's local Claude Code, same ground rules as the
-     step 1 handoff).
-     - **A. Migration parity** (needs no dwm change). Check out this branch in a
-       worktree so the running session's own `session/picom.conf` isn't touched.
-       Swap the real picom for one started from the worktree's `picom.conf` with
-       `--log-level warn --log-file /tmp/xidou-h3/step2.log`. Stop picom by PID;
-       `pkill` fails in the Claude Code sandbox. Then check:
-       - The log is empty.
-       - Tiled windows are still rounded.
-       - The bar is flush.
-       - Quickshell panels show no double-rounded seam.
-       - A fullscreen window has square corners.
+   - **dwm side written (2026-09-27, `dwm/dwm.c`).**
+     - `view()` computes the direction with `tagswitchdir()` from the old and new
+       tagsets: explicit tag numbers, never next/prev (lesson #6). It holds the
+       direction in `motiondir` for the duration of its own `arrange()` only.
+     - Only single-tag to single-tag switches slide. `super+0` (view all) and
+       `toggleview` get no values, since "higher" has no meaning with several tags
+       visible.
+     - `showhide()` gives a value only to clients whose visibility actually
+       changes (`tag-in-from-*` on show, `tag-out-to-*` on hide), tracked in a
+       per-client `isshown` flag. Every other client gets None, which means the
+       property is deleted.
+       - `isshown` is used rather than the old tagset because `tag()` retags the
+         client before calling `view()`. The moved client stays visible, so it
+         correctly gets no value.
+     - `resizeclient()` (layouts, mouse, fullscreen) and `configurerequest()`
+       clear the value on any move outside a tag switch, per the contract.
+       During a switch, `resizeclient()` keeps what `showhide()` just set.
+     - `setmotion()` caches the last value per client and only talks to X when
+       the value changes. There is no `XSync` per write: X processes one
+       connection's requests in order, so picom always gets the PropertyNotify
+       before the move's ConfigureNotify. The throwaway patch's per-write `XSync`
+       was unnecessary.
+     - `manage()` deletes any leftover value.
+     - The build is clean with the repo's own `-std=c99 -pedantic -Wall`: 0
+       warnings, same as the unpatched tree.
+   - **dwm + picom verified together in a cloud Xvfb** (patched dwm on its own
+     `$XIDOU_DWM_SOCKET`, picom v13 with the repo's `picom.conf` and `duration`
+     stretched to 2 s, real clients: xlogo on tag 1, xclock + xeyes on tag 2,
+     driven through `dwm-msg`):
 
-       Afterwards, restore the real picom exactly as in step 1, H.
-     - **B. Directional slide.** This needs dwm to write the contract values, which
-       the repo's dwm can't do yet. With no dwm patch, only a manual simulation on
-       a floating window is possible (`xprop -f _XIDOU_MOTION 32a -set ...`, then
-       move it). That checks the look of one window's slide, not a full tag switch.
-       The real check waits for the dwm half.
+     | Action | xlogo | xclock | xeyes | Slides started |
+     |---|---|---|---|---|
+     | view 2 → 1 | `tag-in-from-left` | `tag-out-to-right` | `tag-out-to-right` | 3 |
+     | view 1 → 2 | `tag-out-to-left` | `tag-in-from-right` | `tag-in-from-right` | 3 |
+     | `tag` xeyes → tag 4 (follows) | none | `tag-out-to-left` | none (moved, stayed visible) | 1 |
+     | view all tags | none | none | none | 0 |
+     | view 1, then `toggleview` 2 | none | none | none | 0 |
+     | `setgappoh 40` right after a slide-in | none (stale `tag-in` cleared) | none | none | 0 |
+
+     Captured frames of the 2 → 1 and 1 → 2 switches show the real tiled
+     layout sliding as one surface, in the right direction. The dwm log showed
+     no X errors.
+   - **Known gaps in the dwm half.**
+     - **An incoming client whose tile changed while it was hidden snaps into
+       place instead of sliding.** Seen once in testing: xclock last shown
+       half-width in a two-tag view, shown alone at full width. picom gives a
+       move plus resize the `size` trigger, which takes priority over
+       `position`, and there is no `size` rule. It never slides the wrong way.
+       Possible fix, not done here to keep `picom.conf` as agreed: add `"size"`
+       to the `tag-in-*` rules' triggers. That needs its own check for stale
+       content during the slide.
+     - `cycleview` (super+x/z, super+scroll) wraps from tag 9 to tag 1. By tag
+       number that is "to a lower tag", so pressing *next* at the end slides
+       the other way. This is the consequence of the explicit-tag-number rule;
+       changing it would mean passing the key's intent into `view()`.
+   - **Handoff for the X1CG5** (はる's local Claude Code, same ground rules as the
+     step 1 handoff). The dwm patch and the migrated `picom.conf` are tested
+     together, Xephyr first. **Never kill or replace the live dwm process.**
+     The 2026-09-27 attempt showed that `xinit` ends the whole session the moment
+     dwm exits, so no hot-swap race can be won.
+     1. Check out the branch in a worktree, not in the checkout the running
+        session uses: `session/xidou-xinitrc` runs `$REPO_DIR/dwm/dwm` and
+        `$REPO_DIR/session/picom.conf` from there. Then run `make -C dwm` in the
+        worktree. It should build with 0 warnings.
+     2. Build an Xephyr test session entirely from the worktree:
+        - `Xephyr :2` (any size).
+        - The worktree's `dwm/dwm` with `DISPLAY=:2` and
+          `XIDOU_DWM_SOCKET=/tmp/xidou-h3/dwm-test.sock`.
+        - picom with `DISPLAY=:2 --config <worktree>/session/picom.conf
+          --log-level debug --log-file /tmp/xidou-h3/step2-xephyr.log`.
+        - Test clients (kitty) on tags 1 and 2.
+
+        Drive switches only with the worktree's `dwm/dwm-msg` and that socket
+        exported. A bare `dwm-msg` without the socket variable talks to the real
+        dwm.
+     3. Check in Xephyr:
+        - `xprop -display :2 -id <win> _XIDOU_MOTION` shows the values from the
+          table above.
+        - The picom log shows the matches and `Starting animation position`
+          lines, and no warnings.
+        - はる watches both directions at 0.25 s.
+        - Migration parity: tiled windows are rounded, and a fullscreen window
+          (dwm's fullscreen toggle) has square corners.
+        - For the curve comparison, copy the worktree's `picom.conf` to
+          `/tmp/xidou-h3/`, set `curve = "linear"` in the four directional rules,
+          and restart only the Xephyr picom with that copy.
+     4. Tear down the Xephyr processes by PID; `pkill` fails in the Claude Code
+        sandbox. Nothing on the real display is touched at any point.
+     5. If Xephyr looks clean, **production rollout is a normal relogin**:
+        - Bring the branch into the main checkout.
+        - Back up the current binary outside the repo
+          (`cp dwm/dwm ~/dwm.pre-h3`).
+        - Run `make -C dwm`. Rebuilding doesn't affect the running dwm; the new
+          binary is used from the next login.
+        - Log out through the session panel and log back in.
+
+        Rollback: log out, or use a TTY or the Wayland session. Then restore
+        `~/dwm.pre-h3` to `dwm/dwm`, check out the previous `session/picom.conf`,
+        and relogin.
+     6. On the real session, check how the slide feels at 0.25 s, the glx
+        backend if wanted, and rapid switching. Record the ease-out vs linear
+        verdict in this section.
 3. **Same mechanism for relayout moves** (open/close/swap), with a separate script.
 4. **Alternatives, only if 2 fails:**
    - (a) dwm interpolates `XMoveWindow` itself on a timerfd. Coordinated and

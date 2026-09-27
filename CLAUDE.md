@@ -81,10 +81,11 @@ inventoried into this file yet.
   `services/MotionSync.qml`). A tag switch is not animated: dwm hides clients by
   `XMoveWindow` to `-2 * WIDTH(c)` off-screen (`showhide()`), which none of the
   configured picom triggers react to. See `docs/ROADMAP.md` H3 for what it would
-  take to animate that. `session/picom.conf` already carries directional
-  tag-slide `rules` keyed on an `_XIDOU_MOTION` property, and its comments define
-  the value contract. They stay inert until dwm writes that property, and the dwm
-  half isn't written yet.
+  take to animate that. The directional tag slide (H3 step 2) is built but not
+  yet verified on real hardware. dwm writes an `_XIDOU_MOTION` property on each
+  client right before a tag-switch move (`setmotion()` / `tagswitchdir()` in
+  `dwm.c`), and `session/picom.conf`'s `rules` animate on it. The value contract
+  lives in `picom.conf`'s comments. dwm still animates nothing itself.
 - **picom rules on a property dwm or Quickshell sets need c2's `@` suffix**
   (`_XIDOU_MOTION@ = '...'`, not `_XIDOU_MOTION = '...'`). Without it, picom v13
   (upstream HEAD too) caches the value once, when it first sees the window, and never
