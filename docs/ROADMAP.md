@@ -924,19 +924,42 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
        considering later (also useful any time a build needs reloading during
        normal development) -- not something to build as a side effect of this
        animation investigation.
+   - **Follow-up (2026-09-27, same day): the Xephyr re-test above WAS completed,
+     using the real dwm C implementation, and the result leans negative.**
+     Re-ran a fresh Xephyr session + a fresh, minimal single-purpose picom config
+     (one rule per direction, no corner-radius rules ahead of them) against the
+     real patched dwm binary's own `view` IPC command (an in-process, same-call
+     `XChangeProperty` → `XSync` → `XMoveWindow` sequence — no shell-process
+     jitter at all, the actual zero-gap case). Ten rapid alternating tag
+     switches, all 18 rule evaluations logged, produced **zero** matches
+     (`result = 0` every time), even though `xprop` confirmed the property held
+     the exact expected value throughout. A follow-up contrast round added
+     deliberate 1.5s gaps between switches on the same picom instance/window —
+     **still zero matches**, which rules out pure timing/race as the sole
+     explanation this time (a race would be expected to at least sometimes
+     succeed with a 1.5s gap). This is a different, more consistent failure mode
+     than the flaky real-display result reported above, and the root cause was
+     not identified before time ran out on this investigation — candidates
+     include something about single-write-vs-double-write property update
+     patterns (an earlier successful real-display test happened to write the
+     property twice in a row before moving; this one wrote it once, matching
+     what dwm's patch actually does), or a genuine picom quirk in how it tracks
+     custom (non-well-known) atom properties across a long-running process.
    - **Where this leaves H3 step 2, as of 2026-09-27**: the dwm patch itself is
-     validated (Xephyr, repeatable, correct in both directions). The picom-side
-     zero-gap detection question is **unresolved** -- neither confirmed nor
-     ruled out -- and the one method that could settle it without further risk
-     (re-isolating the question inside Xephyr with the *real* dwm C
-     implementation driving zero-gap switches, instead of the shell-process
-     `xprop`/`xdotool` simulation that introduced its own scheduling jitter) was
-     not completed this session. Recommended framing going forward: **treat
+     validated (Xephyr, repeatable, correct in both directions — the property
+     value is always right). The picom-side pickup of that property, however,
+     failed consistently in the cleanest, most direct test run (real dwm C
+     code, isolated Xephyr, minimal config, both zero-gap and with artificial
+     gaps). Current evidence leans toward "picom's rules-based approach doesn't
+     reliably detect dwm's own property writes as designed," not merely "there
+     might be a narrow race." Recommended framing going forward: **treat
      open/close animations and the existing non-directional tag-slide (H3 step 1)
-     as solid and usable; treat directional tag-slide (step 2's whole point) as
-     status unknown/deferred** until that Xephyr re-test is done, or until はる
-     decides the open question isn't worth resolving before shipping something
-     simpler (e.g. the alternatives in step 4).
+     as solid and usable; treat directional tag-slide (step 2's whole approach)
+     as unresolved and likely blocked on a real picom-side investigation this
+     session didn't have the tools to finish** (e.g. asking upstream picom, or
+     instrumenting picom's own C source to see why a custom ATOM property
+     rule stops matching) before spending more time on the dwm side or the
+     alternatives in step 4.
 3. **Same mechanism for relayout moves** (open/close/swap), with a separate script.
 4. **Alternatives, only if 2 fails:**
    - (a) dwm interpolates `XMoveWindow` itself on a timerfd. Coordinated and
