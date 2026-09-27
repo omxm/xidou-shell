@@ -231,6 +231,11 @@ panel that wasn't in the original plan:
 
 ## What's still open
 
+Full backlog, cross-referenced against the code, with effort tiers, dependencies, and
+open decisions: `docs/ROADMAP.md`. Note its section 1.1: the Bar tabs described above
+(Layout/Shape/Effects/Widgets/Capsules, Auto-Hide, etc.) were not in the pushed code as
+of `32b5354` — reconcile before building on them.
+
 - **Presentation/Behavior per-widget override layer** — the bar Modules tab's
   per-widget gear panel now has real Widget-specific sections for every module
   except Logo and DND; a generic Presentation/Behavior override layer for those two
