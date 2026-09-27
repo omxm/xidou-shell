@@ -9,6 +9,9 @@ import "../../config"
 Item {
     id: root
 
+    readonly property var cfg: Config.data.bar_widgets.tray
+    readonly property int iconSize: root.cfg.icon_size > 0 ? root.cfg.icon_size : (Theme.fontSize + 4)
+
     implicitWidth: row.implicitWidth
     implicitHeight: parent ? parent.height : Theme.fontSize * 2
 
@@ -24,7 +27,7 @@ Item {
                 id: trayIcon
                 required property var modelData
 
-                implicitSize: Theme.fontSize + 4
+                implicitSize: root.iconSize
                 source: modelData.icon
 
                 MouseArea {

@@ -79,7 +79,7 @@ Item {
             text: "" // music_note
             color: Theme.textMuted
             font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
     }
 
@@ -93,9 +93,9 @@ Item {
             id: icon_
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
-            color: Theme.text
+            color: Config.data.bar.widgets.icon_color || Theme.text
             font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
 
         Text {
@@ -104,9 +104,10 @@ Item {
             width: parent.width - icon_.implicitWidth - parent.spacing
             elide: Text.ElideRight
             text: root.labelText
-            color: Theme.text
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSize
+            color: Config.data.bar.widgets.color || Theme.text
+            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
+            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
     }
 

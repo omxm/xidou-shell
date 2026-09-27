@@ -57,7 +57,7 @@ PanelWindow {
         "Screenshot": ["General"],
         "OSD": ["General"],
         "Notifications": ["General"],
-        "Bar": ["General", "Modules"],
+        "Bar": ["General", "Layout", "Shape", "Effects", "Widgets", "Modules", "Capsules"],
         // Weather lives here, not as its own category -- its settings
         // (location/units/auto_locate) are shared across the bar module,
         // Home tab's card, and control-center's own Weather tab, not
@@ -339,7 +339,12 @@ PanelWindow {
                             },
                             "Bar": {
                                 "General": barGeneralTabComponent,
-                                "Modules": barModulesTabComponent
+                                "Layout": barLayoutTabComponent,
+                                "Shape": barShapeTabComponent,
+                                "Effects": barEffectsTabComponent,
+                                "Widgets": barWidgetsTabComponent,
+                                "Modules": barModulesTabComponent,
+                                "Capsules": barCapsulesTabComponent
                             },
                             "System": {
                                 "Weather": weatherGeneralTabComponent
@@ -407,8 +412,43 @@ PanelWindow {
                         }
 
                         Component {
+                            id: barLayoutTabComponent
+                            BarTabs.LayoutTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: barShapeTabComponent
+                            BarTabs.ShapeTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: barEffectsTabComponent
+                            BarTabs.EffectsTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: barWidgetsTabComponent
+                            BarTabs.WidgetsTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
                             id: barModulesTabComponent
                             BarTabs.ModulesTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: barCapsulesTabComponent
+                            BarTabs.CapsulesTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }

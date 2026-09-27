@@ -8,6 +8,7 @@ import "../../config"
 Item {
     id: root
 
+    readonly property var cfg: Config.data.bar_widgets.volume
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property bool muted: sink && sink.audio ? sink.audio.muted : false
     readonly property int volumePercent: sink && sink.audio ? Math.round(sink.audio.volume * 100) : 0
@@ -31,18 +32,19 @@ Item {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
-            color: root.muted ? Theme.textMuted : Theme.text
+            color: root.muted ? Theme.textMuted : (Config.data.bar.widgets.icon_color || Theme.text)
             font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.sink ? (root.muted ? "" : (root.volumePercent + "%")) : "--"
-            visible: text.length > 0
-            color: root.muted ? Theme.textMuted : Theme.text
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSize
+            visible: root.cfg.show_percentage && text.length > 0
+            color: root.muted ? Theme.textMuted : (Config.data.bar.widgets.color || Theme.text)
+            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
+            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
     }
 

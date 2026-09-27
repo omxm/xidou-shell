@@ -3,6 +3,13 @@
 /* appearance */
 static const unsigned int borderpx  = 1;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
+/* Defaults only -- seeded into each Monitor's own mutable gappih/gappoh at
+ * createmon() time (same convention as mfact/nmaster), then overridden at
+ * session start from config.toml's [layout] table via session/xidou-xinitrc
+ * calling the setgappih/setgappoh IPC commands below once dwm's socket is
+ * up. See fibonacci.c for the actual gap math these two drive. */
+static const unsigned int gappih    = 5;        /* gap in px between windows */
+static const unsigned int gappoh    = 5;        /* gap in px between windows and screen edge */
 /* Radius (px) dwm rounds every managed client's outer edge (content +
  * border) to via the X Shape extension, so the native border actually
  * matches picom's corner-radius on the content behind it -- picom itself
@@ -259,6 +266,8 @@ static IPCCommand ipccommands[] = {
   IPCCOMMAND(  killclient,          1,      {ARG_TYPE_SINT}   ),
   IPCCOMMAND(  togglefloating,      1,      {ARG_TYPE_NONE}   ),
   IPCCOMMAND(  setmfact,            1,      {ARG_TYPE_FLOAT}  ),
+  IPCCOMMAND(  setgappih,           1,      {ARG_TYPE_UINT}   ),
+  IPCCOMMAND(  setgappoh,           1,      {ARG_TYPE_UINT}   ),
   IPCCOMMAND(  setlayoutsafe,       1,      {ARG_TYPE_PTR}    ),
   IPCCOMMAND(  quit,                1,      {ARG_TYPE_NONE}   )
 };

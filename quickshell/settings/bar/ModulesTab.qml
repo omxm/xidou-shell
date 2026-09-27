@@ -13,18 +13,24 @@ import ".." as Settings
 //
 // Off: remove the name from wherever it currently sits, whichever array
 // that is, leaving everything else in that array (order included)
-// untouched. On: append to the end of its *default* section's array --
-// this never tries to restore an exact prior position, since reordering
-// itself is explicitly out of scope this pass (drag-and-drop reordering
-// is real future feature work, not something to fake here).
+// untouched. On: append to the end of its *default* section's array -- this
+// never tries to restore an exact prior position, there being no memory of
+// what that was once a module's been toggled off.
 //
-// Each row also gets a gear icon opening a per-widget detail panel
-// (Stage 2 of the Bar overhaul, structure only -- real per-widget content
-// like Weather's max length/show-condition is Stage 3, once this
-// scaffolding exists). The panel's Start/Center/End buttons ARE real
-// already, unlike the rest of its body: moving a module between sections
-// is just the same modules_left/center/right array surgery enableModule/
-// disableModule already do, so there's no reason to fake that part.
+// Each row also gets a gear icon opening a per-widget detail panel, whose
+// Start/Center/End buttons move a module BETWEEN lanes (modules_left/
+// center/right array surgery, same as enableModule/disableModule). Real
+// per-widget content (Weather's max length/show-condition, etc.) lives here
+// too, gated per-widget on whether the underlying value has real backing.
+//
+// In-lane reordering (moveWithinLane/canMoveWithinLane below) is a separate
+// axis from that Start/Center/End move: up/down arrow buttons per row, not
+// drag-and-drop -- QML's Drag/DropArea combo is real work (drop-target
+// hit-testing, autoscroll, a ghost/placeholder row) for a benefit this list
+// doesn't need, since the flat catalog above isn't even displayed grouped by
+// lane. A swap-with-neighbor button pair is a two-line Config.setValue and
+// reuses the exact same array-surgery pattern moveModuleToSection already
+// established.
 Item {
     id: root
 
@@ -113,14 +119,47 @@ Item {
         Config.setValue("bar", targetKey, Config.data.bar[targetKey].concat([name]));
     }
 
+    // Reordering WITHIN a lane -- distinct from moveModuleToSection above
+    // (which moves a module BETWEEN lanes, always appending at the target
+    // lane's end). This swaps a module with its immediate neighbor inside
+    // its own current lane's array, which is the only thing that actually
+    // controls render order (moduleList above is a fixed catalog, not
+    // display order -- the flat list UI doesn't visually group by lane, so
+    // these buttons operate on the underlying array directly rather than on
+    // list-adjacent rows, which may belong to a different lane entirely).
+    function canMoveWithinLane(name, delta) {
+        var section = root.currentSectionOf(name);
+        if (!section)
+            return false;
+        var arr = Config.data.bar[section];
+        var idx = arr.indexOf(name);
+        var newIdx = idx + delta;
+        return newIdx >= 0 && newIdx < arr.length;
+    }
+
+    function moveWithinLane(name, delta) {
+        var section = root.currentSectionOf(name);
+        if (!section)
+            return;
+        var arr = Config.data.bar[section].slice();
+        var idx = arr.indexOf(name);
+        var newIdx = idx + delta;
+        if (newIdx < 0 || newIdx >= arr.length)
+            return;
+        var tmp = arr[idx];
+        arr[idx] = arr[newIdx];
+        arr[newIdx] = tmp;
+        Config.setValue("bar", section, arr);
+    }
+
     // Deliberately not "call reset() on every row" -- a module's own
     // customOverridden only tracks enabled-vs-disabled, not its exact
     // position, so a module that was toggled off and back on again already
     // reads as "not overridden" (it's enabled) even though it's now at the
-    // end of its section instead of its original slot. Reset Page instead
-    // restores all three arrays to their exact defaults outright, the only
-    // way to actually undo that positional drift without real reordering
-    // UI to fix a single module's position in isolation.
+    // end of its section instead of its original slot. The up/down arrows
+    // can fix a single module's position by hand, but Reset Page still
+    // restores all three arrays to their exact defaults outright in one
+    // shot, which is the simpler move when several modules have drifted.
     function resetAll() {
         root.sectionKeys.forEach(function (key) {
             Config.setValue("bar", key, Config.defaults.bar[key]);
@@ -132,81 +171,263 @@ Item {
     // has no reason to also back out of an open detail panel.
     property string editingModule: ""
 
+    function labelFor(name) {
+        var entry = root.moduleList.find(function (m) { return m.name === name; });
+        return entry ? entry.label : name;
+    }
+
+    // Names not in any of the three lane arrays, in moduleList's fixed
+    // catalog order -- shown in their own "Disabled" section below the
+    // three lanes so a toggled-off widget doesn't just disappear with no
+    // way back short of remembering its name.
+    readonly property var disabledModules: root.moduleList
+        .map(function (m) { return m.name; })
+        .filter(function (name) { return !root.isEnabled(name); })
+
+    // One row's markup, reused by both the three lane Repeaters and the
+    // Disabled section's Repeater below -- modelData is the module's name
+    // string either way (a lane's own Config.data.bar[key] array, or
+    // root.disabledModules).
+    Component {
+        id: moduleRowComponent
+
+        Row {
+            id: moduleRowWrapper
+            required property string modelData
+
+            width: parent.width
+            height: moduleRow.height
+            spacing: Theme.fontSize / 2
+
+            Settings.SettingRow {
+                id: moduleRow
+                width: parent.width - reorderButtons.width - gearButton.width - parent.spacing * 2
+                label: root.labelFor(moduleRowWrapper.modelData)
+                showOverriddenOnly: root.showOverriddenOnly
+                customOverridden: !root.isEnabled(moduleRowWrapper.modelData)
+                customReset: function () {
+                    root.enableModule(moduleRowWrapper.modelData);
+                }
+
+                Settings.OptionRow {
+                    width: parent.width
+                    options: [
+                        { value: true, label: "On" },
+                        { value: false, label: "Off" }
+                    ]
+                    currentValue: root.isEnabled(moduleRowWrapper.modelData)
+                    onOptionSelected: (value) => {
+                        if (value)
+                            root.enableModule(moduleRowWrapper.modelData);
+                        else
+                            root.disableModule(moduleRowWrapper.modelData);
+                    }
+                }
+            }
+
+            Column {
+                id: reorderButtons
+                anchors.verticalCenter: moduleRow.verticalCenter
+                visible: moduleRow.visible
+                spacing: 1
+
+                Rectangle {
+                    width: Theme.fontSize * 1.8
+                    height: Theme.fontSize * 0.9
+                    radius: Theme.radius / 3
+                    color: Theme.surfaceAlt
+                    border.width: 1
+                    border.color: Theme.border
+                    opacity: root.canMoveWithinLane(moduleRowWrapper.modelData, -1) ? 1 : 0.4
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: ""
+                        color: Theme.textMuted
+                        font.family: Theme.iconFontFamily
+                        font.pixelSize: Theme.fontSize * 0.8
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        enabled: root.canMoveWithinLane(moduleRowWrapper.modelData, -1)
+                        onClicked: root.moveWithinLane(moduleRowWrapper.modelData, -1)
+                    }
+                }
+
+                Rectangle {
+                    width: Theme.fontSize * 1.8
+                    height: Theme.fontSize * 0.9
+                    radius: Theme.radius / 3
+                    color: Theme.surfaceAlt
+                    border.width: 1
+                    border.color: Theme.border
+                    opacity: root.canMoveWithinLane(moduleRowWrapper.modelData, 1) ? 1 : 0.4
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: ""
+                        color: Theme.textMuted
+                        font.family: Theme.iconFontFamily
+                        font.pixelSize: Theme.fontSize * 0.8
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        enabled: root.canMoveWithinLane(moduleRowWrapper.modelData, 1)
+                        onClicked: root.moveWithinLane(moduleRowWrapper.modelData, 1)
+                    }
+                }
+            }
+
+            Rectangle {
+                id: gearButton
+                width: Theme.fontSize * 1.8
+                height: Theme.fontSize * 1.8
+                anchors.verticalCenter: moduleRow.verticalCenter
+                visible: moduleRow.visible
+                radius: Theme.radius / 2
+                color: Theme.surfaceAlt
+                border.width: 1
+                border.color: Theme.border
+
+                Text {
+                    anchors.centerIn: parent
+                    text: ""
+                    color: Theme.textMuted
+                    font.family: Theme.iconFontFamily
+                    font.pixelSize: Theme.fontSize
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.editingModule = moduleRowWrapper.modelData
+                }
+            }
+        }
+    }
+
+    // One boxed header + its Repeater, reused per lane -- a separate
+    // Rectangle per section (not one shared header row) so each lane reads
+    // as its own visually distinct group, matching the boxed-per-lane shape
+    // of the Noctalia reference screenshots はる pointed to, rather than the
+    // single flat list this replaced (which gave no visual indication at
+    // all of which lane a module was actually in).
+    Component {
+        id: laneSectionComponent
+
+        Column {
+            id: laneSection
+            required property string modelData
+
+            width: parent.width
+            spacing: Theme.fontSize / 2
+
+            Rectangle {
+                width: parent.width
+                height: Theme.fontSize * 1.8
+                radius: Theme.radius / 2
+                color: Theme.surface
+                border.width: 1
+                border.color: Theme.border
+
+                Text {
+                    anchors.left: parent.left
+                    anchors.leftMargin: Theme.fontSize / 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.sectionLabels[laneSection.modelData]
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSize * 0.95
+                    font.bold: true
+                }
+            }
+
+            Column {
+                // Column.leftPadding shifts children's x without shrinking
+                // the width they measure themselves against -- each row
+                // below still computes its own width from *this* Column's
+                // width, so padding alone pushed every row's right edge
+                // (arrows + gear) past the lane box's border by leftPadding
+                // pixels. An explicit x/width inset keeps rows' actual
+                // available width in sync with where they're drawn.
+                x: Theme.fontSize / 2
+                width: parent.width - Theme.fontSize / 2
+                spacing: Theme.fontSize / 2
+
+                Repeater {
+                    model: Config.data.bar[laneSection.modelData]
+                    delegate: moduleRowComponent
+                }
+
+                Text {
+                    visible: Config.data.bar[laneSection.modelData].length === 0
+                    text: "No widgets in this lane"
+                    color: Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.italic: true
+                    font.pixelSize: Theme.fontSize * 0.9
+                }
+            }
+        }
+    }
+
     Flickable {
         anchors.fill: parent
         contentWidth: width
-        contentHeight: moduleColumn.height
+        contentHeight: outerColumn.height
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         visible: root.editingModule === ""
 
         Column {
-            id: moduleColumn
+            id: outerColumn
             width: parent.width
-            spacing: Theme.fontSize / 2
+            spacing: Theme.fontSize
 
             Repeater {
-                id: moduleRepeater
-                model: root.moduleList
+                model: root.sectionKeys
+                delegate: laneSectionComponent
+            }
 
-                delegate: Row {
-                    id: moduleRowWrapper
-                    required property var modelData
+            Column {
+                width: outerColumn.width
+                spacing: Theme.fontSize / 2
+                visible: root.disabledModules.length > 0
 
-                    width: moduleColumn.width
-                    height: moduleRow.height
+                Rectangle {
+                    width: parent.width
+                    height: Theme.fontSize * 1.8
+                    radius: Theme.radius / 2
+                    color: Theme.surface
+                    border.width: 1
+                    border.color: Theme.border
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.fontSize / 2
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Disabled"
+                        color: Theme.textMuted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSize * 0.95
+                        font.bold: true
+                    }
+                }
+
+                Column {
+                    // Same x/width inset as the lane sections above, same
+                    // reason -- leftPadding alone overflows the box.
+                    x: Theme.fontSize / 2
+                    width: parent.width - Theme.fontSize / 2
                     spacing: Theme.fontSize / 2
 
-                    Settings.SettingRow {
-                        id: moduleRow
-                        width: parent.width - gearButton.width - parent.spacing
-                        label: moduleRowWrapper.modelData.label
-                        showOverriddenOnly: root.showOverriddenOnly
-                        customOverridden: !root.isEnabled(moduleRowWrapper.modelData.name)
-                        customReset: function () {
-                            root.enableModule(moduleRowWrapper.modelData.name);
-                        }
-
-                        Settings.OptionRow {
-                            width: parent.width
-                            options: [
-                                { value: true, label: "On" },
-                                { value: false, label: "Off" }
-                            ]
-                            currentValue: root.isEnabled(moduleRowWrapper.modelData.name)
-                            onOptionSelected: (value) => {
-                                if (value)
-                                    root.enableModule(moduleRowWrapper.modelData.name);
-                                else
-                                    root.disableModule(moduleRowWrapper.modelData.name);
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        id: gearButton
-                        width: Theme.fontSize * 1.8
-                        height: Theme.fontSize * 1.8
-                        anchors.verticalCenter: moduleRow.verticalCenter
-                        visible: moduleRow.visible
-                        radius: Theme.radius / 2
-                        color: Theme.surfaceAlt
-                        border.width: 1
-                        border.color: Theme.border
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: ""
-                            color: Theme.textMuted
-                            font.family: Theme.iconFontFamily
-                            font.pixelSize: Theme.fontSize
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.editingModule = moduleRowWrapper.modelData.name
-                        }
+                    Repeater {
+                        model: root.disabledModules
+                        delegate: moduleRowComponent
                     }
                 }
             }
@@ -336,7 +557,13 @@ Item {
             "weather": weatherWidgetComponent,
             "clock": clockWidgetComponent,
             "workspaces": workspacesWidgetComponent,
-            "media": mediaWidgetComponent
+            "media": mediaWidgetComponent,
+            "volume": volumeWidgetComponent,
+            "bluetooth": bluetoothWidgetComponent,
+            "tray": trayWidgetComponent,
+            "mem": memWidgetComponent,
+            "cpu": cpuWidgetComponent,
+            "power": powerWidgetComponent
         })
 
         Loader {
@@ -634,6 +861,188 @@ Item {
                         ]
                         currentValue: Config.data.bar_widgets.media.artist_first
                         onOptionSelected: (value) => Config.setValue("bar_widgets.media", "artist_first", value)
+                    }
+                }
+            }
+        }
+
+        // Volume's real "Widget" section: show_percentage under
+        // [bar_widgets.volume] -- toggles the numeric label next to the
+        // mute-state icon bar/modules/Volume.qml already renders.
+        Component {
+            id: volumeWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Show Percentage"
+                    tableHeader: "bar_widgets.volume"
+                    settingKey: "show_percentage"
+                    defaultValue: Config.defaults.bar_widgets.volume.show_percentage
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.volume.show_percentage
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.volume", "show_percentage", value)
+                    }
+                }
+            }
+        }
+
+        // Bluetooth's real "Widget" section: show_device_count under
+        // [bar_widgets.bluetooth] -- same "icon only" pattern as Volume.
+        Component {
+            id: bluetoothWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Show Device Count"
+                    tableHeader: "bar_widgets.bluetooth"
+                    settingKey: "show_device_count"
+                    defaultValue: Config.defaults.bar_widgets.bluetooth.show_device_count
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.bluetooth.show_device_count
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.bluetooth", "show_device_count", value)
+                    }
+                }
+            }
+        }
+
+        // Tray's real "Widget" section: icon_size under [bar_widgets.tray]
+        // -- 0 keeps bar/modules/Tray.qml's existing Theme.fontSize + 4
+        // default, any other value overrides it directly.
+        Component {
+            id: trayWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Icon Size"
+                    tableHeader: "bar_widgets.tray"
+                    settingKey: "icon_size"
+                    defaultValue: Config.defaults.bar_widgets.tray.icon_size
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.NumberStepper {
+                        value: Config.data.bar_widgets.tray.icon_size
+                        minValue: 0
+                        maxValue: 48
+                        onStepped: (newValue) => Config.setValue("bar_widgets.tray", "icon_size", newValue)
+                    }
+                }
+            }
+        }
+
+        // Mem's real "Widget" section: warning_threshold under
+        // [bar_widgets.mem] -- recolors the widget to Theme.warning once
+        // usedPercent reaches this, a real behavior change bar/modules/
+        // Mem.qml's own `warning` property now drives.
+        Component {
+            id: memWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Warning Threshold"
+                    tableHeader: "bar_widgets.mem"
+                    settingKey: "warning_threshold"
+                    defaultValue: Config.defaults.bar_widgets.mem.warning_threshold
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.NumberStepper {
+                        value: Config.data.bar_widgets.mem.warning_threshold
+                        minValue: 0
+                        maxValue: 100
+                        onStepped: (newValue) => Config.setValue("bar_widgets.mem", "warning_threshold", newValue)
+                    }
+                }
+            }
+        }
+
+        // CPU's real "Widget" section: warning_threshold under
+        // [bar_widgets.cpu] -- same pattern as Mem above.
+        Component {
+            id: cpuWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Warning Threshold"
+                    tableHeader: "bar_widgets.cpu"
+                    settingKey: "warning_threshold"
+                    defaultValue: Config.defaults.bar_widgets.cpu.warning_threshold
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.NumberStepper {
+                        value: Config.data.bar_widgets.cpu.warning_threshold
+                        minValue: 0
+                        maxValue: 100
+                        onStepped: (newValue) => Config.setValue("bar_widgets.cpu", "warning_threshold", newValue)
+                    }
+                }
+            }
+        }
+
+        // Power's real "Widget" section: show_percentage/
+        // low_battery_threshold under [bar_widgets.power] -- the threshold
+        // exposes a value bar/modules/Power.qml already hardcoded (20),
+        // same "make an existing hardcoded behavior configurable" precedent
+        // as Clock's time_format.
+        Component {
+            id: powerWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Show Percentage"
+                    tableHeader: "bar_widgets.power"
+                    settingKey: "show_percentage"
+                    defaultValue: Config.defaults.bar_widgets.power.show_percentage
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: Config.data.bar_widgets.power.show_percentage
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.power", "show_percentage", value)
+                    }
+                }
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Low Battery Threshold"
+                    tableHeader: "bar_widgets.power"
+                    settingKey: "low_battery_threshold"
+                    defaultValue: Config.defaults.bar_widgets.power.low_battery_threshold
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.NumberStepper {
+                        value: Config.data.bar_widgets.power.low_battery_threshold
+                        minValue: 0
+                        maxValue: 100
+                        onStepped: (newValue) => Config.setValue("bar_widgets.power", "low_battery_threshold", newValue)
                     }
                 }
             }

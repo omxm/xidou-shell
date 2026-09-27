@@ -25,7 +25,7 @@ Item {
             text: root.icon
             color: Notifications.dnd ? Theme.accent : Theme.textMuted
             font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
     }
 

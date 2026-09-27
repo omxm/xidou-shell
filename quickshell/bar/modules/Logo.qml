@@ -13,8 +13,9 @@ Item {
         anchors.centerIn: parent
         text: "軌"
         color: Theme.accent
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSize + 2
+        font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
+        font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
+        font.pixelSize: (Theme.fontSize + 2) * Config.data.bar.layout.font_scale
         font.bold: true
     }
 }

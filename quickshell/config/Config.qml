@@ -42,6 +42,7 @@ Singleton {
             text: "#eaeaea",
             text_muted: "#9a9a9a",
             border: "#3a3a3a",
+            warning: "#e06c75", // Mem/CPU widgets recolor to this at/above their configured usage threshold
             radius: 10,
             font_family: "Inter",
             icon_font_family: "Material Symbols Outlined",
@@ -69,11 +70,151 @@ Singleton {
             }
         },
         bar: {
+            enabled: true,
             position: "top",
             height: 32,
+            // off: always shown (current/original behavior). on: hidden
+            // except a thin sliver at the screen edge, revealed on hover.
+            // smart: same reveal mechanic, but only auto-hides while the
+            // focused monitor's *currently viewed tag* actually has a
+            // client on it (dwm-ipc's tag_state.occupied & .selected,
+            // Bar.qml's own tagOccupied) -- an empty tag just shows the bar
+            // normally, same as off.
+            auto_hide: "off", // off | on | smart
+            // Forced to behave as false (UI greys it out) whenever
+            // auto_hide != "off" -- a bar that's hidden most of the time
+            // can't sensibly reserve permanent strut space; Bar.qml's own
+            // exclusiveZone binding hardcodes 0 in that case regardless of
+            // this value, so the value itself is preserved (not silently
+            // rewritten) for whenever auto_hide goes back to "off".
+            reserve_space: true,
+            // Bar > Layout. content_scale/font_scale are two independent
+            // scaling axes: content_scale is a genuine uniform visual zoom
+            // (Bar.qml's capsuleModuleComponent applies a real `scale:`
+            // transform to each module and resizes its wrapper to match, so
+            // Row spacing accounts for the zoomed footprint -- no overlap),
+            // while font_scale only multiplies the font.pixelSize each bar
+            // module already binds to Theme.fontSize, leaving padding/
+            // spacing/capsule size alone. ends_margin + edge_margin together
+            // are what makes a "floating bar" -- shortened from both
+            // horizontal ends AND lifted off the screen edge it's anchored
+            // to, at the same time.
+            layout: {
+                content_scale: 1.0,      // 0.5-1.5, uniform per-widget zoom
+                font_scale: 1.0,          // 0.5-1.5, text/icon size only
+                ends_margin: 0,           // px, shortens the bar from both horizontal ends
+                edge_margin: 0,           // px, gap between the bar and the screen edge it's anchored to
+                opposite_edge_margin: 0,  // px, extra reserved strut space beyond the bar's own thickness
+                content_padding: 8,       // px, inner horizontal inset around all module content (was hardcoded Theme.fontSize/2)
+                panel_overlap: 0          // px (Advanced) -- lets windows tile this many px under the bar's edge, reducing the reserved strut below the bar's own thickness
+            },
             modules_left: ["logo", "workspaces"],
             modules_center: ["media", "clock", "weather"],
-            modules_right: ["tray", "mem", "cpu", "bluetooth", "volume", "dnd", "power"]
+            modules_right: ["tray", "mem", "cpu", "bluetooth", "volume", "dnd", "power"],
+            // Bar-wide capsule styling -- wraps every module's background in
+            // a pill shape when enabled. Bar-wide only for now; a per-widget
+            // Presentation override layer (letting one module opt out of or
+            // override these) is real future work, not built here. Fill is
+            // a Theme role name (Bar.qml's own capsuleFillColor maps it to
+            // the real color), not a literal hex, same "no color literals
+            // outside Theme.qml" rule as everywhere else.
+            capsules: {
+                enabled: false,
+                thickness: 0.8,     // fraction of bar.height
+                // Bar.qml's capsule Rectangle clamps this to half of its
+                // own (width, height) at render time -- Qt does NOT do this
+                // automatically (confirmed empirically: an unclamped radius
+                // bigger than that renders as a distorted over-rounded
+                // blob, not a clean capped pill). 20 already clamps down to
+                // a full pill at every realistic bar height/thickness
+                // combination, while staying a sane, human-readable number
+                // in the settings UI instead of an arbitrary sentinel like
+                // 999.
+                radius: 20,
+                fill: "surface_alt", // surface | surface_alt | accent | background
+                padding: 10,        // horizontal inset each side, px
+                border_width: 0,    // 0 = no border; color is always Theme.border, not independently configurable
+                opacity: 1.0
+            },
+            // Bar > Shape: the bar's own outer silhouette. Bar.qml itself
+            // has zero rounding capability before this -- its PanelWindow
+            // painted `color: Theme.background` directly (a Window property,
+            // not Rectangle's radius), so this isn't "unwired settings" over
+            // an existing mechanism, it's genuinely new rendering (a
+            // transparent PanelWindow + an inner Rectangle doing the actual
+            // painting, same pattern Osd.qml already established). *_radius
+            // default to -1 ("inherit corner_radius") rather than a real
+            // pixel value -- 0 would be indistinguishable from "explicitly
+            // square," which is a real, different, selectable state.
+            shape: {
+                corner_radius: 12,
+                top_left_radius: -1,
+                top_right_radius: -1,
+                bottom_left_radius: -1,
+                bottom_right_radius: -1,
+                // "Corner Flow": the bar's outer corners (along whichever
+                // edge it's anchored to) flare all the way out to the true
+                // screen corner with a concave sweep, rather than receding
+                // from it the way normal rounding does -- only meaningful
+                // when the bar is flush against the screen (edge_margin AND
+                // ends_margin both 0); Bar.qml's own cornerFlowActive
+                // ignores this otherwise, and the settings UI greys the
+                // control out to match, same "value currently does
+                // nothing" convention as Reserve Space under Auto-Hide.
+                corner_flow: false,
+                border_enabled: false,
+                border_width: 1
+            },
+            // Bar > Effects. Shadow is QtQuick.Effects' MultiEffect (Qt
+            // 6.5+, native -- no Qt5Compat.GraphicalEffects needed at this
+            // project's Qt 6.11.2), applied via layer.effect directly on
+            // the background Rectangle. Contact Shadow is purely aesthetic
+            // -- no "a panel is docked against the bar" concept exists
+            // anywhere in the shell today (the floating panels that read
+            // barReservedHeight only use it to center themselves in the
+            // remaining screen space, never to attach flush against the
+            // bar), so this just draws a fixed gradient at the bar's own
+            // edge regardless of what's actually beneath it.
+            effects: {
+                background_opacity: 1.0,
+                shadow_enabled: false,
+                contact_shadow_enabled: false
+            },
+            // Bar > Widgets: the bar-wide DEFAULT layer a future per-widget
+            // Presentation override layer is meant to sit on top of --
+            // deferred separately, not built here, but this is its
+            // foundation. color/icon_color only replace the "normal/
+            // active-state" Theme.text leaf each of the 12 module files'
+            // color expressions already has (confirmed via direct
+            // inspection, not every module even has one -- Weather/Cpu/Mem/
+            // Dnd/Workspaces/Logo intentionally keep their own textMuted/
+            // warning/accent state colors and brand accent untouched, since
+            // a blanket override would erase real state feedback, e.g.
+            // making Bluetooth's on/off states indistinguishable). Icon and
+            // label were always tied to the exact same color expression
+            // before this -- letting them diverge is new. font_weight only
+            // applies to label text, never icon glyphs (Material Symbols'
+            // own variable-font weight axis is a separate, unrelated
+            // concern this doesn't touch).
+            widgets: {
+                font_family: "",       // "" = inherit theme.font_family
+                font_weight: "normal", // normal | medium | bold
+                spacing: 7,             // px, between modules within a lane (was hardcoded Theme.fontSize/2 -- 7 matches that at the default font_size)
+                color: "",              // "" = inherit Theme.text
+                icon_color: "",         // "" = inherit Theme.text
+                hover_highlight: false
+            }
+        },
+        // Window gaps for the tiling layout -- a real dwm feature
+        // (dwm/fibonacci.c), not a Quickshell-side cosmetic effect. Pushed
+        // into dwm once at session start via session/xidou-xinitrc calling
+        // its setgappih/setgappoh IPC commands once dwm's socket is up.
+        // Read here only so a future settings-panel UI has a real
+        // Config.data/Config.setValue path to plug into -- nothing in
+        // Quickshell itself consumes this today.
+        layout: {
+            gap_inner: 5, // px between adjacent windows
+            gap_outer: 5  // px between a window and the screen edge
         },
         weather: {
             enabled: true,
@@ -115,6 +256,25 @@ Singleton {
                 album_art_only: false, // show only a small art thumbnail (or a fallback icon) instead of the title/artist text
                 hide_artist: false,    // title only -- overrides artist_first below, since there's no artist left to reorder
                 artist_first: false    // "Artist — Title" instead of the default "Title — Artist"
+            },
+            volume: {
+                show_percentage: true // false hides the numeric label, icon only
+            },
+            bluetooth: {
+                show_device_count: true // false hides the connected-device count, icon only
+            },
+            tray: {
+                icon_size: 0 // 0 = default (Theme.fontSize + 4); otherwise an explicit pixel size
+            },
+            mem: {
+                warning_threshold: 90 // usedPercent at/above this recolors the widget to Theme.warning; 100 = never
+            },
+            cpu: {
+                warning_threshold: 90 // usagePercent at/above this recolors the widget to Theme.warning; 100 = never
+            },
+            power: {
+                show_percentage: true,   // false hides the numeric label, icon only
+                low_battery_threshold: 20 // percent at/below which the "battery_alert" icon shows instead of "battery_full"
             }
         },
         osd: {

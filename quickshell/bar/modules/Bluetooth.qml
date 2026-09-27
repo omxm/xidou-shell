@@ -7,6 +7,7 @@ import "../../config"
 Item {
     id: root
 
+    readonly property var cfg: Config.data.bar_widgets.bluetooth
     readonly property var adapter: Bluetooth.defaultAdapter
     readonly property bool enabled: adapter ? adapter.enabled : false
     readonly property int connectedCount: {
@@ -34,18 +35,19 @@ Item {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
-            color: root.enabled ? Theme.text : Theme.textMuted
+            color: root.enabled ? (Config.data.bar.widgets.icon_color || Theme.text) : Theme.textMuted
             font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: !root.adapter ? "--" : (root.enabled ? String(root.connectedCount) : "")
-            visible: text.length > 0
-            color: root.enabled ? Theme.text : Theme.textMuted
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSize
+            visible: root.cfg.show_device_count && text.length > 0
+            color: root.enabled ? (Config.data.bar.widgets.color || Theme.text) : Theme.textMuted
+            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
+            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
     }
 }

@@ -3,29 +3,46 @@ import "../../config"
 import "../../services"
 import ".." as Settings
 
-// Bar > General: Position and Height (bar.position/bar.height), both read
-// directly by Bar.qml (anchors.top/bottom and implicitHeight/exclusiveZone
-// respectively) -- moved here from Appearance > Interface (Position) and
-// newly wired (Height) now that Bar has enough real settings to warrant its
-// own category rather than living under Interface.
+// Bar > General: Enabled/Position/Auto-Hide/Reserve Space (bar.enabled/
+// position/auto_hide/reserve_space). Height moved out to Bar > Layout as
+// "Thickness" (real Noctalia terminology, and Layout is where the rest of
+// the bar's sizing knobs -- Content Scale, Font Scale, margins, padding --
+// now live) -- still the same bar.height config key underneath, just
+// relabeled and relocated now that Layout exists as its own tab.
 Item {
     id: root
 
     property bool showOverriddenOnly: false
 
     function resetAll() {
+        enabledRow.reset();
         positionRow.reset();
-        heightRow.reset();
+        autoHideRow.reset();
+        reserveSpaceRow.reset();
     }
-
-    // 24-48px: sane range for this hardware's 1366x768 panel -- tall enough
-    // to stay usable, short enough not to eat too much vertical space.
-    readonly property int minHeight: 24
-    readonly property int maxHeight: 48
 
     Column {
         anchors.fill: parent
         spacing: Theme.fontSize / 2
+
+        Settings.SettingRow {
+            id: enabledRow
+            label: "Enabled"
+            tableHeader: "bar"
+            settingKey: "enabled"
+            defaultValue: Config.defaults.bar.enabled
+            showOverriddenOnly: root.showOverriddenOnly
+
+            Settings.OptionRow {
+                width: parent.width
+                options: [
+                    { value: true, label: "On" },
+                    { value: false, label: "Off" }
+                ]
+                currentValue: Config.data.bar.enabled
+                onOptionSelected: (value) => Config.setValue("bar", "enabled", value)
+            }
+        }
 
         Settings.SettingRow {
             id: positionRow
@@ -47,19 +64,49 @@ Item {
         }
 
         Settings.SettingRow {
-            id: heightRow
-            label: "Height"
+            id: autoHideRow
+            label: "Auto-Hide"
             tableHeader: "bar"
-            settingKey: "height"
-            defaultValue: Config.defaults.bar.height
+            settingKey: "auto_hide"
+            defaultValue: Config.defaults.bar.auto_hide
             showOverriddenOnly: root.showOverriddenOnly
 
-            Settings.NumberStepper {
-                value: Config.data.bar.height
-                minValue: root.minHeight
-                maxValue: root.maxHeight
-                suffix: "px"
-                onStepped: (newValue) => Config.setValue("bar", "height", newValue)
+            Settings.OptionRow {
+                width: parent.width
+                options: [
+                    { value: "off", label: "Off" },
+                    { value: "on", label: "On" },
+                    { value: "smart", label: "Smart" }
+                ]
+                currentValue: Config.data.bar.auto_hide
+                onOptionSelected: (value) => Config.setValue("bar", "auto_hide", value)
+            }
+        }
+
+        Settings.SettingRow {
+            id: reserveSpaceRow
+            label: "Reserve Space"
+            tableHeader: "bar"
+            settingKey: "reserve_space"
+            defaultValue: Config.defaults.bar.reserve_space
+            showOverriddenOnly: root.showOverriddenOnly
+
+            // Bar.qml's own exclusiveZone binding already ignores this
+            // value whenever Auto-Hide isn't Off (a bar that's hidden most
+            // of the time can't sensibly reserve permanent strut space) --
+            // dimmed and disabled here to match, same "value currently does
+            // nothing" convention as Media's Artist First under Hide
+            // Artist, rather than letting the toggle silently do nothing.
+            Settings.OptionRow {
+                width: parent.width
+                enabled: Config.data.bar.auto_hide === "off"
+                opacity: enabled ? 1 : 0.5
+                options: [
+                    { value: true, label: "On" },
+                    { value: false, label: "Off" }
+                ]
+                currentValue: Config.data.bar.reserve_space
+                onOptionSelected: (value) => Config.setValue("bar", "reserve_space", value)
             }
         }
     }

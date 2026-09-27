@@ -84,8 +84,9 @@ Item {
         id: label
         anchors.centerIn: parent
         text: root.useSystemTz ? clock.date.toLocaleTimeString(Qt.locale(), root.localFormatString) : root.tzLabel
-        color: Theme.text
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSize
+        color: Config.data.bar.widgets.color || Theme.text
+        font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
+        font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
+        font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
     }
 }

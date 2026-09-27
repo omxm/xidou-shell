@@ -153,6 +153,8 @@ struct Monitor {
 	Window barwin;
 	const Layout *lt[2];
 	const Layout *lastlt;
+	unsigned int gappih; /* gap in px between windows */
+	unsigned int gappoh; /* gap in px between windows and screen edge */
 };
 
 /* Tracks _NET_WM_STRUT_PARTIAL/_NET_WM_STRUT reservations from windows dwm
@@ -269,6 +271,8 @@ static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
 static void setlayoutsafe(const Arg *arg);
 static void setmfact(const Arg *arg);
+static void setgappih(const Arg *arg);
+static void setgappoh(const Arg *arg);
 static void setup(void);
 static void setupepoll(void);
 static void seturgent(Client *c, int urg);
@@ -842,6 +846,8 @@ createmon(void)
 	m->nmaster = nmaster;
 	m->showbar = showbar;
 	m->topbar = topbar;
+	m->gappih = gappih;
+	m->gappoh = gappoh;
 	m->lt[0] = &layouts[0];
 	m->lt[1] = &layouts[1 % LENGTH(layouts)];
 	strncpy(m->ltsymbol, layouts[0].symbol, sizeof m->ltsymbol);
@@ -2047,6 +2053,35 @@ setmfact(const Arg *arg)
 		return;
 	selmon->mfact = f;
 	arrange(selmon);
+}
+
+/* Applied to every monitor (not just selmon) since these are meant to be
+ * pushed once at session start from config.toml's [layout] table (see
+ * session/xidou-xinitrc), before any interactive monitor selection has
+ * happened -- unlike setmfact, which is a live per-monitor keybind action.
+ * See fibonacci.c's own comment for the exact inner/outer gap math. */
+void
+setgappih(const Arg *arg)
+{
+	Monitor *m;
+
+	if (!arg)
+		return;
+	for (m = mons; m; m = m->next)
+		m->gappih = arg->ui;
+	arrange(NULL);
+}
+
+void
+setgappoh(const Arg *arg)
+{
+	Monitor *m;
+
+	if (!arg)
+		return;
+	for (m = mons; m; m = m->next)
+		m->gappoh = arg->ui;
+	arrange(NULL);
 }
 
 void

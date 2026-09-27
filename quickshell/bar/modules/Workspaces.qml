@@ -150,8 +150,9 @@ Item {
                     anchors.centerIn: parent
                     visible: root.cfg.style === "minimal"
                     text: tagDelegate.modelData.name
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSize
+                    font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
+                    font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
+                    font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
                     font.bold: tagDelegate.isSelected
                     color: tagDelegate.isSelected ? Theme.accent : (tagDelegate.isUrgent ? Theme.accent : Theme.textMuted)
                 }
@@ -173,8 +174,9 @@ Item {
                         id: pillLabel
                         anchors.verticalCenter: parent.verticalCenter
                         text: tagDelegate.modelData.name
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSize
+                        font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
+                        font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
+                        font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
                         color: tagDelegate.isSelected ? Theme.background : (tagDelegate.isUrgent ? Theme.background : Theme.textMuted)
                     }
                 }

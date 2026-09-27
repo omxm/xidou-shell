@@ -7,7 +7,9 @@ import "../../config"
 Item {
     id: root
 
+    readonly property var cfg: Config.data.bar_widgets.mem
     property int usedPercent: 0
+    readonly property bool warning: root.usedPercent >= root.cfg.warning_threshold
 
     // Material Symbols Outlined codepoint for "memory", from Google's
     // upstream codepoints file (google/material-design-icons).
@@ -52,17 +54,18 @@ Item {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
-            color: Theme.textMuted
+            color: root.warning ? Theme.warning : Theme.textMuted
             font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.usedPercent + "%"
-            color: Theme.textMuted
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSize
+            color: root.warning ? Theme.warning : Theme.textMuted
+            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
+            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
     }
 }

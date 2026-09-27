@@ -12,6 +12,12 @@ Row {
     property int minValue: 0
     property int maxValue: 100
     property string suffix: ""
+    // Override for a control with a sentinel value that shouldn't just
+    // print as a bare number -- e.g. Bar > Shape's per-corner radius rows,
+    // where -1 means "inherit the uniform Corner Radius" and needs to read
+    // as "Auto", not "-1px". Left null everywhere else (default behavior
+    // unchanged).
+    property var formatText: null
 
     signal stepped(int newValue)
 
@@ -53,7 +59,7 @@ Row {
 
         Text {
             anchors.centerIn: parent
-            text: root.value + root.suffix
+            text: root.formatText ? root.formatText(root.value) : (root.value + root.suffix)
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSize * 0.85

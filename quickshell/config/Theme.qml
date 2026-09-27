@@ -28,6 +28,7 @@ Singleton {
     property color text: useWallpaperColors ? (ColorScheme.get("on_surface") || tokens.text) : tokens.text
     property color textMuted: useWallpaperColors ? (ColorScheme.get("on_surface_variant") || tokens.text_muted) : tokens.text_muted
     property color border: useWallpaperColors ? (ColorScheme.get("outline") || tokens.border) : tokens.border
+    property color warning: useWallpaperColors ? (ColorScheme.get("error") || tokens.warning) : tokens.warning
 
     property int radius: tokens.radius
 

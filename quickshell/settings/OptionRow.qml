@@ -11,6 +11,12 @@ Row {
 
     property var options: [] // [{value, label}]
     property var currentValue: undefined
+    // Override when a row packs enough options (or long enough labels) that
+    // the default size would clip against the fixed-width equal split below
+    // -- e.g. Bar > Capsules' 4-option Capsule Fill row ("Surface Alt"/
+    // "Background" don't fit at the default size in a standard SettingRow's
+    // 40%-width control slot). Left at the default everywhere else.
+    property real labelFontSize: Theme.fontSize * 0.85
 
     signal optionSelected(var value)
 
@@ -32,10 +38,13 @@ Row {
 
             Text {
                 anchors.centerIn: parent
+                width: parent.width - 4
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
                 text: optionDelegate.modelData.label
                 color: root.currentValue === optionDelegate.modelData.value ? Theme.background : Theme.textMuted
                 font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSize * 0.85
+                font.pixelSize: root.labelFontSize
             }
 
             MouseArea {

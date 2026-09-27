@@ -248,7 +248,7 @@ Item {
             visible: text.length > 0
             color: Theme.textMuted
             font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
 
         Text {
@@ -256,8 +256,9 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: root.displayText
             color: Theme.textMuted
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSize
+            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
+            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
+            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
     }
 }
