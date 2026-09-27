@@ -984,22 +984,25 @@ Fill in "H3 step 1 results" below in `../xidou-h3-report/docs/ROADMAP.md`, commi
 push, then `git worktree remove ../xidou-h3-report`. Answer each question plainly —
 "looks bad" is a valid result.
 
-*H3 step 1 results* — not yet run
+*H3 step 1 results* — run 2026-09-27, on the real X1CG5, per the handoff procedure above.
+Only the core feasibility check (1.0 s baseline + 0.25 s practical speed, xrender
+backend, tag 8 ↔ 9) was run; occupied↔empty, rapid switching, relayout-on-close,
+floating-drag, and glx-backend comparisons were not — see below.
 
 | Question | Result |
 |---|---|
-| picom version / backend(s) tested | |
-| Did `position` fire on tag switch? (log count, and what はる saw) | |
-| Did windows travel visibly different distances/speeds? | |
-| Did outgoing and incoming windows cross? Same direction regardless of target tag? | |
-| Occupied ↔ empty tag: how did it look? | |
-| Rapid switching: jumps? stuck windows? | |
-| Relayout on window close: animated? pleasant or distracting? | |
-| Floating-window drag: laggy/jittery? | |
-| 0.25 s: tolerable as a daily setting, or clearly worse than no animation? | |
-| xrender vs glx: smoothness, artifacts | |
-| はる's verdict: is step 2 (dwm marker patch) worth pursuing? | |
-| Anything unexpected | |
+| picom version / backend(s) tested | v13 (revision `d87a5ba`). xrender only — glx not tested this pass. |
+| Did `position` fire on tag switch? (log count, and what はる saw) | Yes. 24 `Starting animation position` log lines across 4 switches at 1.0 s duration; 15 across 4 switches at 0.25 s. |
+| Did windows travel visibly different distances/speeds? | Not visibly, at either speed — はる's read contradicts the pessimistic source-only prediction in 1.6. |
+| Did outgoing and incoming windows cross? Same direction regardless of target tag? | **Confirmed gap, exactly as predicted.** Switching left vs. right looks identical — no directional distinction. Root cause matches the source reading: dwm's `showhide()` always parks a hidden client at `-2 * width` with no left/right concept, so picom has no signal to animate a direction from. This is the piece step 2's dwm marker patch is meant to fix; it cannot be fixed in `picom.conf` alone. |
+| Occupied ↔ empty tag: how did it look? | Not tested this pass. |
+| Rapid switching: jumps? stuck windows? | Not tested this pass. |
+| Relayout on window close: animated? pleasant or distracting? | Not tested this pass. |
+| Floating-window drag: laggy/jittery? | Not tested this pass. |
+| 0.25 s: tolerable as a daily setting, or clearly worse than no animation? | Tolerable — はる: "no jank/choppiness" at practical speed, same clean result as the exaggerated 1.0 s test. |
+| xrender vs glx: smoothness, artifacts | Not tested this pass (xrender only). |
+| はる's verdict: is step 2 (dwm marker patch) worth pursuing? | Step 1 is a clear success — the basic `position`-trigger mechanism works well in practice, better than the pessimistic source-only prediction, at both 1.0 s and 0.25 s. The one real gap found (no left/right direction) is confirmed and matches step 2's premise, so step 2 (dwm marker patch + directional picom rules) looks worth pursuing. Final go-ahead on starting step 2 is still はる's call — occupied↔empty, rapid switching, relayout, drag, and glx were not covered this pass and may be worth a follow-up before or during step 2. |
+| Anything unexpected | Test cleanup hit a sandbox quirk unrelated to picom/dwm: `pkill` (both `-x` and `-f`) returned an opaque non-signal exit code from the Claude Code session's command sandbox and did not kill the target processes; killing by explicit PID (`kill <pid>`) worked normally. No repo files were touched — `git status --short` was clean before and after the whole procedure — and the real picom was confirmed restored against `session/picom.conf` afterward.
 
 *Out of reach via picom, even if step 2 succeeds*
 - 1:1 touchpad tracking: animations are time-driven from a trigger, with no external
