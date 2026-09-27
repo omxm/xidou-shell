@@ -68,7 +68,11 @@ inventoried into this file yet.
   `37c9415`).
 - **dwm-ipc** patch adds the Unix socket JSON-RPC bridge (`dwm/ipc.c`, `IPCClient.*`,
   `yajl_dumps.*`) — querying/controlling dwm and subscribing to tag/focus/layout-change
-  events. Socket path overridable via `$XIDOU_DWM_SOCKET` for test isolation.
+  events. Socket path overridable via `$XIDOU_DWM_SOCKET` for test isolation. A
+  path longer than 107 bytes (`sun_path`) is an error, never a fallback: dwm keeps
+  running without IPC and dwm-msg exits 1. Neither ever touches the live
+  `/tmp/dwm.sock`; until this was fixed, both silently fell back to it, and a
+  test dwm would take it over.
 - **dwm owns all keybindings.** Keypresses spawn `xidou msg <command>` (see `bin/xidou`),
   mirroring the MangoWM/Noctalia convention. Keybind migration from MangoWM/Noctalia
   muscle memory is done (`ec597a4`), including directional focus/swap

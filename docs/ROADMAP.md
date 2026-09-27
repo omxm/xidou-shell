@@ -1173,16 +1173,21 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
         exported. A bare `dwm-msg` without the socket variable talks to the real
         dwm.
 
-        **Keep the socket path short (under 108 bytes).** If
-        `XIDOU_DWM_SOCKET` is longer than `sun_path`, both dwm and dwm-msg
-        *silently fall back to the real `/tmp/dwm.sock`*. The test dwm's
-        `ipc_create_socket()` then `unlink()`s the live session's socket and
-        binds its own there. `xidou msg` keybinds and the bar's IPC would talk
-        to the test dwm, and when it exits the live session's IPC is gone until
-        relogin. Seen in the cloud sandbox with a long scratchpad path (no real
-        dwm there, so no harm). `/tmp/xidou-h3/dwm-test.sock` is safe. After
-        starting the test dwm, check that its stderr has no `too long` line and
-        that `/tmp/dwm.sock`'s inode (`ls -i`) hasn't changed.
+        **Keep the socket path at most 107 bytes.**
+        - *Until this branch*, a longer `XIDOU_DWM_SOCKET` made both dwm and
+          dwm-msg silently fall back to the live `/tmp/dwm.sock`. The test dwm's
+          `ipc_create_socket()` then `unlink()`ed the live socket and bound its
+          own there, so the live session's `xidou msg` keybinds and bar IPC
+          lost their dwm.
+        - *Now*, a too-long path makes dwm print
+          `dwm: XIDOU_DWM_SOCKET too long (...); IPC disabled, not falling back`
+          and keep running without IPC. dwm-msg prints the same kind of error
+          and exits 1. See "Socket fallback fix" below.
+
+        `/tmp/xidou-h3/dwm-test.sock` fits. After starting the test dwm, still
+        check that its stderr has no `too long` line and that `/tmp/dwm.sock`'s
+        inode (`ls -i`) hasn't changed. That also catches an old binary built
+        before the fix.
      3. Check in Xephyr:
         - `xprop -display :2 -id <win> _XIDOU_MOTION` shows the values from the
           table above.
@@ -1212,6 +1217,36 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
      6. On the real session, check how the slide feels at 0.25 s, the glx
         backend if wanted, and rapid switching. Record the ease-out vs linear
         verdict in this section.
+   - **Socket fallback fix (2026-09-27; general test-isolation infrastructure,
+     found during H3 testing).**
+     - *The bug.* An over-long `XIDOU_DWM_SOCKET` made dwm (`setup()`) and
+       dwm-msg (`connect_to_socket()`) print a warning and silently use the
+       default `/tmp/dwm.sock`, which is the live session's socket. A test dwm
+       would then `unlink()` and rebind it.
+     - *The fix.* Now dwm prints an error and skips `ipc_init()`, so it keeps
+       running without IPC, the same path as an `ipc_init()` failure. dwm-msg
+       prints an error and exits 1. The raw-length check is still a valid bound,
+       because `normalizepath()` only collapses repeated slashes and never
+       lengthens a path.
+     - *Verified in a cloud Xvfb.* A "live" dwm A sat on the default socket,
+       showing tag 3. A test dwm B got a 150-byte path.
+
+       | | Old binaries | New binaries |
+       |---|---|---|
+       | Test dwm B's stderr | `too long, falling back to /tmp/dwm.sock` | `too long (150 bytes, max 107); IPC disabled, not falling back` |
+       | `/tmp/dwm.sock` inode | **changed** (taken over by B) | unchanged |
+       | Default dwm-msg reaches | not A any more | A (tag 3) |
+       | Long-path dwm-msg `view 2` | exit 0, sent to whoever holds `/tmp/dwm.sock` | exit 1, nothing sent; A still on tag 3 |
+       | Test dwm B without IPC | runs, manages windows | runs, manages windows |
+
+       Boundary checks: a 15-byte path works; a 107-byte path works (socket
+       created, commands delivered); a 108-byte path is rejected by both
+       programs and no socket is created. The build is clean (0 warnings).
+     - *Noticed, not fixed* (pre-existing, from the upstream dwm-ipc patch):
+       `ipc_cleanup()` clears `sockaddr` before `unlink(sockaddr.sun_path)`,
+       so dwm never removes its socket file on exit. A stale socket file is
+       left behind. It is harmless for the live session, which rebinds at next
+       start, but test runs leave files to clean up.
 3. **Same mechanism for relayout moves** (open/close/swap), with a separate script.
 4. **Alternatives, only if 2 fails:**
    - (a) dwm interpolates `XMoveWindow` itself on a timerfd. Coordinated and
