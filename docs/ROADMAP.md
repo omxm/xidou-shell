@@ -205,7 +205,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 1 | All services started from xinitrc | **Done** (convention; `ensure_running` block). New daemons below must follow it. | — |
 | 2 | Wallpaper color matching + M3 scheme choice in Settings *and* wallpaper picker | **Done** (matugen, both entry points). Fork not needed (1.5). | — |
 | 3 | Templates / per-app theming tab (Settings only) | Not started | M4 |
-| 4 | Animations (research + "I want animations") | **Partial**: picom open/close done; Motion backend done; tab placeholder; tag switch not animated | L1, M21, H3 |
+| 4 | Animations (research + "I want animations") | **Partial**: picom open/close done; Motion backend done; tab placeholder; directional tag slide built (H3 step 2), awaiting X1CG5 verification | L1, M21, H3 |
 | 5 | Wallpaper directories in Settings | **Done** (Wallpaper > General) | — |
 | 6 | Everything (dwm config, resolution, scale) in Settings | **Partial**: window gaps are config-driven via dwm IPC (`a941b03`) but have no Settings UI and apply only at session start; everything else in dwm is still compile-time | L14, H4, H5 |
 | 7 | Overridden / Reset UI, long-press or double-click reset | **Partial**: badge + one-click reset exist (right side of row) | L5 |
@@ -403,6 +403,11 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   (`MotionSync.qml`, `PicomSync.js`) already exists, and `picom.conf` already refers to
   this tab by name.
 - Depends on: nothing. Nicer after F4 (the same tab can then drive QML motion too).
+- Also cover H3's tag slide. Its `rules` sit outside MotionSync's managed block, so
+  `enabled = false` stops open/close animations but not tag slides, and the slide's
+  duration and curve are hardcoded (0.25 s, ease-out). The tab should gate and
+  drive those too, for example through a second managed block for the directional
+  rules.
 - Verify: `[CLOUD]` for the tab and the picom.conf rewrite; `[SESSION]` for the look.
 
 **L2 — Session menu slot 3**
@@ -488,6 +493,17 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   and where Window Rules (H4) and Scratchpad (M18) settings later go.
 - Decisions: D24 (naming). Verify: `[CLOUD]` with a test dwm on `$XIDOU_DWM_SOCKET`;
   `[SESSION]` for look.
+
+**L15 — dwm leaves its IPC socket file behind on exit (known minor bug)**
+- What: in `dwm/ipc.c`, `ipc_cleanup()` clears `sockaddr` before calling
+  `unlink(sockaddr.sun_path)`, and sets `sock_fd = -1` before `shutdown()`/`close()`.
+  As a result the socket file survives dwm's exit. This is pre-existing, from the
+  upstream dwm-ipc patch.
+- Impact: none on production, because the next start unlinks and rebinds. Isolated
+  test runs leave stale socket files that need removing by hand.
+- Fix: unlink and close first, then reset the statics.
+- Found during H3 testing (2026-09-27) and deliberately left for a cleanup pass.
+- Verify: `[CLOUD]` with a test dwm on `$XIDOU_DWM_SOCKET`.
 
 ### 5.2 Moderate
 
@@ -1152,71 +1168,9 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
      9 ↔ 1 jump is rare next to adjacent-tag switching, so there is no
      special-case wraparound logic. Revisit only if it turns out to bother in
      daily use; the fix would be passing the key's intent into `view()`.
-   - **Handoff for the X1CG5** (はる's local Claude Code, same ground rules as the
-     step 1 handoff). The dwm patch and the migrated `picom.conf` are tested
-     together, Xephyr first. **Never kill or replace the live dwm process.**
-     The 2026-09-27 attempt showed that `xinit` ends the whole session the moment
-     dwm exits, so no hot-swap race can be won.
-     1. Check out the branch in a worktree, not in the checkout the running
-        session uses: `session/xidou-xinitrc` runs `$REPO_DIR/dwm/dwm` and
-        `$REPO_DIR/session/picom.conf` from there. Then run `make -C dwm` in the
-        worktree. It should build with 0 warnings.
-     2. Build an Xephyr test session entirely from the worktree:
-        - `Xephyr :2` (any size).
-        - The worktree's `dwm/dwm` with `DISPLAY=:2` and
-          `XIDOU_DWM_SOCKET=/tmp/xidou-h3/dwm-test.sock`.
-        - picom with `DISPLAY=:2 --config <worktree>/session/picom.conf
-          --log-level debug --log-file /tmp/xidou-h3/step2-xephyr.log`.
-        - Test clients (kitty) on tags 1 and 2.
-
-        Drive switches only with the worktree's `dwm/dwm-msg` and that socket
-        exported. A bare `dwm-msg` without the socket variable talks to the real
-        dwm.
-
-        **Keep the socket path at most 107 bytes.**
-        - *Until this branch*, a longer `XIDOU_DWM_SOCKET` made both dwm and
-          dwm-msg silently fall back to the live `/tmp/dwm.sock`. The test dwm's
-          `ipc_create_socket()` then `unlink()`ed the live socket and bound its
-          own there, so the live session's `xidou msg` keybinds and bar IPC
-          lost their dwm.
-        - *Now*, a too-long path makes dwm print
-          `dwm: XIDOU_DWM_SOCKET too long (...); IPC disabled, not falling back`
-          and keep running without IPC. dwm-msg prints the same kind of error
-          and exits 1. See "Socket fallback fix" below.
-
-        `/tmp/xidou-h3/dwm-test.sock` fits. After starting the test dwm, still
-        check that its stderr has no `too long` line and that `/tmp/dwm.sock`'s
-        inode (`ls -i`) hasn't changed. That also catches an old binary built
-        before the fix.
-     3. Check in Xephyr:
-        - `xprop -display :2 -id <win> _XIDOU_MOTION` shows the values from the
-          table above.
-        - The picom log shows the matches and `Starting animation position`
-          lines, and no warnings. An incoming window whose tile changed while
-          hidden logs `Starting animation size` instead; that is expected.
-        - はる watches both directions at 0.25 s. Include the resize case:
-          view tags 1+2 together, go back to 1, then switch to 2.
-        - Migration parity: tiled windows are rounded, and a fullscreen window
-          (dwm's fullscreen toggle) has square corners.
-        - For the curve comparison, copy the worktree's `picom.conf` to
-          `/tmp/xidou-h3/`, set `curve = "linear"` in the four directional rules,
-          and restart only the Xephyr picom with that copy.
-     4. Tear down the Xephyr processes by PID; `pkill` fails in the Claude Code
-        sandbox. Nothing on the real display is touched at any point.
-     5. If Xephyr looks clean, **production rollout is a normal relogin**:
-        - Bring the branch into the main checkout.
-        - Back up the current binary outside the repo
-          (`cp dwm/dwm ~/dwm.pre-h3`).
-        - Run `make -C dwm`. Rebuilding doesn't affect the running dwm; the new
-          binary is used from the next login.
-        - Log out through the session panel and log back in.
-
-        Rollback: log out, or use a TTY or the Wayland session. Then restore
-        `~/dwm.pre-h3` to `dwm/dwm`, check out the previous `session/picom.conf`,
-        and relogin.
-     6. On the real session, check how the slide feels at 0.25 s, the glx
-        backend if wanted, and rapid switching. Record the ease-out vs linear
-        verdict in this section.
+   - **Handoff:** the final checklist is "H3 step 2 final handoff", after step 4
+     below. It covers Xephyr validation, go/no-go, the relogin rollout, rollback,
+     and a results table.
    - **Socket fallback fix (2026-09-27; general test-isolation infrastructure,
      found during H3 testing).**
      - *The bug.* An over-long `XIDOU_DWM_SOCKET` made dwm (`setup()`) and
@@ -1242,7 +1196,7 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
        Boundary checks: a 15-byte path works; a 107-byte path works (socket
        created, commands delivered); a 108-byte path is rejected by both
        programs and no socket is created. The build is clean (0 warnings).
-     - *Noticed, not fixed* (pre-existing, from the upstream dwm-ipc patch):
+     - *Noticed, not fixed; tracked as L15* (pre-existing, from the upstream dwm-ipc patch):
        `ipc_cleanup()` clears `sockaddr` before `unlink(sockaddr.sun_path)`,
        so dwm never removes its socket file on exit. A stale socket file is
        left behind. It is harmless for the live session, which rebinds at next
@@ -1255,6 +1209,203 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
      gesture-trackable in principle, but capture latency delays the start —
      needs measuring.
    - (c) A picom fork — not recommended (1.5 #4).
+
+*H3 step 2 final handoff — for the local Claude Code session on the X1CG5*
+
+**Status (2026-09-27): ready for Xephyr validation.** Deploying waits on that
+validation and on はる's verdict on how it looks.
+- **What ships:** 4 commits (`1ce6b28`, `a74d2bf`, `e762503`, `2e9c002`) touching 3
+  files: `dwm/dwm.c`, `dwm/dwm-msg.c`, `session/picom.conf`. Everything else on the
+  branch is docs. master is still `a941b03`.
+- **Verified so far:** only in a cloud Xvfb (step 2 above). None of it has run on
+  real hardware.
+- **The halves fail independently.**
+  - New `picom.conf` with the old dwm: no slides (nothing writes the property), and
+    the migrated corners are in effect.
+  - New dwm with the old `picom.conf`: the property is written and nothing matches
+    it.
+
+  Either half can be rolled back alone.
+
+Ground rules
+- **Never kill, signal or replace the live dwm.** It is xinit's client, so the session
+  ends the moment it exits (2026-09-27). The new dwm reaches production only through
+  a normal relogin.
+- Nothing on the real display changes before that relogin. The test dwm, test picom
+  and test clients run only inside Xephyr (`:2`).
+- **Claude Code's shell keeps no environment variables or functions between
+  commands.**
+  - Put `DISPLAY=:2` and `XIDOU_DWM_SOCKET=$T/dwm-test.sock` on every command that
+    needs them. Never rely on an earlier `export`.
+  - Call the worktree's `dwm-msg` by its full path. A bare `dwm-msg`, or one without
+    the socket variable, talks to the live dwm.
+  - Re-define the variables and `M` below at the top of every command that uses them.
+- Drive the test dwm only through `M`. The live dwm grabs its keybinds on the
+  real root window, so super-key combos pressed while Xephyr has focus act on the
+  **live** session.
+- Over IPC, use only `view`, `toggleview`, `tag` and `setgappoh`. **Never `quit` or
+  `killclient`:** sent to the wrong socket, they end the live session or close a
+  real window.
+- Stop processes by PID; `pkill` fails in the Claude Code sandbox.
+- Don't install anything without asking はる.
+- If a step fails in a way this doesn't cover, tear down (step 5), record it, and
+  report. Don't fix things on the machine.
+- はる judges how it looks.
+
+Common preamble for every command below:
+```sh
+REPO=/home/haru/projects/xidou-shell; WT=/home/haru/projects/xidou-h3-step2; T=/tmp/xidou-h3
+M() { XIDOU_DWM_SOCKET=$T/dwm-test.sock "$WT/dwm/dwm-msg" --ignore-reply run_command "$@"; }
+```
+Tag masks: tag N is `1 << (N-1)`. So tag 1 = `1`, tag 2 = `2`, tags 1+2 = `3`,
+tag 4 = `8`, all tags = `511`.
+
+0. Pre-flight (read-only). Get the live session's `DISPLAY`/`XAUTHORITY` first, as
+   in step 1 handoff A.
+```sh
+mkdir -p $T
+git -C $REPO status --short                                 # must be empty
+git -C $REPO rev-parse HEAD | tee ~/xidou-h3-pre-sha.txt    # rollback point, kept outside /tmp
+picom --version                                             # expect v13 (d87a5ba), as tested
+ls -i /tmp/dwm.sock | tee $T/live-inode.txt                 # the live dwm's socket; re-checked later
+command -v Xephyr kitty xdotool dwm-msg                     # xdotool is optional (see 3)
+diff -q $REPO/dwm/config.h $REPO/dwm/config.def.h           # informational (see 1)
+```
+
+1. Build in a worktree, using the live `config.h`.
+```sh
+git -C $REPO fetch origin claude/feature-backlog-planning-30biw8
+git -C $REPO worktree add --detach $WT origin/claude/feature-backlog-planning-30biw8
+[ -f $REPO/dwm/config.h ] && cp $REPO/dwm/config.h $WT/dwm/config.h
+make -C $WT/dwm 2>&1 | grep -iE 'warning|error'             # expect no output
+```
+   `make` creates `config.h` only when it is missing. A fresh worktree would
+   therefore build from `config.def.h`, while the main checkout keeps its own older
+   copy. Copying the live one makes the Xephyr binary the same binary the relogin
+   will run.
+
+   If the `diff` in step 0 reported a difference, tell はる: the live `config.h` has
+   drifted from `config.def.h`. That is pre-existing and unrelated to H3, and the
+   relogin keeps the live copy.
+
+2. Start the Xephyr session.
+```sh
+Xephyr :2 -screen 1280x720 > $T/xephyr.log 2>&1 & echo $! > $T/xephyr.pid
+DISPLAY=:2 XIDOU_DWM_SOCKET=$T/dwm-test.sock $WT/dwm/dwm > $T/dwm-test.log 2>&1 & echo $! > $T/dwm-test.pid
+sleep 1; grep 'too long' $T/dwm-test.log; ls -i /tmp/dwm.sock    # grep prints nothing; inode = live-inode.txt
+DISPLAY=:2 picom --config $WT/session/picom.conf --log-level debug --log-file $T/picom-xephyr.log & echo $! > $T/picom-test.pid
+M view 1; DISPLAY=:2 kitty > /dev/null 2>&1 & sleep 2      # wait for it to map, or it lands on the next tag
+M view 2; DISPLAY=:2 kitty > /dev/null 2>&1 & DISPLAY=:2 kitty > /dev/null 2>&1 & sleep 2
+```
+   kitty needs OpenGL. If it won't start inside Xephyr, use any simple X11 client
+   that is already installed.
+
+3. Checks in Xephyr. Read a window's value with
+   `xprop -display :2 -id <win> _XIDOU_MOTION`. Get window ids from
+   `DISPLAY=:2 xdotool search --class kitty`, or from
+   `xwininfo -display :2 -root -children`.
+
+| Step | Expected |
+|---|---|
+| a. `M view 1` (from tag 2) | tag-1 window `tag-in-from-left`; tag-2 windows `tag-out-to-right`; everything moves right as one surface |
+| b. `M view 2` | tag-1 `tag-out-to-left`; tag-2 `tag-in-from-right`; everything moves left |
+| c. `M view 3`, `M view 1`, `M view 2` | on the last switch the tag-2 windows are also resized, and they still slide in (picom log: `Starting animation size`) |
+| d. `M view 2` (a tag-2 window is focused after the switch), then `M tag 8` | the moved window gets no value and re-tiles on tag 4; the window left on tag 2 slides out left |
+| e. `M view 511`, then `M toggleview 2` | no values, no slides |
+| f. `M setgappoh 30` right after a slide | value cleared, no animation |
+| g. `for m in 1 2 1 2 1; do M view $m; sleep 0.1; done` | final values match the last switch; visible jumps are expected (a new trigger restarts the script) |
+| h. corners | tiled windows rounded; `DISPLAY=:2 kitty --start-as=fullscreen` has square corners |
+
+   Throughout, `grep -E 'WARN|ERROR' $T/picom-xephyr.log` stays empty and
+   `ls -i /tmp/dwm.sock` stays unchanged.
+
+   **Curve comparison.** Ease-out is provisional; はる decides.
+```sh
+sed 's/curve = "cubic-bezier(0.25, 1, 0.5, 1)";/curve = "linear";/' $WT/session/picom.conf > $T/picom-linear.conf
+kill $(cat $T/picom-test.pid)
+DISPLAY=:2 picom --config $T/picom-linear.conf --log-level debug --log-file $T/picom-linear.log & echo $! > $T/picom-test.pid
+```
+   Switch back and forth, then restart the test picom with `$WT/session/picom.conf`
+   to compare again.
+
+4. Go / no-go. All of these must hold:
+   - The build gave no warnings.
+   - No `too long` line, and the `/tmp/dwm.sock` inode never changed.
+   - Checks a–f and h matched the table, and the picom log had no WARN or ERROR
+     lines.
+   - はる is happy with both directions: no artifacts, corners fine.
+   - The curve verdict is recorded. If she picks linear, change the four `curve`
+     lines on the branch and commit before step 6. Don't hand-edit the main
+     checkout.
+
+5. Tear down Xephyr. The test kitty windows close with Xephyr.
+```sh
+kill $(cat $T/picom-test.pid) $(cat $T/dwm-test.pid) $(cat $T/xephyr.pid)
+rm -f $T/dwm-test.sock            # dwm leaves its socket file behind (L15)
+ls -i /tmp/dwm.sock               # still equal to $T/live-inode.txt
+git -C $REPO status --short       # still empty
+```
+   Keep the worktree until the results below are filled in, then remove it with
+   `git -C $REPO worktree remove $WT`.
+
+6. Rollout, only on a go and only when はる says so.
+   1. Bring the four commits into the checkout the session runs from. How is
+      はる's call: merge this branch into master through a PR (none exists yet)
+      and pull, or check out the branch there. Afterwards
+      `git -C $REPO status --short` must be empty.
+   2. Back up the running binary: `cp $REPO/dwm/dwm ~/dwm.pre-h3`.
+   3. Rebuild: `make -C $REPO/dwm 2>&1 | grep -iE 'warning|error'` should print
+      nothing. This doesn't touch the running dwm; the file on disk is only read
+      at the next login.
+   4. Log out through the session panel and log back in. That is the whole
+      deployment.
+
+   Optional: `command -v dwm-msg` may point at an older installed copy. Production
+   never sets `XIDOU_DWM_SOCKET`, so it works either way. Updating it only matters
+   for future isolated tests; that is はる's call.
+
+7. Real-session checks after the relogin.
+   - `readlink /proc/$(pgrep -x dwm)/exe` is `$REPO/dwm/dwm`.
+   - `pgrep -a picom` shows `--config $REPO/session/picom.conf`.
+   - Look at both directions at 0.25 s, the resize case (c) and rapid switching.
+   - Confirm the rest is unchanged: open/close animations, the bar flush, panels
+     without a double-rounded seam, fullscreen square.
+   - Fill in "H3 step 2 results" below.
+
+Rollback, at any time after step 6. From the session, a TTY or the Wayland session:
+- `cp ~/dwm.pre-h3 $REPO/dwm/dwm`, and/or
+- `git -C $REPO checkout $(cat ~/xidou-h3-pre-sha.txt) -- session/picom.conf`,
+
+then relogin. The halves roll back independently (see Status).
+
+Known behaviour — these are not failures:
+- Multi-tag views (view all, `toggleview`) don't slide.
+- A window moved with `tag` doesn't slide; it re-tiles on its new tag.
+- The 9 → 1 wraparound slides as "to a lower tag". This is an accepted limitation.
+- Rapid switching shows jumps.
+- With several monitors the outgoing slide is too long. On one monitor it is exact.
+- Turning Motion off in Settings stops open/close animations but not tag slides yet
+  (L1).
+- dwm leaves its socket file behind on exit (L15).
+
+*H3 step 2 results* — to be filled in by the X1CG5 session.
+
+| Question | Result |
+|---|---|
+| picom version | |
+| Worktree build warnings (with the live `config.h`) | |
+| `config.h` vs `config.def.h` drift | |
+| Socket isolation held (no `too long`, inode unchanged) | |
+| a/b: values and look, both directions | |
+| c: resize case slides | |
+| d `tag` / e multi-tag / f relayout | |
+| g: rapid switching | |
+| h: corners, fullscreen | |
+| picom log warnings | |
+| Curve: ease-out vs linear (はる) | |
+| Go / no-go | |
+| After relogin: real-session look and feel | |
+| Anything unexpected | |
 
 *H3 step 1 handoff — for the local Claude Code session on the X1CG5*
 
