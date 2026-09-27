@@ -807,17 +807,8 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
 *Steps (each needs はる's approval before it starts)*
 
 1. **Real-hardware baseline — not done yet.** Needs the X1CG5; a cloud container has
-   neither picom nor the real session.
-   - Record `picom --version`.
-   - Run a *throwaway* picom config (not the repo's `session/picom.conf`) that adds a
-     minimal `position` animation: offset from `window-x-before - window-x` to 0,
-     ~0.3 s, linear.
-   - Switch between two tags holding windows of different widths, then between an
-     occupied and an empty tag. Record: does it fire at all, is the crossing visible,
-     how uneven are the speeds, what happens on rapid repeated switches, and what does
-     a mouse drag of a floating window look like.
-   - Do it on both the current `xrender` backend and `glx` (performance, see T0-3).
-   - A screen recording is the evidence. Write the outcome here.
+   neither picom nor the real session. Exact procedure: "H3 step 1 handoff" below,
+   written for はる's regular Claude Code session (Remote Control on the X1CG5).
 2. **dwm marker patch + picom rules** (only if step 1 shows the trigger works).
    - Before every geometry change dwm makes, set `_XIDOU_MOTION` on the client:
      `tag-in-left`, `tag-out-right`, `layout`, `drag`, ... Direction comes from
@@ -841,6 +832,174 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
      gesture-trackable in principle, but capture latency delays the start —
      needs measuring.
    - (c) A picom fork — not recommended (1.5 #4).
+
+*H3 step 1 handoff — for the local Claude Code session on the X1CG5*
+
+Goal: see what dwm's **current, unmodified** tag switch looks like under the most naive
+picom `position` animation, and report it honestly. This is observation only: no
+dwm/QML/config changes, and no fixes. The prediction to confirm or refute: windows
+travel different distances, and outgoing/incoming windows cross in opposite
+directions.
+
+Ground rules
+- Never edit `session/picom.conf`, `~/.config/xidou/config.toml`, or anything under
+  `dwm/`. The test picom runs from `/tmp/xidou-h3/`.
+- Use tags 8 and 9 for test windows (switch to 7 as the "empty" tag), after
+  confirming with `dwm-msg get_tags` that they're empty. Close every test window at
+  the end.
+- はる watches the screen. Claude drives the commands and reads the logs and frames.
+  How it *looks* is her call.
+- If a step fails in a way not covered here, stop, restore the real picom (step H),
+  and report — don't improvise fixes.
+- Don't install anything (e.g. ffmpeg) without asking はる first.
+
+A. Environment (the SSH/tmux shell has no display by default)
+```sh
+REPO=/home/haru/projects/xidou-shell
+eval "$(tr '\0' '\n' < /proc/$(pgrep -x dwm)/environ | grep -E '^(DISPLAY|XAUTHORITY)=' | sed 's/^/export /')"
+echo "DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY"   # DISPLAY must be set; empty XAUTHORITY means ~/.Xauthority is used
+mkdir -p /tmp/xidou-h3 && cd /tmp/xidou-h3
+picom --version | tee version.txt
+pgrep -a picom | tee original-picom.txt          # expected: picom --config $REPO/session/picom.conf
+xrandr | grep ' connected' | tee screen.txt
+command -v ffmpeg xdotool maim | tee tools.txt
+```
+- `position`/`size`/`geometry` triggers need picom v12 or later. If the version is
+  older, record it, skip to H, and report — the whole H3 premise changes.
+
+B. Build the throwaway configs: the real `picom.conf` with only its
+MotionSync-managed `animations` block replaced. Dry-run verified against the repo
+copy: the only difference is the added `position` entry.
+```sh
+cat > anim.conf <<'CONF'
+animations = (
+    {
+        triggers = [ "open", "show" ];
+        preset = "appear";
+        scale = 0.92;
+        duration = 0.15;
+    },
+    {
+        triggers = [ "close", "hide" ];
+        preset = "disappear";
+        scale = 0.92;
+        duration = 0.15;
+    },
+    {
+        # H3 step 1 probe: the naive position animation, on purpose.
+        triggers = [ "position" ];
+        offset-x = {
+            curve = "linear";
+            duration = 1.0;
+            start = "window-x-before - window-x";
+            end = 0;
+        };
+        offset-y = {
+            curve = "linear";
+            duration = 1.0;
+            start = "window-y-before - window-y";
+            end = 0;
+        };
+        shadow-offset-x = "offset-x";
+        shadow-offset-y = "offset-y";
+    }
+);
+CONF
+REAL="$REPO/session/picom.conf"
+[ "$(grep -c '^# >>> XIDOU MANAGED: motion\|^# <<< XIDOU MANAGED: motion' "$REAL")" = 2 ] || echo "MARKERS MISSING -- stop"
+awk -v f=anim.conf '
+/^# >>> XIDOU MANAGED: motion/ { print; while ((getline l < f) > 0) print l; skip = 1; next }
+/^# <<< XIDOU MANAGED: motion/ { skip = 0 }
+!skip' "$REAL" > test-xrender.conf
+sed 's/^backend = "xrender";/backend = "glx";/' test-xrender.conf > test-glx.conf
+diff "$REAL" test-xrender.conf; grep -n '^backend' test-*.conf
+```
+The 1.0 s linear duration is deliberately slow so the paths are easy to see. Step F
+repeats at a realistic speed.
+
+C. Swap picom (panels briefly lose transparency between kill and restart — expected)
+```sh
+pkill -x picom; sleep 0.5
+setsid -f picom --config /tmp/xidou-h3/test-xrender.conf --log-level debug --log-file /tmp/xidou-h3/picom-xrender.log
+sleep 1; pgrep -a picom; grep -iE 'error|warn|invalid' picom-xrender.log | head
+```
+- If picom exited or logged a config/trigger error, record it, go to H, and report.
+
+D. Test windows. Four windows on tag 8 get two different widths under dwindle; one
+window on tag 9.
+```sh
+dwm-msg get_tags   # confirm tags 7-9 are unoccupied first; if not, pick empty tags and adjust the masks below
+dwm-msg --ignore-reply run_command view 128   # tag 8
+for i in 1 2 3 4; do setsid -f kitty --class xidou-h3-test; sleep 0.7; done
+dwm-msg --ignore-reply run_command view 256   # tag 9
+setsid -f kitty --class xidou-h3-test; sleep 0.7
+```
+
+E. Observe (はる watching). Leave about 3 s between switches so each 1 s animation
+finishes.
+```sh
+: > marks.txt
+for m in 128 256 128 256; do date +%s.%N >> marks.txt; dwm-msg --ignore-reply run_command view $m; sleep 3; done
+grep -c 'Starting animation position' picom-xrender.log   # >0 means the trigger fired
+```
+- Occupied ↔ empty: `view 128` ↔ `view 64`.
+- Rapid switching: `for m in 128 256 128 256 128; do dwm-msg --ignore-reply run_command view $m; sleep 0.2; done`
+  (tests interruption — the prediction is visible jumps).
+- Relayout: close one tag-8 window with `super+q` while viewing tag 8 (the others
+  re-tile).
+- Drag: はる super+left-drags a window after toggling it floating (`super+f`)
+  (prediction: laggy or jittery, since every motion event restarts the animation).
+- Optional recording, only if ffmpeg is already installed:
+  `ffmpeg -loglevel error -f x11grab -framerate 60 -video_size <WxH from screen.txt> -i "$DISPLAY" -t 8 rec-xrender.mkv &`
+  then run the E loop. Extract frames around one switch with
+  `ffmpeg -i rec-xrender.mkv -vf fps=10 -ss <t> -t 1.2 frame-%02d.png` and inspect
+  them. If the frames show no motion while はる saw motion, note that `x11grab` may
+  not capture the composited output, and trust her eyes.
+
+F. Realistic speed: redo C→E with `duration = 0.25;` (both entries)
+```sh
+sed -i 's/duration = 1.0;/duration = 0.25;/' test-xrender.conf
+```
+
+G. Backend comparison: redo C→F with `test-glx.conf` (log to `picom-glx.log`; in F,
+run the `sed` on `test-glx.conf`). Note
+smoothness differences and anything rendered blank or broken.
+
+H. Restore — always, even after a failure
+```sh
+pkill -f 'kitty --class xidou-h3-test'
+pkill -x picom; sleep 0.5
+setsid -f picom --config /home/haru/projects/xidou-shell/session/picom.conf
+sleep 1; pgrep -a picom; cat /tmp/xidou-h3/original-picom.txt   # the two must match
+cd /home/haru/projects/xidou-shell && git status --short   # expect no changes from this procedure
+```
+
+I. Report. Commit to the PR branch without disturbing はる's own checkout:
+```sh
+cd /home/haru/projects/xidou-shell
+git fetch origin claude/feature-backlog-planning-30biw8
+git worktree add ../xidou-h3-report claude/feature-backlog-planning-30biw8
+```
+Fill in "H3 step 1 results" below in `../xidou-h3-report/docs/ROADMAP.md`, commit,
+push, then `git worktree remove ../xidou-h3-report`. Answer each question plainly —
+"looks bad" is a valid result.
+
+*H3 step 1 results* — not yet run
+
+| Question | Result |
+|---|---|
+| picom version / backend(s) tested | |
+| Did `position` fire on tag switch? (log count, and what はる saw) | |
+| Did windows travel visibly different distances/speeds? | |
+| Did outgoing and incoming windows cross? Same direction regardless of target tag? | |
+| Occupied ↔ empty tag: how did it look? | |
+| Rapid switching: jumps? stuck windows? | |
+| Relayout on window close: animated? pleasant or distracting? | |
+| Floating-window drag: laggy/jittery? | |
+| 0.25 s: tolerable as a daily setting, or clearly worse than no animation? | |
+| xrender vs glx: smoothness, artifacts | |
+| はる's verdict: is step 2 (dwm marker patch) worth pursuing? | |
+| Anything unexpected | |
 
 *Out of reach via picom, even if step 2 succeeds*
 - 1:1 touchpad tracking: animations are time-driven from a trigger, with no external
