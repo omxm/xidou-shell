@@ -205,7 +205,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 1 | All services started from xinitrc | **Done** (convention; `ensure_running` block). New daemons below must follow it. | — |
 | 2 | Wallpaper color matching + M3 scheme choice in Settings *and* wallpaper picker | **Done** (matugen, both entry points). Fork not needed (1.5). | — |
 | 3 | Templates / per-app theming tab (Settings only) | Not started | M4 |
-| 4 | Animations (research + "I want animations") | **Partial**: picom open/close done; Motion backend done; tab placeholder; directional tag slide built (H3 step 2), awaiting X1CG5 verification | L1, M21, H3 |
+| 4 | Animations (research + "I want animations") | **Partial**: picom open/close done; Motion backend done; tab placeholder; directional tag slide **done and confirmed working on the real X1CG5** (H3 step 2, merged via #2 as `353526b`) | L1, M21, H3 |
 | 5 | Wallpaper directories in Settings | **Done** (Wallpaper > General) | — |
 | 6 | Everything (dwm config, resolution, scale) in Settings | **Partial**: window gaps are config-driven via dwm IPC (`a941b03`) but have no Settings UI and apply only at session start; everything else in dwm is still compile-time | L14, H4, H5 |
 | 7 | Overridden / Reset UI, long-press or double-click reset | **Partial**: badge + one-click reset exist (right side of row) | L5 |
@@ -1212,8 +1212,9 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
 
 *H3 step 2 final handoff — for the local Claude Code session on the X1CG5*
 
-**Status (2026-09-27): ready for Xephyr validation.** Deploying waits on that
-validation and on はる's verdict on how it looks.
+**Status: done.** #2 merged as `353526b` on 2026-09-27; はる confirmed it working
+on the real live X1CG5 session after relogin. The checklist below is kept as the
+record of how it was rolled out.
 - **What ships:** draft [PR #2](https://github.com/omxm/xidou-shell/pull/2), branch
   `claude/h3-directional-tag-slide`, based on master `a941b03`.
   - 4 commits (`d59a8d7`, `920529f`, `8686dce`, `ca096bc`) touching 3 files:
@@ -1419,8 +1420,8 @@ Known behaviour — these are not failures:
 | h: corners, fullscreen | |
 | picom log warnings | |
 | Curve: ease-out vs linear (はる) | |
-| Go / no-go | |
-| After relogin: real-session look and feel | |
+| Go / no-go | Go — merged via #2 (`353526b`) |
+| After relogin: real-session look and feel | Confirmed working on the real live X1CG5 session (はる, 2026-09-27). Rows left blank were not reported item by item. |
 | Anything unexpected | |
 
 *H3 step 1 handoff — for the local Claude Code session on the X1CG5*
