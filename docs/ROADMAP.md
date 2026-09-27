@@ -1222,6 +1222,10 @@ validation and on はる's verdict on how it looks.
     docs branch (PR #1), byte-identical to the tree the cloud tests ran on.
   - PR #1 stays docs-only in purpose. Its copies of those changes drop out of its
     diff once PR #2 merges.
+  - Until then PR #1 also contains the code, so merging it first would ship
+    unverified code. Two things guard against that: both PRs are drafts, and
+    PR #1's title starts with `[BLOCKED ON #2]` so the order is visible in the PR
+    list. Branch protection isn't set up for this repo.
 - **Verified so far:** only in a cloud Xvfb (step 2 above). None of it has run on
   real hardware.
 - **The halves fail independently.**
@@ -1358,6 +1362,8 @@ git -C $REPO status --short       # still empty
       for the deploy. Then update the checkout the session runs from (for example
       `git -C $REPO pull` on master). Afterwards `git -C $REPO status --short`
       must be empty and `git -C $REPO log -1` must include PR #2's changes.
+      - Once PR #2 is merged, remove the `[BLOCKED ON #2]` prefix from PR #1's
+        title. PR #1 then shows docs only, and it still waits on D1–D25.
    2. Back up the running binary: `cp $REPO/dwm/dwm ~/dwm.pre-h3`.
    3. Rebuild: `make -C $REPO/dwm 2>&1 | grep -iE 'warning|error'` should print
       nothing. This doesn't touch the running dwm; the file on disk is only read
