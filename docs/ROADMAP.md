@@ -1214,9 +1214,14 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
 
 **Status (2026-09-27): ready for Xephyr validation.** Deploying waits on that
 validation and on はる's verdict on how it looks.
-- **What ships:** 4 commits (`1ce6b28`, `a74d2bf`, `e762503`, `2e9c002`) touching 3
-  files: `dwm/dwm.c`, `dwm/dwm-msg.c`, `session/picom.conf`. Everything else on the
-  branch is docs. master is still `a941b03`.
+- **What ships:** draft [PR #2](https://github.com/omxm/xidou-shell/pull/2), branch
+  `claude/h3-directional-tag-slide`, based on master `a941b03`.
+  - 4 commits (`d59a8d7`, `920529f`, `8686dce`, `ca096bc`) touching 3 files:
+    `dwm/dwm.c`, `dwm/dwm-msg.c`, `session/picom.conf`.
+  - They are the code parts of `1ce6b28`, `a74d2bf`, `e762503` and `2e9c002` on this
+    docs branch (PR #1), byte-identical to the tree the cloud tests ran on.
+  - PR #1 stays docs-only in purpose. Its copies of those changes drop out of its
+    diff once PR #2 merges.
 - **Verified so far:** only in a cloud Xvfb (step 2 above). None of it has run on
   real hardware.
 - **The halves fail independently.**
@@ -1274,8 +1279,8 @@ diff -q $REPO/dwm/config.h $REPO/dwm/config.def.h           # informational (see
 
 1. Build in a worktree, using the live `config.h`.
 ```sh
-git -C $REPO fetch origin claude/feature-backlog-planning-30biw8
-git -C $REPO worktree add --detach $WT origin/claude/feature-backlog-planning-30biw8
+git -C $REPO fetch origin claude/h3-directional-tag-slide
+git -C $REPO worktree add --detach $WT origin/claude/h3-directional-tag-slide   # PR #2's head, i.e. exactly what ships
 [ -f $REPO/dwm/config.h ] && cp $REPO/dwm/config.h $WT/dwm/config.h
 make -C $WT/dwm 2>&1 | grep -iE 'warning|error'             # expect no output
 ```
@@ -1335,8 +1340,8 @@ DISPLAY=:2 picom --config $T/picom-linear.conf --log-level debug --log-file $T/p
      lines.
    - はる is happy with both directions: no artifacts, corners fine.
    - The curve verdict is recorded. If she picks linear, change the four `curve`
-     lines on the branch and commit before step 6. Don't hand-edit the main
-     checkout.
+     lines on PR #2's branch (`claude/h3-directional-tag-slide`) and commit before
+     step 6. Don't hand-edit the main checkout.
 
 5. Tear down Xephyr. The test kitty windows close with Xephyr.
 ```sh
@@ -1349,10 +1354,10 @@ git -C $REPO status --short       # still empty
    `git -C $REPO worktree remove $WT`.
 
 6. Rollout, only on a go and only when はる says so.
-   1. Bring the four commits into the checkout the session runs from. How is
-      はる's call: merge this branch into master through a PR (none exists yet)
-      and pull, or check out the branch there. Afterwards
-      `git -C $REPO status --short` must be empty.
+   1. Mark PR #2 ready for review and merge it into master. PR #1 is not needed
+      for the deploy. Then update the checkout the session runs from (for example
+      `git -C $REPO pull` on master). Afterwards `git -C $REPO status --short`
+      must be empty and `git -C $REPO log -1` must include PR #2's changes.
    2. Back up the running binary: `cp $REPO/dwm/dwm ~/dwm.pre-h3`.
    3. Rebuild: `make -C $REPO/dwm 2>&1 | grep -iE 'warning|error'` should print
       nothing. This doesn't touch the running dwm; the file on disk is only read
@@ -1371,6 +1376,11 @@ git -C $REPO status --short       # still empty
    - Confirm the rest is unchanged: open/close animations, the bar flush, panels
      without a double-rounded seam, fullscreen square.
    - Fill in "H3 step 2 results" below.
+
+8. Report. Fill in "H3 step 2 results" below on PR #1's branch
+   (`claude/feature-backlog-planning-30biw8`), not on PR #2. Use a separate report
+   worktree as in step 1 handoff, I. `$WT` is a detached checkout of PR #2 and
+   isn't for commits. Then commit and push.
 
 Rollback, at any time after step 6. From the session, a TTY or the Wayland session:
 - `cp ~/dwm.pre-h3 $REPO/dwm/dwm`, and/or
