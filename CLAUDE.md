@@ -82,6 +82,11 @@ inventoried into this file yet.
   `XMoveWindow` to `-2 * WIDTH(c)` off-screen (`showhide()`), which none of the
   configured picom triggers react to. See `docs/ROADMAP.md` H3 for what it would
   take to animate that.
+- **picom rules on a property dwm or Quickshell sets need c2's `@` suffix**
+  (`_XIDOU_MOTION@ = '...'`, not `_XIDOU_MOTION = '...'`). Without it, picom v13
+  (upstream HEAD too) caches the value once, when it first sees the window, and never
+  refreshes it on this non-reparenting WM. The rule then silently evaluates stale data.
+  Root cause and A/B evidence: ROADMAP H3, "Root cause found".
 
 ### Shell: Quickshell (Qt/QML) on X11
 

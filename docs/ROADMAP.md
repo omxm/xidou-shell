@@ -853,6 +853,12 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
        match (`PROP = 'text'`) silently never matched (`c2_match_once` logged
        `result = 0` every time) — worth remembering for the real patch instead of
        rediscovering it.
+       *(Superseded — see "Root cause found" below. picom's own examples are
+       `_NET_WM_STATE@[*] = ...`, with an `@`; the pattern used here dropped it, and
+       that, not the property type, is what broke matching. c2 does support
+       `STRING`/`UTF8_STRING` properties against string patterns. ATOM remains a fine
+       choice for the patch; the STRING failure was most likely the same `@` bug, not
+       re-tested.)*
      - A **rule-scoped** `animations` block (`rules = ({ match = "..."; animations =
        (...) })`, the mechanism the plan above assumes) does nothing on its own.
        picom only appears to track per-frame position deltas when at least one
@@ -862,6 +868,13 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
        top-level `position` entry present (even a trivial one) alongside the
        rule-scoped directional ones — not discussed in the plan above, now recorded
        here so step 2 doesn't have to re-discover it.
+       *(Refuted — see "Root cause found" below. With `@`, a rule-scoped `position`
+       script fires on its own, 8/8, with no top-level `animations` at all. v13's
+       trigger path (`win.c:1822`) only checks the window's folded options, which
+       include rule-scoped scripts; there is no global gate. The earlier observation
+       was most likely the no-op entry's own `Starting animation position` lines — the
+       log does not say which script started — or a picom restart re-snapshotting the
+       property, which the bug below makes look like "the rule started working".)*
      - Once both of the above were in place, log evidence directly answers the risk
        question: `c2_match_once` (confirming the window's `_XIDOU_MOTION` value) and
        `win_process_animation_and_state_change`'s `Starting animation position` both
@@ -960,6 +973,74 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
      instrumenting picom's own C source to see why a custom ATOM property
      rule stops matching) before spending more time on the dwm side or the
      alternatives in step 4.
+     *(Superseded by "Root cause found" directly below: it was a config-syntax
+     bug, not a picom limitation. Step 2 is unblocked.)*
+   - **Root cause found (2026-09-27, picom v13 `d87a5ba` source reading, then one
+     controlled A/B run in a cloud Xvfb).** The match string was missing c2's `@`
+     suffix. Without `@`, picom reads the property **once, when it first manages
+     the window, and never again** on a non-reparenting WM like dwm. The mechanism:
+     - c2 caches every property a rule references, per window, keyed by
+       `(atom, is_on_client)`. A target without `@` is a frame-window target
+       (`c2.c:212`, default `target_on_client = false`; the manpage says the same:
+       "Otherwise the frame window will be used").
+     - dwm does not reparent and sets `WM_STATE` on the client itself, so picom's
+       `wm_tree_find_client()` (`wm/tree.c:199`) makes the toplevel its own client
+       window. In `ev_property_notify()` (`event.c:529`),
+       `change_is_on_client = cursor == client_cursor` is therefore always true for
+       dwm's windows, and `c2_window_state_mark_dirty()` looks up only
+       `(atom, true)`. The rule's entry is `(atom, false)`, so it is never marked
+       dirty. `WIN_FLAGS_FACTOR_CHANGED` is still set, so the rule is re-evaluated,
+       but against the stale cached value. That is why the log showed "evaluated,
+       `result = 0`" while `xprop` showed the right value.
+     - The only other refresh paths are window creation (`win.c:1313`, all entries
+       dirty, so the first evaluation reads whatever exists at that moment) and a
+       client change (`win.c:1155`, `is_on_client` entries only). Nothing refreshes a
+       frame-target entry on a dwm window after that first read.
+     - This explains every earlier result. Fresh Xephyr: the property didn't exist
+       when picom first saw the window, so it was cached as absent forever, giving
+       0/18 regardless of gaps (a timing theory can't explain that). The flaky
+       real-display passes: each config variant restarted picom *after* `xprop` had
+       already written a value, so the snapshot happened to hold the value being
+       tested. The double-write variant: irrelevant, since no write is ever seen.
+     - Present on upstream HEAD too: `event.c`, `c2.c` and `wm/tree.c` are unchanged
+       from v13 to `3502b29`.
+     - Controlled A/B, Xvfb, picom v13 built from source (xrender), one
+       dwm-like toplevel (`WM_STATE` on itself, `_XIDOU_MOTION` written as ATOM, then
+       `XSync`, then `XMoveWindow`, 8 switches alternating right/left), only
+       rule-scoped `position` scripts, no top-level `animations`:
+
+       | Match string | Property before picom starts | Result |
+       |---|---|---|
+       | `_XIDOU_MOTION = '...'` | absent | 0/15 `left`, 0/15 `right` matched; 0 animations (reproduces the Xephyr failure) |
+       | `_XIDOU_MOTION = '...'` | `tag-in-left` | `left` matched 14/14, `right` 0/14, although the real value alternated (frozen snapshot) |
+       | `_XIDOU_MOTION@ = '...'` | absent | direction tracked; 8/8 animations started |
+       | `_XIDOU_MOTION@ = '...'` | `tag-in-left` | direction tracked; 8/8 animations started |
+
+       In the `@`/absent run, each switch's correct rule matched in the same
+       millisecond as its `Starting animation position`. Ordering is guaranteed by
+       the frame loop, not by luck: `handle_pending_updates()` (`picom.c:1513`) runs
+       `refresh_windows()` (property refetch plus rule re-match) before
+       `win_process_animation_and_state_change()`. X also delivers the
+       `PropertyNotify` before the `ConfigureNotify`, because dwm sends them in that
+       order.
+     - **Fix: write every `_XIDOU_MOTION` match with `@`** (for example
+       `match = "_XIDOU_MOTION@ = 'tag-in-left'"`). No dwm-side change is needed; the
+       patch's `XChangeProperty` → `XSync` → `XMoveWindow` order is already right.
+       `@` is correct for every window this shell has: for Quickshell's
+       override-redirect panels (no `WM_STATE`), the client falls back to the window
+       itself on both the read and the notify side. The same trap applies to any
+       future rule on a property that dwm or Quickshell sets. Use `@` by default,
+       and treat a no-`@` custom-property rule as a bug.
+     - Still open for step 2, unrelated to this bug: migrating `picom.conf`'s
+       old-style options (`rounded-corners-exclude`, etc.) into `rules`, and the
+       step 1 checks never run (rapid switching, relayout, drag, glx). Not tested:
+       the real X1CG5 with the real dwm patch plus `@`. That is the remaining
+       confirmation before building on it.
+     - Optional upstream report: arguably a picom bug, since a property change on a
+       window that is both toplevel and client should dirty both cache keys. A
+       one-line fix in `ev_property_notify()` would be to also mark
+       `(atom, false)` when `cursor == toplevel_cursor`. Not needed here, because
+       `@` sidesteps it.
 3. **Same mechanism for relayout moves** (open/close/swap), with a separate script.
 4. **Alternatives, only if 2 fails:**
    - (a) dwm interpolates `XMoveWindow` itself on a timerfd. Coordinated and
