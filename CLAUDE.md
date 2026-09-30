@@ -28,7 +28,9 @@ because "if one piece breaks, you can't tell which piece broke." Rules that foll
 
 - **One cohesive shell**, not a pile of glued-together standalone tools.
 - **Full customizability** via `~/.config/xidou/config.toml` — bar position, module
-  order, colors, fonts, panel keybinds are config-driven.
+  order, colors and fonts are config-driven. Keybinds are not yet: the
+  `[panels.*].keybind` keys aren't read by anything, and every bind is hardcoded in
+  dwm's `config.h` (see "What's still open").
 - **Unified theming**: every panel reads colors/fonts from `quickshell/config/Theme.qml`.
   Never hardcode a color or font literal in a panel's QML.
 - **All repo file/folder names, code comments, README text, and commit messages: English.**
@@ -68,14 +70,31 @@ inventoried into this file yet.
   `37c9415`).
 - **dwm-ipc** patch adds the Unix socket JSON-RPC bridge (`dwm/ipc.c`, `IPCClient.*`,
   `yajl_dumps.*`) — querying/controlling dwm and subscribing to tag/focus/layout-change
-  events. Socket path overridable via `$XIDOU_DWM_SOCKET` for test isolation.
+  events. Socket path overridable via `$XIDOU_DWM_SOCKET` for test isolation. A
+  path longer than 107 bytes (`sun_path`) is an error, never a fallback: dwm keeps
+  running without IPC and dwm-msg exits 1. Neither ever touches the live
+  `/tmp/dwm.sock`; until this was fixed, both silently fell back to it, and a
+  test dwm would take it over.
 - **dwm owns all keybindings.** Keypresses spawn `xidou msg <command>` (see `bin/xidou`),
   mirroring the MangoWM/Noctalia convention. Keybind migration from MangoWM/Noctalia
   muscle memory is done (`ec597a4`), including directional focus/swap
   (`super+<arrow>` / `super+shift+<arrow>`, `2112a35`).
-- dwm itself also grew: window-open/close animations, rounded borders via X Shape,
-  dock-window stacking, tag-follow-on-move. It remains a tiling engine, not the
+- dwm itself also grew: rounded borders via X Shape, dock-window stacking,
+  tag-follow-on-move, window gaps (IPC-settable). It remains a tiling engine, not the
   project's main deliverable — the shell is.
+- **dwm has no animation code at all.**
+  - Window open/close animations are entirely picom's: the `animations` block in
+    `session/picom.conf`, regenerated from `[motion]` by `services/MotionSync.qml`.
+  - The directional tag slide (ROADMAP H3 step 2, confirmed on the X1CG5) is picom's
+    too. dwm writes an `_XIDOU_MOTION` property on each client right before a
+    tag-switch move (`setmotion()` / `tagswitchdir()` in `dwm.c`), and
+    `session/picom.conf`'s `rules` animate on it. The value contract lives in
+    `picom.conf`'s comments.
+- **picom rules on a property dwm or Quickshell sets need c2's `@` suffix**
+  (`_XIDOU_MOTION@ = '...'`, not `_XIDOU_MOTION = '...'`). Without it, picom v13
+  (upstream HEAD too) caches the value once, when it first sees the window, and never
+  refreshes it on this non-reparenting WM. The rule then silently evaluates stale data.
+  Root cause and A/B evidence: ROADMAP H3, "Root cause found".
 
 ### Shell: Quickshell (Qt/QML) on X11
 
@@ -258,8 +277,10 @@ panel that wasn't in the original plan:
     anywhere on the bar — a `HoverHandler` + highlight `Rectangle` added to the same
     `capsuleModuleComponent` wrapper Capsules already introduced, working whether
     Capsules are on or off). This completes all 8 of the original Bar tabs: General,
-    Layout, Shape, Effects, Widgets, Capsules, (Widget List and Dead Zone were already
-    done beforehand).), and Modules (per-module list with a gear icon opening a
+    Layout, Shape, Effects, Widgets, Capsules. Widget List is on/off + lane moves +
+    up/down reorder (see Modules below); Dead Zone is NOT done — only a hardcoded
+    right-click → control-center handler, `Bar.qml`'s `handleDeadZoneClick()`, with no
+    config key or Settings UI.), and Modules (per-module list with a gear icon opening a
     per-widget detail panel — Workspaces, Clock, Weather, Media, Volume, Bluetooth,
     Tray, Mem, CPU, and Power all have real Widget sections built out; Logo and DND
     are the two modules still falling back to `PlaceholderTab` inside that per-widget
@@ -278,15 +299,32 @@ panel that wasn't in the original plan:
     control-center's Weather section).
   - **Wallpaper**: General (Directories).
 - Toggles wired to real backing: Wi-Fi and Night Light (Home tab), Caffeine.
-- Window-open/close animations; session-lifecycle bugs around panel open/close fixed.
+- Window-open/close animations (picom's, not dwm's); session-lifecycle bugs around
+  panel open/close fixed.
 
 ## What's still open
+
+Full backlog, cross-referenced against the code (last updated 2026-09-30, against
+`808c76a`), with effort tiers, dependencies, and open decisions: `docs/ROADMAP.md`.
+Items below are the headline ones; the roadmap is the complete list.
 
 - **Presentation/Behavior per-widget override layer** — the bar Modules tab's
   per-widget gear panel now has real Widget-specific sections for every module
   except Logo and DND; a generic Presentation/Behavior override layer for those two
   is not built.
-- **Settings panel placeholders**: Appearance > Accessibility/Motion/Effects.
+- **Bar Dead Zone settings**: click actions on empty bar space are hardcoded (right
+  click → control-center); no config key or tab yet.
+- **Bar widget click model**: there's no shared left/right/middle/scroll dispatch in
+  `capsuleModuleComponent` (it only has a `HoverHandler`). The five modules that
+  react to clicks each carry their own `MouseArea`. The bar-wide widget styling
+  expressions are repeated in 11 of the 12 module files (all but Dnd).
+- **Window gaps have no Settings UI**: `[layout] gap_inner/gap_outer` + dwm's
+  `setgappih`/`setgappoh` IPC exist (`a941b03`), but they're only pushed once at
+  session start by an `awk` block in `session/xidou-xinitrc`.
+- **`[panels.*].keybind` config keys are not read by anything** — dwm's `config.h`
+  hardcodes every bind.
+- **Settings panel placeholders**: Appearance > Accessibility/Motion/Effects (Motion's
+  backend, `services/MotionSync.qml`, already exists — only the tab is missing).
 - **Control-center placeholder**: Screen Time section.
 - **Lock screen has no X keyboard/pointer grab.** It now covers every screen
   (per-screen `Variants`, `exclusionMode: Ignore`), dwm keeps it above every
