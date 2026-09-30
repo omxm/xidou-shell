@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import "../config"
 import "../services"
+import "../lib"
 import "../controlcenter" as ControlCenter
 import "appearance"
 // Namespaced (not bare) -- multiple categories each have their own
@@ -93,6 +94,12 @@ PanelWindow {
     // Same X-focus workaround as Launcher.qml/ControlCenter.qml --
     // PanelWindow.focusable does nothing on this X11 backend.
     focusable: true
+
+    // dwm focuses windows with this title and holds focus on them while
+    // open (see lib/DwmRole.qml).
+    DwmRole {
+        title: "xidou-panel"
+    }
 
     Process {
         id: focusHelper

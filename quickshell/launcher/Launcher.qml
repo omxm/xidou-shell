@@ -8,6 +8,7 @@ import Quickshell.Networking
 import Quickshell.Services.Pipewire
 import "../config"
 import "../services"
+import "../lib"
 import "../controlcenter" as ControlCenter
 import "../lib/EmojiData.js" as EmojiData
 
@@ -57,6 +58,12 @@ PanelWindow {
     // window by its size (PanelWindow has no title/id exposed to QML) and
     // force focus onto it.
     focusable: true
+
+    // dwm focuses windows with this title and holds focus on them while
+    // open (see lib/DwmRole.qml).
+    DwmRole {
+        title: "xidou-panel"
+    }
 
     Process {
         id: focusHelper

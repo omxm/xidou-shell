@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import "../config"
 import "../services"
+import "../lib"
 
 // Preview shown after a region capture when Screenshot.confirmSelection is
 // on -- Save writes the candidate to disk + clipboard (Screenshot.finalize),
@@ -22,6 +23,12 @@ PanelWindow {
     color: "transparent"
 
     focusable: true
+
+    // dwm focuses windows with this title and holds focus on them while
+    // open (see lib/DwmRole.qml).
+    DwmRole {
+        title: "xidou-panel"
+    }
 
     Process {
         id: focusHelper
