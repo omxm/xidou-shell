@@ -210,12 +210,17 @@ ShellRoot {
     IpcHandler {
         target: "screenshot"
 
+        // Refused while locked: region select maps its own full-screen
+        // backdrop and a pointer-grabbing slop, and either capture would
+        // just land a picture of the lock screen on the clipboard.
         function fullscreen(): void {
-            Screenshot.fullscreen();
+            if (!SessionActions.locked)
+                Screenshot.fullscreen();
         }
 
         function region(): void {
-            Screenshot.region();
+            if (!SessionActions.locked)
+                Screenshot.region();
         }
     }
 

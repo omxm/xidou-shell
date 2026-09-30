@@ -34,6 +34,14 @@ Singleton {
     // already-open panel closes it instead (same as the old PanelState
     // behavior), so a bind's second press still just dismisses the panel.
     function toggle(name) {
+        // Every panel-opening path (the "panels"/"settings" IPC targets,
+        // dwm keybinds through them, Launcher's requestToggle, bar clicks)
+        // funnels through here, so this one check keeps the lock screen
+        // from having anything opened over or behind it.
+        if (SessionActions.locked) {
+            console.warn("[xidou] PanelManager.toggle: ignoring '" + name + "' while locked");
+            return;
+        }
         if (!(name in root.openPanels)) {
             console.warn("[xidou] PanelManager.toggle: unknown panel '" + name + "'");
             return;

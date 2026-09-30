@@ -237,6 +237,16 @@ panel that wasn't in the original plan:
   is not built.
 - **Settings panel placeholders**: Appearance > Accessibility/Motion/Effects.
 - **Control-center placeholder**: Screen Time section.
+- **Lock screen has no X keyboard/pointer grab.** It now covers every screen
+  (per-screen `Variants`, `exclusionMode: Ignore`), dwm keeps it above every
+  other dock (`LOCKWINNAME`, matched on the `_NET_WM_NAME` LockScreen.qml sets via
+  QtQuick's `Window.window.setTitle()`), and `PanelManager.toggle()`/screenshot
+  IPC refuse while locked — but dwm's root `XGrabKey` binds still fire, so e.g.
+  super+<n> can still move focus to a hidden client. QML cannot grab:
+  `QWindow::setKeyboardGrabEnabled`/`setMouseGrabEnabled` aren't slots/invokable
+  (TypeError from QML, checked on Quickshell 0.3.1 / Qt 6.11), `_backingWindow`
+  is `undefined` on PanelWindow, and `PopupWindow.grabFocus` takes no X grab on
+  this backend. Needs a small C++ QML plugin or an external locker.
 - **Final phase — startup/splash screen**: logo + wordmark + dismissible "Start"
   button, same design language as every other panel. Not started.
 - No inventory yet of X1CG5-specific hardware details (the X230 section above was

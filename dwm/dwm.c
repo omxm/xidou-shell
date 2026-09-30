@@ -194,6 +194,11 @@ struct DockWin {
 };
 static DockWin *dockwins = NULL;
 
+/* _NET_WM_NAME the shell's lock screen sets on its windows (see
+ * quickshell/session/LockScreen.qml) -- every other Quickshell window is
+ * just "quickshell", so this is the one thing that tells them apart. */
+#define LOCKWINNAME "xidou-lock"
+
 typedef struct {
 	const char *class;
 	const char *instance;
@@ -221,7 +226,9 @@ static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
 static void adddockwin(Window w);
 static void removedockwin(Window w);
+static int islockwin(Window w);
 static void raisedocks(void);
+static void raiselockwins(void);
 static void destroynotify(XEvent *e);
 static void detach(Client *c);
 static void detachstack(Client *c);
@@ -1465,6 +1472,9 @@ manage(Window w, XWindowAttributes *wa)
 			XSelectInput(dpy, w, PropertyChangeMask | StructureNotifyMask);
 			adddockwin(w);
 			XMapRaised(dpy, w);
+			/* A popup mapped while locked (OSD, notification) must not
+			 * land above the lock screen until the next restack(). */
+			raiselockwins();
 			updatestrut(w);
 			return;
 		}
@@ -1673,6 +1683,14 @@ propertynotify(XEvent *e)
 		 * on its own (the read just comes back empty and the strut gets
 		 * dropped) without needing a separate case here. */
 		updatestrut(ev->window);
+		return;
+	}
+
+	/* The lock screen's title may be set after it was mapped (and so after
+	 * manage() looked at it), so re-check dock windows when it changes. */
+	if (ev->atom == netatom[NetWMName] && !wintoclient(ev->window)) {
+		if (islockwin(ev->window))
+			XRaiseWindow(dpy, ev->window);
 		return;
 	}
 
@@ -2722,13 +2740,38 @@ removedockwin(Window w)
 	}
 }
 
+int
+islockwin(Window w)
+{
+	char name[64];
+
+	return gettextprop(w, netatom[NetWMName], name, sizeof name)
+		&& !strcmp(name, LOCKWINNAME);
+}
+
 void
 raisedocks(void)
 {
 	DockWin *d;
 
 	for (d = dockwins; d; d = d->next)
-		XRaiseWindow(dpy, d->win);
+		if (!islockwin(d->win))
+			XRaiseWindow(dpy, d->win);
+	raiselockwins();
+}
+
+/* The shell's lock screen windows (see LOCKWINNAME) always go above every
+ * other dock. Without this the list order alone decides: raisedocks() walks
+ * newest-to-oldest, so the bar -- mapped at startup, oldest in the list --
+ * ended up raised last and drawn over a lock window mapped long after it. */
+void
+raiselockwins(void)
+{
+	DockWin *d;
+
+	for (d = dockwins; d; d = d->next)
+		if (islockwin(d->win))
+			XRaiseWindow(dpy, d->win);
 }
 
 void
