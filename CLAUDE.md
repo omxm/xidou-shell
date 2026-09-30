@@ -85,9 +85,60 @@ inventoried into this file yet.
   panel-toggle <name>` / dedicated `IpcHandler`s per panel in `shell.qml`).
 - All panels import `quickshell/config/Theme.qml` and `quickshell/config/Config.qml` —
   no per-panel color/font literals.
-- X11-specific quirk: `PanelWindow.focusable` does nothing on this backend, so real X
-  input focus is requested via the `xidou-focus-window` helper (`bin/`), matched by
-  window size — used by Launcher, control-center, settings.
+- X11-specific quirk: `PanelWindow.focusable` does nothing on this backend. dwm now
+  gives panels focus itself (see below). The older `xidou-focus-window` helper
+  (`bin/`), which forces focus by matching window size, is still called by every
+  panel as a fallback. control-center and wallpaper are both 820x560, which is
+  harmless only because just one panel is ever mapped at a time.
+
+### Window roles between dwm and the shell (`_NET_WM_NAME`)
+
+Every Quickshell window is `_NET_WM_WINDOW_TYPE_DOCK` and named "quickshell", and
+dwm never manages docks as clients. So a window tells dwm what it is by setting a
+title via QtQuick's `Window.window.setTitle()` (`quickshell/lib/DwmRole.qml`;
+LockScreen.qml does the same inline). dwm caches the role per dock (`DockWin`,
+refreshed on `_NET_WM_NAME` changes) and derives every mode from the *currently
+mapped* docks, never a flag. If the shell dies, the mode goes away with its
+windows.
+
+- **`xidou-lock`** (`LOCKWINNAME`) — lock mode. See the lock screen item in
+  "What's still open".
+- **`xidou-panel`** (`PANELWINNAME`) — keyboard-driven panels: launcher,
+  control-center, settings, session, wallpaper, clipboard, screenshot confirm.
+  Not OSD, notifications or the bar. While one is mapped:
+  - dwm focuses it on map, or when the title arrives late.
+  - enternotify/motionnotify don't move focus, so the pointer crossing a client
+    no longer steals it.
+  - When the last panel unmaps, `focus(NULL)` returns focus to the selected
+    client. It used to fall to PointerRoot.
+  - **Anything done outside the panel closes it.** Any keybinding not listed in
+    `panelsafecmds` (`dwm/config.h`) closes it first. So does a click on a client
+    or the desktop; the click still goes through, replayed via XAllowEvents.
+    - `panelsafecmds` is currently volume, brightness, media keys, DND, panel
+      toggles, lock and screenshot. It's the one place to change what keeps a
+      panel open.
+    - While a panel is open, the selected clients get the same sync AnyButton
+      grab as unfocused ones, so dwm sees clicks on them too.
+    - Clicks on the bar, panels or lock screen go to Quickshell, never dwm, so
+      they don't close anything.
+  - dwm closes panels with `xidou msg panels closeAll`, which also cancels a
+    pending screenshot confirm. Print/Ctrl+Print close panels themselves via
+    `PanelManager.closeAllThen()` and wait out the `[motion]` close duration
+    +150ms, so the panel isn't in the picture.
+  - `dwm/config.h` is gitignored. Copy `config.def.h` over it after pulling
+    changes to either.
+- **Quickshell's 1x1 resize, dropped by dwm.** Whenever any panel hides,
+  Quickshell 0.3.1 re-lays out every remaining panel window, the bar included
+  (`XPanelStack::removePanel` → `updateDimensions`, `src/x11/panel_window.cpp`).
+  Each re-layout ends with an AwesomeWM workaround: `setGeometry(0,0,0,0)` then
+  `setGeometry(real)`, and Qt sends the first as a 1x1 resize. picom discards a
+  window's contents on a size change, so the bar vanished for one frame every
+  time a panel closed. dwm's `configurerequest()` now drops any request that
+  would shrink a tracked dock to 1x1 or smaller (`isdegeneratedockconfig()`).
+  Found by bar-strip recording on real hardware. Unmapping non-Quickshell
+  windows, focus changes, picom's close animation, `xrender-sync-fence` and
+  `QSG_RENDER_LOOP=basic` were each ruled out. If a future Quickshell upgrade
+  changes that workaround, revisit this.
 
 ### Icons & font
 

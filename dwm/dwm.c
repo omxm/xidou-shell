@@ -191,6 +191,7 @@ typedef struct DockWin DockWin;
 struct DockWin {
 	Window win;
 	int islock; /* cached islockwin(); refreshed when _NET_WM_NAME changes */
+	int ispanel; /* cached ispanelwin(); same */
 	DockWin *next;
 };
 static DockWin *dockwins = NULL;
@@ -206,6 +207,18 @@ static DockWin *dockwins = NULL;
  * working and e.g. a terminal spawned from a keybind got focus underneath
  * the lock screen, receiving whatever was typed next. */
 #define LOCKWINNAME "xidou-lock"
+
+/* _NET_WM_NAME of the shell's keyboard-driven panels (launcher, control
+ * center, settings, session menu, wallpaper, clipboard, screenshot confirm
+ * -- see quickshell/lib/DwmRole.qml). While one is mapped (panelopen()),
+ * dwm gives it input focus when it maps, stops focus-follows-mouse from
+ * moving focus to a client under the pointer, and hands focus back to the
+ * selected client once the last one unmaps. Derived from the dock list, not
+ * a flag, so a crashed shell can't leave dwm stuck in this state. */
+#define PANELWINNAME "xidou-panel"
+
+/* What removedockwin() reports about the window it removed. */
+enum { DockLock = 1 << 0, DockPanel = 1 << 1 };
 
 typedef struct {
 	const char *class;
@@ -232,12 +245,19 @@ static void configure(Client *c);
 static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
-static void adddockwin(Window w);
+static DockWin *adddockwin(Window w);
 static int removedockwin(Window w);
 static int islockwin(Window w);
+static int isdegeneratedockconfig(XConfigureRequestEvent *ev);
+static int ispanelwin(Window w);
+static int panelopen(void);
+static void focuspanel(void);
+static void closepanels(void);
+static int panelsafekey(const Key *k);
+static void grabpanelbuttons(void);
+static void dockwingone(int kinds);
 static int locked(void);
 static void focuslock(void);
-static void lockwingone(int waslock);
 static void raisedocks(void);
 static void raiselockwins(void);
 static void destroynotify(XEvent *e);
@@ -540,6 +560,13 @@ buttonpress(XEvent *e)
 	Client *c;
 	Monitor *m;
 	XButtonPressedEvent *ev = &e->xbutton;
+
+	/* A click on a client or the desktop while a panel is open closes it.
+	 * The click itself still goes on to do what it normally does below
+	 * (including the XAllowEvents replay for a client click). Clicks on
+	 * the shell's own windows (bar, panels, lock screen) never get here. */
+	if (panelopen() && !locked() && (ev->window == root || wintoclient(ev->window)))
+		closepanels();
 
 	click = ClkRootWin;
 	/* focus monitor if necessary */
@@ -853,7 +880,7 @@ configurerequest(XEvent *e)
 			}
 		} else
 			configure(c);
-	} else {
+	} else if (!isdegeneratedockconfig(ev)) {
 		wc.x = ev->x;
 		wc.y = ev->y;
 		wc.width = ev->width;
@@ -896,7 +923,7 @@ destroynotify(XEvent *e)
 	else {
 		removestrut(ev->window); /* no-op if it wasn't a tracked strut window */
 		/* no-op if it wasn't a tracked dock window */
-		lockwingone(removedockwin(ev->window));
+		dockwingone(removedockwin(ev->window));
 	}
 }
 
@@ -1007,6 +1034,10 @@ enternotify(XEvent *e)
 	Monitor *m;
 	XCrossingEvent *ev = &e->xcrossing;
 
+	/* A panel holds focus until it closes; the pointer merely crossing a
+	 * client on the way must not take it away. */
+	if (panelopen())
+		return;
 	if ((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && ev->window != root)
 		return;
 	c = wintoclient(ev->window);
@@ -1451,8 +1482,11 @@ keypress(XEvent *e)
 	for (i = 0; i < LENGTH(keys); i++)
 		if (keysym == keys[i].keysym
 		&& CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)
-		&& keys[i].func)
+		&& keys[i].func) {
+			if (panelopen() && !panelsafekey(&keys[i]))
+				closepanels();
 			keys[i].func(&(keys[i].arg));
+		}
 }
 
 void
@@ -1500,13 +1534,18 @@ manage(Window w, XWindowAttributes *wa)
 		}
 		if (wtype == netatom[NetWMWindowTypeDock]) {
 			XSelectInput(dpy, w, PropertyChangeMask | StructureNotifyMask);
-			adddockwin(w);
+			DockWin *d = adddockwin(w);
+
 			XMapRaised(dpy, w);
 			/* A popup mapped while locked (OSD, notification) must not
 			 * land above the lock screen until the next restack(). */
 			raiselockwins();
 			if (locked())
 				focuslock();
+			else if (d->ispanel) {
+				XSetInputFocus(dpy, w, RevertToPointerRoot, CurrentTime);
+				grabpanelbuttons();
+			}
 			updatestrut(w);
 			return;
 		}
@@ -1616,6 +1655,11 @@ motionnotify(XEvent *e)
 
 	if (ev->window != root)
 		return;
+	/* Same as enternotify(). `mon` is left stale on purpose, so a monitor
+	 * crossed while a panel was open is picked up by the first motion after
+	 * it closes. */
+	if (panelopen())
+		return;
 	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
 		unfocus(selmon->sel, 1);
 		selmon = m;
@@ -1722,18 +1766,24 @@ propertynotify(XEvent *e)
 	 * manage() looked at it), so re-check dock windows when it changes. */
 	if (ev->atom == netatom[NetWMName] && !wintoclient(ev->window)) {
 		DockWin *d;
-		int waslock;
+		int waslock, waspanel;
 
 		for (d = dockwins; d && d->win != ev->window; d = d->next);
 		if (!d)
 			return;
 		waslock = d->islock;
+		waspanel = d->ispanel;
 		d->islock = islockwin(d->win);
+		d->ispanel = ispanelwin(d->win);
 		if (d->islock) {
 			XRaiseWindow(dpy, d->win);
 			focuslock();
-		} else
-			lockwingone(waslock);
+		} else if (d->ispanel && !waspanel && !locked()) {
+			XSetInputFocus(dpy, d->win, RevertToPointerRoot, CurrentTime);
+			grabpanelbuttons();
+		}
+		dockwingone((waslock && !d->islock ? DockLock : 0)
+			| (waspanel && !d->ispanel ? DockPanel : 0));
 		return;
 	}
 
@@ -2602,7 +2652,7 @@ unmapnotify(XEvent *e)
 	} else {
 		removestrut(ev->window); /* no-op if it wasn't a tracked strut window */
 		/* no-op if it wasn't a tracked dock window */
-		lockwingone(removedockwin(ev->window));
+		dockwingone(removedockwin(ev->window));
 	}
 }
 
@@ -2758,22 +2808,24 @@ removestrut(Window w)
 	}
 }
 
-void
+DockWin *
 adddockwin(Window w)
 {
 	DockWin *d = ecalloc(1, sizeof(DockWin));
 	d->win = w;
 	d->islock = islockwin(w);
+	d->ispanel = ispanelwin(w);
 	d->next = dockwins;
 	dockwins = d;
+	return d;
 }
 
-/* Returns whether the removed window was a lock screen window. */
+/* Returns what the removed window was (DockLock/DockPanel bits). */
 int
 removedockwin(Window w)
 {
 	DockWin *d, *prev = NULL;
-	int waslock;
+	int kinds;
 
 	for (d = dockwins; d; prev = d, d = d->next) {
 		if (d->win == w) {
@@ -2781,27 +2833,130 @@ removedockwin(Window w)
 				prev->next = d->next;
 			else
 				dockwins = d->next;
-			waslock = d->islock;
+			kinds = (d->islock ? DockLock : 0) | (d->ispanel ? DockPanel : 0);
 			free(d);
-			return waslock;
+			return kinds;
 		}
 	}
 	return 0;
 }
 
-/* Called once a window has left the dock list. A lock window that had focus
- * reverts it to PointerRoot when unmapped, so move it to a remaining lock
- * window (one per monitor); after the last one, hand focus back to the
- * client that had it before the lock. */
+/* Called once a window has stopped being a lock/panel dock (unmapped,
+ * destroyed, or retitled). A focused dock reverts focus to PointerRoot when
+ * it unmaps, so move focus to a remaining lock or panel window; after the
+ * last one, hand focus back to the selected client. */
 void
-lockwingone(int waslock)
+dockwingone(int kinds)
 {
-	if (!waslock)
+	if (!kinds)
 		return;
 	if (locked())
 		focuslock();
+	else if (panelopen())
+		focuspanel();
 	else
 		focus(NULL);
+}
+
+int
+ispanelwin(Window w)
+{
+	char name[64];
+
+	return gettextprop(w, netatom[NetWMName], name, sizeof name)
+		&& !strcmp(name, PANELWINNAME);
+}
+
+int
+panelopen(void)
+{
+	DockWin *d;
+
+	for (d = dockwins; d; d = d->next)
+		if (d->ispanel)
+			return 1;
+	return 0;
+}
+
+/* Puts input focus on a panel unless one already has it. Panels are
+ * mutually exclusive in the shell, but while it switches from one to
+ * another both can be mapped for a moment; the newest (list head) wins. */
+void
+focuspanel(void)
+{
+	DockWin *d;
+	Window cur;
+	int revert;
+
+	XGetInputFocus(dpy, &cur, &revert);
+	for (d = dockwins; d; d = d->next)
+		if (d->ispanel && d->win == cur)
+			return;
+	for (d = dockwins; d; d = d->next)
+		if (d->ispanel) {
+			XSetInputFocus(dpy, d->win, RevertToPointerRoot, CurrentTime);
+			return;
+		}
+}
+
+void
+closepanels(void)
+{
+	Arg a = {.v = panelclosecmd};
+
+	spawn(&a);
+}
+
+int
+panelsafekey(const Key *k)
+{
+	unsigned int i;
+
+	if (k->func != spawn)
+		return 0;
+	for (i = 0; i < LENGTH(panelsafecmds); i++)
+		if (k->arg.v == panelsafecmds[i])
+			return 1;
+	return 0;
+}
+
+/* The focused client normally only has dwm's modifier+button grabs, so a
+ * plain click on it goes straight to the client and dwm never sees it.
+ * While a panel is open, give the selected clients the same synchronous
+ * AnyButton grab every unfocused client has, so buttonpress() sees that
+ * click too, closes the panel and replays the click (XAllowEvents) as
+ * usual. focus() puts the normal grabs back once a client is focused again. */
+void
+grabpanelbuttons(void)
+{
+	Monitor *m;
+
+	for (m = mons; m; m = m->next)
+		if (m->sel)
+			grabbuttons(m->sel, 0);
+}
+
+/* Quickshell re-lays out every one of its panel windows (the bar included)
+ * whenever any of them hides, and each re-layout ends with a workaround for
+ * another WM: resize to 0x0 (which Qt sends as 1x1), then straight back to
+ * the real geometry. dwm used to pass both through. The compositor then
+ * throws away the window's contents on the size change and shows it empty
+ * until Qt repaints, so the bar blinked out for a frame every time a panel
+ * closed. No dock is ever meant to be that small, so dwm drops the shrink.
+ * The request that follows then matches the current geometry and nothing
+ * visibly happens. */
+int
+isdegeneratedockconfig(XConfigureRequestEvent *ev)
+{
+	DockWin *d;
+
+	if ((ev->value_mask & (CWWidth|CWHeight)) != (CWWidth|CWHeight)
+	|| ev->width > 1 || ev->height > 1)
+		return 0;
+	for (d = dockwins; d; d = d->next)
+		if (d->win == ev->window)
+			return 1;
+	return 0;
 }
 
 int

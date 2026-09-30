@@ -105,6 +105,15 @@ ShellRoot {
             else
                 PanelManager.toggle(name);
         }
+
+        // dwm runs this (panelclosecmd in dwm/config.h) when something is
+        // done outside an open panel: a click on a client or the desktop, or
+        // a keybinding not in its panelsafecmds list.
+        function closeAll(): void {
+            PanelManager.closeAll();
+            if (Screenshot.confirmVisible)
+                Screenshot.confirmCancel();
+        }
     }
 
     // ctrl+<arrow> media keys (dwm/config.h) go here rather than a
@@ -213,14 +222,21 @@ ShellRoot {
         // Refused while locked: region select maps its own full-screen
         // backdrop and a pointer-grabbing slop, and either capture would
         // just land a picture of the lock screen on the clipboard.
+        // Any open panel is closed first and the capture waits until it's
+        // off the screen (PanelManager.closeAllThen()), so it isn't in the
+        // picture.
         function fullscreen(): void {
             if (!SessionActions.locked)
-                Screenshot.fullscreen();
+                PanelManager.closeAllThen(function () {
+                    Screenshot.fullscreen();
+                });
         }
 
         function region(): void {
             if (!SessionActions.locked)
-                Screenshot.region();
+                PanelManager.closeAllThen(function () {
+                    Screenshot.region();
+                });
         }
     }
 

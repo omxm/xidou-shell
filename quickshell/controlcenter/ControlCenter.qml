@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import "../config"
 import "../services"
+import "../lib"
 import "sections"
 
 // Control-center ("Home") panel: toggled by `xidou msg panel-toggle
@@ -39,6 +40,12 @@ PanelWindow {
     // full investigation) — xidou-focus-window matches by size, so passing
     // this panel's own width/height is all that's needed to reuse it here.
     focusable: true
+
+    // dwm focuses windows with this title and holds focus on them while
+    // open (see lib/DwmRole.qml).
+    DwmRole {
+        title: "xidou-panel"
+    }
 
     Process {
         id: focusHelper

@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import "../config"
 import "../services"
+import "../lib"
 
 // Wallpaper picker: toggled by `xidou msg panel-toggle wallpaper` (dwm's
 // super+y bind, dwm/config.h) via PanelManager.isOpen("wallpaper"). Same
@@ -127,6 +128,12 @@ PanelWindow {
     // Same X-focus workaround as Launcher.qml/ControlCenter.qml -- see
     // Launcher.qml's header comment for the full investigation.
     focusable: true
+
+    // dwm focuses windows with this title and holds focus on them while
+    // open (see lib/DwmRole.qml).
+    DwmRole {
+        title: "xidou-panel"
+    }
 
     Process {
         id: focusHelper
