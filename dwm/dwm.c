@@ -190,13 +190,21 @@ static StrutWin *struts = NULL;
 typedef struct DockWin DockWin;
 struct DockWin {
 	Window win;
+	int islock; /* cached islockwin(); refreshed when _NET_WM_NAME changes */
 	DockWin *next;
 };
 static DockWin *dockwins = NULL;
 
 /* _NET_WM_NAME the shell's lock screen sets on its windows (see
  * quickshell/session/LockScreen.qml) -- every other Quickshell window is
- * just "quickshell", so this is the one thing that tells them apart. */
+ * just "quickshell", so this is the one thing that tells them apart.
+ *
+ * While at least one such window is mapped, dwm treats the session as
+ * locked (see locked()): keybindings do nothing, and input focus is held on
+ * a lock window instead of ever going to a client. The lock screen takes no
+ * X keyboard grab of its own, so without this dwm's root key grabs kept
+ * working and e.g. a terminal spawned from a keybind got focus underneath
+ * the lock screen, receiving whatever was typed next. */
 #define LOCKWINNAME "xidou-lock"
 
 typedef struct {
@@ -225,8 +233,11 @@ static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
 static void adddockwin(Window w);
-static void removedockwin(Window w);
+static int removedockwin(Window w);
 static int islockwin(Window w);
+static int locked(void);
+static void focuslock(void);
+static void lockwingone(int waslock);
 static void raisedocks(void);
 static void raiselockwins(void);
 static void destroynotify(XEvent *e);
@@ -639,8 +650,12 @@ clientmessage(XEvent *e)
 		 * here — Qt/Quickshell asks for focus this way (even with
 		 * PanelWindow.focusable set) rather than assuming it can just
 		 * call XSetInputFocus on itself without the WM's involvement. */
-		if (cme->message_type == netatom[NetActiveWindow])
-			XSetInputFocus(dpy, cme->window, RevertToPointerRoot, CurrentTime);
+		if (cme->message_type == netatom[NetActiveWindow]) {
+			if (locked())
+				focuslock(); /* no dock but a lock window gets focus */
+			else
+				XSetInputFocus(dpy, cme->window, RevertToPointerRoot, CurrentTime);
+		}
 		return;
 	}
 	if (cme->message_type == netatom[NetWMState]) {
@@ -880,7 +895,8 @@ destroynotify(XEvent *e)
 		unmanage(c, 1);
 	else {
 		removestrut(ev->window); /* no-op if it wasn't a tracked strut window */
-		removedockwin(ev->window); /* no-op if it wasn't a tracked dock window */
+		/* no-op if it wasn't a tracked dock window */
+		lockwingone(removedockwin(ev->window));
 	}
 }
 
@@ -1016,6 +1032,13 @@ expose(XEvent *e)
 void
 focus(Client *c)
 {
+	/* Every client-focus path (manage(), enternotify(), focusstack, view,
+	 * unmanage...) ends up here. selmon->sel is left untouched so the same
+	 * client gets focus back once the lock screen goes away. */
+	if (locked()) {
+		focuslock();
+		return;
+	}
 	if (!c || !ISVISIBLE(c))
 		for (c = selmon->stack; c && !ISVISIBLE(c); c = c->snext);
 	if (selmon->sel && selmon->sel != c)
@@ -1044,6 +1067,11 @@ focusin(XEvent *e)
 {
 	XFocusChangeEvent *ev = &e->xfocus;
 
+	/* A client that grabbed focus by itself while locked. */
+	if (locked()) {
+		focuslock();
+		return;
+	}
 	if (selmon->sel && ev->window != selmon->sel->win)
 		setfocus(selmon->sel);
 }
@@ -1416,6 +1444,8 @@ keypress(XEvent *e)
 	KeySym keysym;
 	XKeyEvent *ev;
 
+	if (locked())
+		return;
 	ev = &e->xkey;
 	keysym = XKeycodeToKeysym(dpy, (KeyCode)ev->keycode, 0);
 	for (i = 0; i < LENGTH(keys); i++)
@@ -1475,6 +1505,8 @@ manage(Window w, XWindowAttributes *wa)
 			/* A popup mapped while locked (OSD, notification) must not
 			 * land above the lock screen until the next restack(). */
 			raiselockwins();
+			if (locked())
+				focuslock();
 			updatestrut(w);
 			return;
 		}
@@ -1689,8 +1721,19 @@ propertynotify(XEvent *e)
 	/* The lock screen's title may be set after it was mapped (and so after
 	 * manage() looked at it), so re-check dock windows when it changes. */
 	if (ev->atom == netatom[NetWMName] && !wintoclient(ev->window)) {
-		if (islockwin(ev->window))
-			XRaiseWindow(dpy, ev->window);
+		DockWin *d;
+		int waslock;
+
+		for (d = dockwins; d && d->win != ev->window; d = d->next);
+		if (!d)
+			return;
+		waslock = d->islock;
+		d->islock = islockwin(d->win);
+		if (d->islock) {
+			XRaiseWindow(dpy, d->win);
+			focuslock();
+		} else
+			lockwingone(waslock);
 		return;
 	}
 
@@ -2513,7 +2556,7 @@ unfocus(Client *c, int setfocus)
 		return;
 	grabbuttons(c, 0);
 	XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);
-	if (setfocus) {
+	if (setfocus && !locked()) {
 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
 		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
 	}
@@ -2558,7 +2601,8 @@ unmapnotify(XEvent *e)
 			unmanage(c, 0);
 	} else {
 		removestrut(ev->window); /* no-op if it wasn't a tracked strut window */
-		removedockwin(ev->window); /* no-op if it wasn't a tracked dock window */
+		/* no-op if it wasn't a tracked dock window */
+		lockwingone(removedockwin(ev->window));
 	}
 }
 
@@ -2719,14 +2763,17 @@ adddockwin(Window w)
 {
 	DockWin *d = ecalloc(1, sizeof(DockWin));
 	d->win = w;
+	d->islock = islockwin(w);
 	d->next = dockwins;
 	dockwins = d;
 }
 
-void
+/* Returns whether the removed window was a lock screen window. */
+int
 removedockwin(Window w)
 {
 	DockWin *d, *prev = NULL;
+	int waslock;
 
 	for (d = dockwins; d; prev = d, d = d->next) {
 		if (d->win == w) {
@@ -2734,10 +2781,27 @@ removedockwin(Window w)
 				prev->next = d->next;
 			else
 				dockwins = d->next;
+			waslock = d->islock;
 			free(d);
-			return;
+			return waslock;
 		}
 	}
+	return 0;
+}
+
+/* Called once a window has left the dock list. A lock window that had focus
+ * reverts it to PointerRoot when unmapped, so move it to a remaining lock
+ * window (one per monitor); after the last one, hand focus back to the
+ * client that had it before the lock. */
+void
+lockwingone(int waslock)
+{
+	if (!waslock)
+		return;
+	if (locked())
+		focuslock();
+	else
+		focus(NULL);
 }
 
 int
@@ -2755,7 +2819,7 @@ raisedocks(void)
 	DockWin *d;
 
 	for (d = dockwins; d; d = d->next)
-		if (!islockwin(d->win))
+		if (!d->islock)
 			XRaiseWindow(dpy, d->win);
 	raiselockwins();
 }
@@ -2770,8 +2834,40 @@ raiselockwins(void)
 	DockWin *d;
 
 	for (d = dockwins; d; d = d->next)
-		if (islockwin(d->win))
+		if (d->islock)
 			XRaiseWindow(dpy, d->win);
+}
+
+int
+locked(void)
+{
+	DockWin *d;
+
+	for (d = dockwins; d; d = d->next)
+		if (d->islock)
+			return 1;
+	return 0;
+}
+
+/* Keeps X input focus on a lock window. Leaves it alone if it's already on
+ * one -- with a lock window per monitor, the shell picks which one gets the
+ * password field focus, and this must not fight it for that. */
+void
+focuslock(void)
+{
+	DockWin *d;
+	Window cur;
+	int revert;
+
+	XGetInputFocus(dpy, &cur, &revert);
+	for (d = dockwins; d; d = d->next)
+		if (d->islock && d->win == cur)
+			return;
+	for (d = dockwins; d; d = d->next)
+		if (d->islock) {
+			XSetInputFocus(dpy, d->win, RevertToPointerRoot, CurrentTime);
+			return;
+		}
 }
 
 void

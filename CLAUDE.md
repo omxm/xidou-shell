@@ -241,8 +241,12 @@ panel that wasn't in the original plan:
   (per-screen `Variants`, `exclusionMode: Ignore`), dwm keeps it above every
   other dock (`LOCKWINNAME`, matched on the `_NET_WM_NAME` LockScreen.qml sets via
   QtQuick's `Window.window.setTitle()`), and `PanelManager.toggle()`/screenshot
-  IPC refuse while locked — but dwm's root `XGrabKey` binds still fire, so e.g.
-  super+<n> can still move focus to a hidden client. QML cannot grab:
+  IPC refuse while locked. dwm also has a lock mode (`locked()`, true while any
+  `xidou-lock` dock is mapped): `keypress()` runs no binds and `focus()`/
+  `unfocus()`/`focusin()`/`clientmessage()` hold X focus on a lock window, so a
+  client spawned or activated under the lock never gets keystrokes. Still not a
+  real grab: any X client can take its own `XGrabKeyboard`, and the lock is
+  fail-open (killing Quickshell unmaps it and dwm hands focus back). QML cannot grab:
   `QWindow::setKeyboardGrabEnabled`/`setMouseGrabEnabled` aren't slots/invokable
   (TypeError from QML, checked on Quickshell 0.3.1 / Qt 6.11), `_backingWindow`
   is `undefined` on PanelWindow, and `PopupWindow.grabFocus` takes no X grab on
