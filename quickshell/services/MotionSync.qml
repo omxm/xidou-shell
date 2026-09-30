@@ -26,12 +26,25 @@ import "../lib/PicomSync.js" as PicomSync
 Singleton {
     id: root
 
-    // Same override convention as Config.qml's $XIDOU_CONFIG_PATH -- an
-    // Xvfb/test run should point this at a throwaway copy of picom.conf and
-    // never touch the real session's file.
+    // The picom.conf this instance manages, from $XIDOU_PICOM_CONF only.
+    // session/xidou-xinitrc exports it for the real session. There is
+    // deliberately no fallback path: it used to default to the repo's real
+    // session/picom.conf, so any instance started without the variable --
+    // an Xvfb/Xephyr test run, or `quickshell -p` by hand -- could rewrite
+    // the live session's file and SIGUSR1 the live picom whenever its test
+    // config's [motion] values differed. Unset now means disabled: nothing
+    // is read, written or signalled.
     readonly property string picomConfPath: {
-        var override = Quickshell.env("XIDOU_PICOM_CONF");
-        return (override && override.length > 0) ? override : (Quickshell.env("HOME") + "/projects/xidou-shell/session/picom.conf");
+        var path = Quickshell.env("XIDOU_PICOM_CONF");
+        return (path && path.length > 0) ? path : "";
+    }
+    readonly property bool enabled: root.picomConfPath.length > 0
+
+    Component.onCompleted: {
+        if (!root.enabled) {
+            root.lastError = "XIDOU_PICOM_CONF is not set; motion settings will not reach picom";
+            console.warn("[xidou] MotionSync: " + root.lastError);
+        }
     }
 
     property string cachedText: ""
@@ -40,7 +53,7 @@ Singleton {
 
     FileView {
         id: picomFile
-        path: root.picomConfPath
+        path: root.enabled ? root.picomConfPath : ""
         watchChanges: true
         printErrors: false
 
@@ -91,7 +104,7 @@ Singleton {
     // settings change elsewhere (Config.reloaded() fires on every write, not
     // just motion.*) shouldn't cause a redundant picom reinit.
     function sync() {
-        if (!root.ready || !Config.ready)
+        if (!root.enabled || !root.ready || !Config.ready)
             return;
 
         var blockText = PicomSync.buildAnimationsBlock(Config.data.motion);
