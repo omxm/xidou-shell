@@ -151,6 +151,26 @@ static const char *wallpapertogglecmd[]     = { "xidou", "msg", "panel-toggle", 
 static const char *screenshotfullcmd[]      = { "xidou", "msg", "screenshot", "fullscreen", NULL }; /* Phase 7 */
 static const char *screenshotregioncmd[]    = { "xidou", "msg", "screenshot", "region", NULL }; /* Phase 7 */
 
+/* Closes every open shell panel. dwm runs this when something is done
+ * outside an open panel (see closepanels() in dwm.c). */
+static const char *panelclosecmd[] = { "xidou", "msg", "panels", "closeAll", NULL };
+
+/* Keybindings that leave an open panel open. While a panel is open, every
+ * other keybinding closes it first, and so does a click on a client or the
+ * desktop. Panel toggles are here because the shell switches panels itself.
+ * The screenshot commands are here because the shell closes panels itself
+ * and waits for them to be gone before capturing. */
+static const char **panelsafecmds[] = {
+	volraisecmd, vollowercmd, volmutecmd,
+	brightupcmd, brightdowncmd,
+	mprisnextcmd, mprisprevcmd, mprisplaypausecmd,
+	notificationdndcmd,
+	launchertogglecmd, controlcentertogglecmd, settingstogglecmd,
+	clipboardtogglecmd, sessiontogglecmd, wallpapertogglecmd,
+	sessionlockcmd,
+	screenshotfullcmd, screenshotregioncmd,
+};
+
 static const Key keys[] = {
 	/* modifier                     key        function          argument */
 	{ MODKEY,                       XK_p,      spawn,            {.v = dmenucmd } },

@@ -251,6 +251,9 @@ static int islockwin(Window w);
 static int ispanelwin(Window w);
 static int panelopen(void);
 static void focuspanel(void);
+static void closepanels(void);
+static int panelsafekey(const Key *k);
+static void grabpanelbuttons(void);
 static void dockwingone(int kinds);
 static int locked(void);
 static void focuslock(void);
@@ -556,6 +559,13 @@ buttonpress(XEvent *e)
 	Client *c;
 	Monitor *m;
 	XButtonPressedEvent *ev = &e->xbutton;
+
+	/* A click on a client or the desktop while a panel is open closes it.
+	 * The click itself still goes on to do what it normally does below
+	 * (including the XAllowEvents replay for a client click). Clicks on
+	 * the shell's own windows (bar, panels, lock screen) never get here. */
+	if (panelopen() && !locked() && (ev->window == root || wintoclient(ev->window)))
+		closepanels();
 
 	click = ClkRootWin;
 	/* focus monitor if necessary */
@@ -1471,8 +1481,11 @@ keypress(XEvent *e)
 	for (i = 0; i < LENGTH(keys); i++)
 		if (keysym == keys[i].keysym
 		&& CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)
-		&& keys[i].func)
+		&& keys[i].func) {
+			if (panelopen() && !panelsafekey(&keys[i]))
+				closepanels();
 			keys[i].func(&(keys[i].arg));
+		}
 }
 
 void
@@ -1528,8 +1541,10 @@ manage(Window w, XWindowAttributes *wa)
 			raiselockwins();
 			if (locked())
 				focuslock();
-			else if (d->ispanel)
+			else if (d->ispanel) {
 				XSetInputFocus(dpy, w, RevertToPointerRoot, CurrentTime);
+				grabpanelbuttons();
+			}
 			updatestrut(w);
 			return;
 		}
@@ -1762,8 +1777,10 @@ propertynotify(XEvent *e)
 		if (d->islock) {
 			XRaiseWindow(dpy, d->win);
 			focuslock();
-		} else if (d->ispanel && !waspanel && !locked())
+		} else if (d->ispanel && !waspanel && !locked()) {
 			XSetInputFocus(dpy, d->win, RevertToPointerRoot, CurrentTime);
+			grabpanelbuttons();
+		}
 		dockwingone((waslock && !d->islock ? DockLock : 0)
 			| (waspanel && !d->ispanel ? DockPanel : 0));
 		return;
@@ -2879,6 +2896,43 @@ focuspanel(void)
 			XSetInputFocus(dpy, d->win, RevertToPointerRoot, CurrentTime);
 			return;
 		}
+}
+
+void
+closepanels(void)
+{
+	Arg a = {.v = panelclosecmd};
+
+	spawn(&a);
+}
+
+int
+panelsafekey(const Key *k)
+{
+	unsigned int i;
+
+	if (k->func != spawn)
+		return 0;
+	for (i = 0; i < LENGTH(panelsafecmds); i++)
+		if (k->arg.v == panelsafecmds[i])
+			return 1;
+	return 0;
+}
+
+/* The focused client normally only has dwm's modifier+button grabs, so a
+ * plain click on it goes straight to the client and dwm never sees it.
+ * While a panel is open, give the selected clients the same synchronous
+ * AnyButton grab every unfocused client has, so buttonpress() sees that
+ * click too, closes the panel and replays the click (XAllowEvents) as
+ * usual. focus() puts the normal grabs back once a client is focused again. */
+void
+grabpanelbuttons(void)
+{
+	Monitor *m;
+
+	for (m = mons; m; m = m->next)
+		if (m->sel)
+			grabbuttons(m->sel, 0);
 }
 
 int

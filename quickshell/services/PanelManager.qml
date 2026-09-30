@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import "../config"
 
 // Central visibility + mutual exclusivity for every dock panel (Launcher,
 // control-center, wallpaper, clipboard, session, settings). Exactly one
@@ -72,5 +73,42 @@ Singleton {
         for (var key in root.openPanels)
             next[key] = false;
         root.openPanels = next;
+    }
+
+    function anyOpen() {
+        for (var key in root.openPanels)
+            if (root.openPanels[key])
+                return true;
+        return false;
+    }
+
+    // Closes every panel, then runs `fn` once they are gone from the screen:
+    // after picom's close animation ([motion] duration) plus a margin for
+    // the unmap itself. Runs `fn` right away if nothing was open. Used by
+    // screenshots, so a panel that was open when Print was pressed doesn't
+    // end up in the picture. Time-based: neither the unmap nor the
+    // compositor's animation reports back when it's done.
+    property var pendingAfterClose: null
+
+    function closeAllThen(fn) {
+        if (!root.anyOpen()) {
+            fn();
+            return;
+        }
+        root.closeAll();
+        root.pendingAfterClose = fn;
+        var motion = Config.data.motion;
+        settleTimer.interval = (motion.enabled ? Math.round(motion.duration * 1000) : 0) + 150;
+        settleTimer.restart();
+    }
+
+    Timer {
+        id: settleTimer
+        onTriggered: {
+            var fn = root.pendingAfterClose;
+            root.pendingAfterClose = null;
+            if (fn)
+                fn();
+        }
     }
 }
