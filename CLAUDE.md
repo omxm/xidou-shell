@@ -237,6 +237,35 @@ panel that wasn't in the original plan:
   is not built.
 - **Settings panel placeholders**: Appearance > Accessibility/Motion/Effects.
 - **Control-center placeholder**: Screen Time section.
+- **Lock screen has no X keyboard/pointer grab.** It now covers every screen
+  (per-screen `Variants`, `exclusionMode: Ignore`), dwm keeps it above every
+  other dock (`LOCKWINNAME`, matched on the `_NET_WM_NAME` LockScreen.qml sets via
+  QtQuick's `Window.window.setTitle()`), and `PanelManager.toggle()`/screenshot
+  IPC refuse while locked. dwm also has a lock mode (`locked()`, true while any
+  `xidou-lock` dock is mapped): `keypress()` runs no binds and `focus()`/
+  `unfocus()`/`focusin()`/`clientmessage()` hold X focus on a lock window, so a
+  client spawned or activated under the lock never gets keystrokes. Still not a
+  real grab: any X client can take its own `XGrabKeyboard`, and the lock is
+  fail-open (killing Quickshell unmaps it and dwm hands focus back). QML cannot grab:
+  `QWindow::setKeyboardGrabEnabled`/`setMouseGrabEnabled` aren't slots/invokable
+  (TypeError from QML, checked on Quickshell 0.3.1 / Qt 6.11), `_backingWindow`
+  is `undefined` on PanelWindow, and `PopupWindow.grabFocus` takes no X grab on
+  this backend. Needs a small C++ QML plugin or an external locker.
+- **Lock screen: not yet verified on real hardware** (Xvfb with a stubbed
+  PamContext only, since a wrong-password test against real PAM can trip
+  faillock):
+  - Multi-monitor coverage. Xvfb can't give Qt a second screen; dwm's
+    multi-lock-window focus handling was only tested with a fake second lock
+    window.
+  - Unlocking through real PAM with the redesigned UI. The redesign changed
+    how PAM messages are displayed. Real-PAM unlock was only confirmed on the
+    pre-redesign UI.
+  - picom's open/close fade+scale animation also applies to the lock window,
+    so the desktop may show for ~0.15s as the lock appears. It can be
+    excluded with a picom rule matching `xidou-lock` if it does.
+  - The wallpaper card's rounded corners (`MultiEffect` mask) under picom's
+    GLX backend. See the Effects note above about `layer.effect` rendering
+    blank under a software-GL compositor.
 - **Final phase — startup/splash screen**: logo + wordmark + dismissible "Start"
   button, same design language as every other panel. Not started.
 - No inventory yet of X1CG5-specific hardware details (the X230 section above was
