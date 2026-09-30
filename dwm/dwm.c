@@ -248,6 +248,7 @@ static Monitor *createmon(void);
 static DockWin *adddockwin(Window w);
 static int removedockwin(Window w);
 static int islockwin(Window w);
+static int isdegeneratedockconfig(XConfigureRequestEvent *ev);
 static int ispanelwin(Window w);
 static int panelopen(void);
 static void focuspanel(void);
@@ -879,7 +880,7 @@ configurerequest(XEvent *e)
 			}
 		} else
 			configure(c);
-	} else {
+	} else if (!isdegeneratedockconfig(ev)) {
 		wc.x = ev->x;
 		wc.y = ev->y;
 		wc.width = ev->width;
@@ -2933,6 +2934,29 @@ grabpanelbuttons(void)
 	for (m = mons; m; m = m->next)
 		if (m->sel)
 			grabbuttons(m->sel, 0);
+}
+
+/* Quickshell re-lays out every one of its panel windows (the bar included)
+ * whenever any of them hides, and each re-layout ends with a workaround for
+ * another WM: resize to 0x0 (which Qt sends as 1x1), then straight back to
+ * the real geometry. dwm used to pass both through. The compositor then
+ * throws away the window's contents on the size change and shows it empty
+ * until Qt repaints, so the bar blinked out for a frame every time a panel
+ * closed. No dock is ever meant to be that small, so dwm drops the shrink.
+ * The request that follows then matches the current geometry and nothing
+ * visibly happens. */
+int
+isdegeneratedockconfig(XConfigureRequestEvent *ev)
+{
+	DockWin *d;
+
+	if ((ev->value_mask & (CWWidth|CWHeight)) != (CWWidth|CWHeight)
+	|| ev->width > 1 || ev->height > 1)
+		return 0;
+	for (d = dockwins; d; d = d->next)
+		if (d->win == ev->window)
+			return 1;
+	return 0;
 }
 
 int
