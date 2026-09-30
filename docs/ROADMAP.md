@@ -5,6 +5,9 @@ document has been implemented as part of writing it.
 
 - **Written:** 2026-09-27, against `master` at `32b5354`; **re-verified** the same day
   against `a941b03` (the bar overhaul commit — see 1.1).
+- **Updated:** 2026-09-30, against `master` at `808c76a`. This covered the lock screen
+  (1.2, #9, M1), the new panel work (section 2, "Shipped outside the backlog") and H3's
+  status.
 - **Source:** はる's backlog "アイデア集&改善ポイント #1 / #2" plus the ChatGPT idea list
   (items marked [却下] are excluded; items marked [微妙] are listed at the end as parked).
 - **Method:** every backlog item was cross-referenced against the actual code, not
@@ -82,18 +85,45 @@ Two things from the first pass still hold after the re-check:
   modules; at the ~30 the backlog wants (L8, M11) it becomes the thing that drifts. F5
   now includes extracting shared `BarLabel`/`BarIcon` components.
 
-### 1.2 The lock screen is probably not secure yet
+### 1.2 The lock screen: hardened, with accepted limitations
 
-`quickshell/session/LockScreen.qml` is a real PAM lock, but it is an ordinary
-full-screen `PanelWindow`. Nothing takes an X keyboard/pointer grab (no `XGrabKeyboard`
-anywhere in the repo), and dwm's own keybinds are passive grabs on the root window, so
-they very likely still fire while "locked" — e.g. `super+Return` would spawn a terminal
-behind the lock, and `super+q` would kill whatever client has focus. And if Quickshell
-crashes or is restarted, the lock disappears and the desktop is exposed. Neither has been
-tested on the real session, so this is an inference from the code, not a confirmed bug.
+*Updated 2026-09-30.* The original finding held on real hardware. Nothing took an X
+grab, dwm's root key grabs kept firing under the lock, and `super+Return` spawned a
+terminal behind it that then received what was typed. #3 (merged as `1fb3a33`)
+fixed the paths that can be closed without an X grab:
 
-This matters for ordering: **idle-lock (M2) and lock-on-suspend must not be built on top
-of the lock as it is today.** Hardening it (M1) comes first.
+- One lock window per screen, with `exclusionMode: Ignore`, so the bar's exclusive
+  zone no longer leaves the bar uncovered.
+- The lock window titles itself `xidou-lock`, and dwm keeps it above every other dock.
+- While locked, `PanelManager.toggle()` and the screenshot IPC refuse to open anything.
+- **dwm lock mode:** while any `xidou-lock` window is mapped, `keypress()` runs no
+  bindings. `focus()`/`unfocus()`/`focusin()`/`_NET_ACTIVE_WINDOW` also hold X focus
+  on the lock window, so a client spawned or activated under the lock never gets
+  keystrokes.
+- A redesign (wallpaper card with clock, plus password form) shipped in the same PR.
+
+Checked on the real X1CG5 (はる):
+- the panel keybinds open nothing while locked;
+- `super+Return` no longer steals input;
+- a real-PAM unlock works on the redesigned screen.
+
+**Known limitations — はる decided on 2026-09-30 not to address these; recorded, not
+planned:**
+1. **No X keyboard/pointer grab.** QML can't take one: `QWindow::setKeyboardGrabEnabled`
+   isn't invokable, `_backingWindow` is undefined on `PanelWindow`, and
+   `PopupWindow.grabFocus` takes no X grab on this backend. So any X client that grabs
+   the keyboard itself still gets keystrokes. A real grab needs a C++ QML plugin or an
+   external locker.
+2. **Fail-open if Quickshell dies.** Killing or crashing Quickshell unmaps the lock
+   window, and dwm hands focus back. A hung Quickshell keeps the lock up; recovery is
+   over SSH or from another VT (`pkill -9 quickshell`).
+3. **No lock on suspend or lid close.**
+4. **VT switching (Ctrl+Alt+Fn) isn't blocked.** The X server handles it through XKB
+   before any client sees the key. Only `DontVTSwitch` in xorg.conf or a tool like
+   physlock could stop it.
+
+Ordering: M1 is closed (see M1). Idle-lock (M2) can now build on this lock, as long as
+it's understood to inherit these four limitations.
 
 ### 1.3 The `keybind` keys in config.toml don't do anything
 
@@ -205,12 +235,12 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 1 | All services started from xinitrc | **Done** (convention; `ensure_running` block). New daemons below must follow it. | — |
 | 2 | Wallpaper color matching + M3 scheme choice in Settings *and* wallpaper picker | **Done** (matugen, both entry points). Fork not needed (1.5). | — |
 | 3 | Templates / per-app theming tab (Settings only) | Not started | M4 |
-| 4 | Animations (research + "I want animations") | **Partial**: picom open/close done; Motion backend done; tab placeholder; directional tag slide **done and confirmed working on the real X1CG5** (H3 step 2, merged via #2 as `353526b`) | L1, M21, H3 |
+| 4 | Animations (research + "I want animations") | **Partial**: picom open/close done; Motion backend done; tab placeholder; directional tag slide **done and confirmed working on the real X1CG5** (H3 step 2, merged via #2 as `353526b`); window-move (relayout) animations not started (H3 step 3) | L1, M21, H3 |
 | 5 | Wallpaper directories in Settings | **Done** (Wallpaper > General) | — |
 | 6 | Everything (dwm config, resolution, scale) in Settings | **Partial**: window gaps are config-driven via dwm IPC (`a941b03`) but have no Settings UI and apply only at session start; everything else in dwm is still compile-time | L14, H4, H5 |
 | 7 | Overridden / Reset UI, long-press or double-click reset | **Partial**: badge + one-click reset exist (right side of row) | L5 |
 | 8 | Screenshot settings | **Mostly done**; missing separate "copy to clipboard" / "save to file" toggles | L3 |
-| 9 | Lock screen | **Partial**: PAM lock exists; hardening needed (1.2) | M1 |
+| 9 | Lock screen | **Done**, closed by はる's call with four accepted limitations (1.2). Shipped via #3 (`1fb3a33`): per-screen coverage, always on top, panel/IPC refusal while locked, dwm lock mode, and the redesign. Not addressed: X grab, fail-open if Quickshell dies, lock on suspend, VT switching. | M1 |
 | 10 | Settings panel separate from control-center | **Done** | — |
 | 11 | Bar customization (general … dead zone) | **Done** for General/Layout/Shape/Effects/Widgets/Capsules (`a941b03`). **Partial** for Widget List (on/off, lane moves, up/down reorder — no lane tabs, add-picker, multi-select, drag). Dead Zone UI **not started** (1.1). | M9, M10, section 6 |
 | 12 | Battery widget (health, AC, profile, time, thresholds, laptop/desktop detect) | **Partial**: CC Power shows %, status, time, health; bar shows % + icon; `hasBattery` check exists | M3 |
@@ -263,6 +293,12 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | Xidou Motion System | **Partial** (picom side only) | F4, M21 |
 | Management console (Undo / Presets / Safe Mode) | **Partial** (the Settings panel is the console) | H7 |
 | [微妙] Device Center | Parked — see section 8 | — |
+
+### Shipped outside the backlog
+
+| Item | Status | Ref |
+|---|---|---|
+| Panels (launcher, control-center, settings, session, wallpaper, clipboard, screenshot confirm) keep keyboard focus while open, and focus returns to the selected client when they close. Anything done outside a panel closes it: a click on a client or the desktop, or any dwm keybinding not in `panelsafecmds` (`dwm/config.h`). Print closes panels and waits for them to leave the screen before capturing. The bar no longer blinks for a frame when a panel closes. | **Done** (#4, merged as `808c76a`; confirmed on the real X1CG5 by はる) | CLAUDE.md, "Window roles between dwm and the shell" |
 
 ### Still-open items from CLAUDE.md (not in the backlog, kept for completeness)
 
@@ -507,7 +543,10 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 
 ### 5.2 Moderate
 
-**M1 — Lock screen hardening (high priority)**
+**M1 — Lock screen hardening (high priority)** — **Closed 2026-09-30 by はる's call.**
+- Outcome: shipped via #3 (`1fb3a33`). Point 1 was replaced by dwm lock mode, since
+  no grab is possible from QML. Points 1–3 remain undone as accepted limitations, and
+  point 4 is documented. Details are in 1.2. The original plan follows, unchanged.
 - What:
   1. Take an active keyboard + pointer grab while locked (a small C helper in `bin/`
      like `xidou-focus-window`, or an X11 call if Quickshell exposes one), so dwm's
@@ -521,6 +560,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   4. Disable VT switching while locked is *not* possible from an X client without root
      — document it rather than pretend.
 - Why first: M2 (auto-lock on idle) would make an insecure lock look trustworthy.
+  *(2026-09-30: no longer blocking. M2 may start, inheriting the limitations in 1.2.)*
 - Verify: grab logic `[CLOUD]` (Xvfb + xdotool key injection can prove dwm binds no
   longer fire); `[SESSION]` + `[HW]` for suspend/lid.
 
@@ -535,7 +575,8 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   fullscreen video, and optionally MPRIS playback.
 - Alternative to writing C: `xidlehook` (supports multiple timers and "not when
   fullscreen/audio"). Fine too — decide when implementing.
-- Depends on: M1, T0-3. Decisions: D10.
+- Depends on: M1 (closed with four accepted limitations, 1.2; an idle lock inherits
+  them), T0-3. Decisions: D10.
 - Verify: timer logic `[CLOUD]`; dimming and DPMS `[HW]`.
 
 **M3 — Battery / power widget overhaul**
@@ -766,6 +807,25 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 
 **H3 — Tag-switch and window-move animations ("Niri-style")**
 
+*Status, 2026-09-30.*
+- Step 1 is done, with real-hardware results recorded below.
+- **Step 2 is done:** a directional tag-switch slide, merged via #2 (`353526b`) and
+  confirmed working on the real X1CG5.
+  - Root cause of the earlier failures: on a non-reparenting WM like dwm, a picom c2
+    rule on a property dwm writes must use the `@` suffix (`_XIDOU_MOTION@`). Without
+    it, picom reads the property once, when it first sees the window, and never again.
+    See "Root cause found".
+  - The easing is settled: ease-out, `cubic-bezier(0.25, 1, 0.5, 1)`. はる compared
+    it against linear by eye and chose it.
+- **Step 3 (relayout moves) is not started.**
+- Known limitations of step 2, accepted:
+  1. The 9 → 1 wraparound (and 1 → 9) slides the opposite way.
+  2. With several monitors, the outgoing slide is too long and uncropped.
+  3. Duration and curve are hardcoded in `picom.conf`, not linked to `[motion]` or
+     the Settings Motion switch.
+
+The feasibility investigation below is kept as written on 2026-09-27.
+
 Feasibility investigation, 2026-09-27. Source reading only: this repo's `dwm/dwm.c`
 and picom upstream HEAD (`3502b29`, 2026-09-20). **Nothing has been observed on real
 hardware yet**, and the installed picom version on the X1CG5 is unknown. Every picom
@@ -822,10 +882,11 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
 
 *Steps (each needs はる's approval before it starts)*
 
-1. **Real-hardware baseline — not done yet.** Needs the X1CG5; a cloud container has
+1. **Real-hardware baseline** — *done 2026-09-27; see "H3 step 1 results".* Needs the X1CG5; a cloud container has
    neither picom nor the real session. Exact procedure: "H3 step 1 handoff" below,
    written for はる's regular Claude Code session (Remote Control on the X1CG5).
-2. **dwm marker patch + picom rules** (only if step 1 shows the trigger works).
+2. **dwm marker patch + picom rules** (only if step 1 shows the trigger works). *Done:
+   merged via #2 (`353526b`), confirmed on the real X1CG5; see "H3 step 2 results".*
    - Before every geometry change dwm makes, set `_XIDOU_MOTION` on the client:
      `tag-in-left`, `tag-out-right`, `layout`, `drag`, ... Direction comes from
      comparing old and new tag numbers — explicit numbers, never next/prev
@@ -1070,9 +1131,9 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
 
      **Both sides slide** by one monitor width over 0.25 s, carried over from
      step 1's approved value. The curve is ease-out,
-     `cubic-bezier(0.25, 1, 0.5, 1)`, and that part is **provisional**: step 1
-     was seen with a linear curve and はる hasn't seen ease-out yet. Compare it
-     against linear during the X1CG5 verification before settling it. The global
+     `cubic-bezier(0.25, 1, 0.5, 1)`. It was provisional when written, because
+     step 1 had only been seen with a linear curve. *Settled since: はる compared
+     it against linear on the X1CG5 and chose ease-out.* The global
      `animations` block that MotionSync manages is untouched, and `rules` sits
      outside its markers. The dwm half is described below.
    - **Verified in a cloud Xvfb** (picom v13 built from source, xrender):
@@ -1202,6 +1263,7 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
        left behind. It is harmless for the live session, which rebinds at next
        start, but test runs leave files to clean up.
 3. **Same mechanism for relayout moves** (open/close/swap), with a separate script.
+   *Not started.*
 4. **Alternatives, only if 2 fails:**
    - (a) dwm interpolates `XMoveWindow` itself on a timerfd. Coordinated and
      interruptible, but not vsync-aligned with picom, so judder is likely.
@@ -1419,7 +1481,7 @@ Known behaviour — these are not failures:
 | g: rapid switching | |
 | h: corners, fullscreen | |
 | picom log warnings | |
-| Curve: ease-out vs linear (はる) | |
+| Curve: ease-out vs linear (はる) | ease-out — compared against linear by eye; settled |
 | Go / no-go | Go — merged via #2 (`353526b`) |
 | After relogin: real-session look and feel | Confirmed working on the real live X1CG5 session (はる, 2026-09-27). Rows left blank were not reported item by item. |
 | Anything unexpected | |
@@ -1748,7 +1810,7 @@ every day, then looks, then big bets. Within a milestone, order is flexible.
 ~~T0-1~~ (done), T0-2, T0-3.
 
 **Milestone A — safety and foundations**
-M1 (lock hardening), F1, F2, F4, M16 (Health — cheap, and it's the philosophy).
+~~M1~~ (closed, 1.2), F1, F2, F4, M16 (Health — cheap, and it's the philosophy).
 
 **Milestone B — the bar, finished properly**
 F5 (shared components first), M12's action registry (the list, before its UI), M8,
