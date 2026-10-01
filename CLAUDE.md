@@ -134,9 +134,9 @@ Read-only survey; nothing was changed to collect it.
 - **dwm-ipc** patch adds the Unix socket JSON-RPC bridge (`xidouwm/ipc.c`,
   `IPCClient.*`, `yajl_dumps.*`) — querying/controlling dwm and subscribing to tag/focus/layout-change
   events.
-  - Xidou additions (ROADMAP F1): client objects carry `class`, `instance`,
-    `pid` and `visible`, and `get_clients` (message type 7) lists every
-    client.
+  - Xidou additions (ROADMAP F1, confirmed on the X1CG5, no problems):
+    client objects carry `class`, `instance`, `pid` and `visible`, and
+    `get_clients` (message type 7) lists every client.
   - Also `wm_action_event` (see "Sound effects").
   - **Socket path** (H8 change 2): resolved at run time by `xidouwm/sockpath.h`,
     which xidouwm and xidouwm-msg share. In order:
@@ -476,8 +476,9 @@ Items below are the headline ones; the roadmap is the complete list.
 - **Implemented, not confirmed on the real machine.** はる doesn't check these
   one by one; anything that misbehaves in daily use gets reported then.
   Confirmed on the X1CG5 are only: sound loudness, the XidouWM rename, the
-  socket move, panels keeping/returning focus, the directional tag slide, and
-  `super+Return` not stealing input under the lock.
+  socket move, panels keeping/returning focus, the directional tag slide,
+  `super+Return` not stealing input under the lock, and F1 (client metadata
+  over IPC).
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).

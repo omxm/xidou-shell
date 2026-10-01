@@ -350,7 +350,7 @@ Small things that unblock or de-risk everything else. Do these first.
   better animations. Re-evaluate there.
 - **Blocks:** M3, M2 (dim path), M23, H5, M25, H3.
 
-### F1 dwm-ipc: expose per-client metadata — Light/Moderate `[CLOUD]` — **Done** (branch `claude/f1-client-metadata`; checked under Xvfb, not confirmed on the real machine)
+### F1 dwm-ipc: expose per-client metadata — Light/Moderate `[CLOUD]` — **Done** (merged as `e9ebab0`; confirmed on the X1CG5 by はる, no problems after a relogin)
 - Built:
   - Every client object (`get_dwm_client`, `get_clients`) now has `class`,
     `instance` (WM_CLASS, "" if unset), `pid` (`_NET_WM_PID`, 0 if unset) and
