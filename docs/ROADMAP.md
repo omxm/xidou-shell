@@ -259,7 +259,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 22 | Tray drawer (collapsible), open/closed default | Not started (Tray's gear panel has icon size only); right-click still has no menu | M7 |
 | 23 | Xidou icon and logo | Not started (Logo module is a placeholder wordmark) | M24 |
 | 24 | Launcher Switchboard (chip, many actions, ←→ sliders) | **Partial**: 4×3 grid mode exists, Tab cycles 3 modes | M12 |
-| 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Partial**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) done; change 2 (socket to `$XDG_RUNTIME_DIR`) not started | H8 |
+| 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Partial**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) done, confirmed on the X1CG5; change 2 (socket to `$XDG_RUNTIME_DIR`, with L15) not started | H8 |
 | 26 | Make config easier to change | Mostly = Settings panel; concrete remainder | L10 |
 | 27 | Big list of bar widgets | 12 exist (logo, workspaces, media, clock, weather, tray, mem, cpu, bluetooth, volume, dnd, power); the rest are new | L8, M11, section 6 |
 | 28 | Left-click → CC page, right-click → configurable action | Not started | F2, M8 |
@@ -1826,9 +1826,14 @@ floating-drag, and glx-backend comparisons were not — see below.
 - Verify: `[CLOUD]` for Undo; Safe Mode `[SESSION]`.
 
 **H8 — XidouWM rename (decided, D19)** — Light, but touches the live session
-- **Status (2026-10-01):** change 1 is done on branch `claude/xidouwm-rename`,
-  checked in Xephyr (start, tag switch + slide, Workspaces widget, logout, gaps).
-  Merged to `master` only after はる's real-session check. Change 2 not started.
+- **Status (2026-10-01):**
+  - **Change 1: done and confirmed on the real X1CG5.** It was checked in Xephyr
+    first (start, tag switch + slide, Workspaces widget, logout, gaps). はる then
+    ran it in the real session: xidouwm runs, `/tmp/xidouwm.sock` exists, and no
+    old `dwm` process is left. Merged to `master` as `32f8fd1`. The leftover
+    `dwm/` build directory and `/tmp/dwm.sock` were removed afterwards.
+  - **Change 2: not started.** That is moving the socket to `$XDG_RUNTIME_DIR`,
+    together with L15.
   How change 1 was done, where it differs from the checklist below:
   - The source files keep their names (`dwm.c`, `dwm-msg.c`, `dwm.png`). Only the
     directory, the binaries and the man page (`xidouwm.1`) were renamed.
