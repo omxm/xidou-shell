@@ -182,7 +182,7 @@ Read-only survey; nothing was changed to collect it.
   `PanelManager` (mutual-exclusion-with-every-other-dock-panel) and IPC (`xidou msg
   panel-toggle <name>` / dedicated `IpcHandler`s per panel in `shell.qml`).
   - `PanelManager.open(name, section)` opens without toggling and can ask for a
-    section (ROADMAP F2): `xidou msg control-center open Audio`, or generically
+    section (ROADMAP F2, confirmed on the X1CG5): `xidou msg control-center open Audio`, or generically
     `xidou msg panels open <panel> <section>`.
 - All panels import `quickshell/config/Theme.qml` and `quickshell/config/Config.qml` —
   no per-panel color/font literals.
@@ -480,8 +480,8 @@ Items below are the headline ones; the roadmap is the complete list.
   one by one; anything that misbehaves in daily use gets reported then.
   Confirmed on the X1CG5 are only: sound loudness, the XidouWM rename, the
   socket move, panels keeping/returning focus, the directional tag slide,
-  `super+Return` not stealing input under the lock, and F1 (client metadata
-  over IPC).
+  `super+Return` not stealing input under the lock, F1 (client metadata over
+  IPC) and F2 (opening control-center at a section).
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).

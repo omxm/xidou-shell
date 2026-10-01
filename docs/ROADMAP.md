@@ -378,7 +378,7 @@ Small things that unblock or de-risk everything else. Do these first.
   and removes the xdotool dependency.
 - **Verify:** testable with a test xidouwm on `$XIDOU_WM_SOCKET` under Xvfb.
 
-### F2 Open control-center at a given section — Light `[CLOUD]` — **Done** (branch `claude/f2-cc-open-section`; checked under Xvfb, not confirmed on the real machine)
+### F2 Open control-center at a given section — Light `[CLOUD]` — **Done** (merged as `439fd32`; confirmed on the X1CG5 by はる)
 - Built:
   - `PanelManager.open(name, section)`: opens without toggling, refuses while
     locked like `toggle()`, and records the section. Already open: the panel
