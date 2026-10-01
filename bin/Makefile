@@ -13,11 +13,12 @@ xidou-focus-window: xidou-focus-window.c
 
 install: all
 	mkdir -p ${DESTDIR}${PREFIX}/bin
-	cp -f xidou xidou-brightness xidou-focus-window xidou-clipd ${DESTDIR}${PREFIX}/bin
+	cp -f xidou xidou-brightness xidou-focus-window xidou-clipd xidou-health ${DESTDIR}${PREFIX}/bin
 	chmod 755 ${DESTDIR}${PREFIX}/bin/xidou
 	chmod 755 ${DESTDIR}${PREFIX}/bin/xidou-brightness
 	chmod 755 ${DESTDIR}${PREFIX}/bin/xidou-focus-window
 	chmod 755 ${DESTDIR}${PREFIX}/bin/xidou-clipd
+	chmod 755 ${DESTDIR}${PREFIX}/bin/xidou-health
 
 clean:
 	rm -f xidou-focus-window

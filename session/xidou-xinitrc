@@ -121,7 +121,11 @@ export XIDOU_PICOM_CONF="$REPO_DIR/session/picom.conf"
 # Clipboard history (Phase 7) -- clipnotify+xclip loop, per CLAUDE.md's
 # explicit note on this exact dependency. Owns ~/.cache/xidou/clipboard/;
 # quickshell/services/ClipboardHistory.qml only ever reads it.
-ensure_running xidou-clipd xidou-clipd
+# xidou-clipd is a shell script, so its process name is "sh" and
+# ensure_running's `pgrep -x xidou-clipd` never matched: a new instance was
+# started on every login whether one was running or not. Match the command
+# line instead (bin/xidou-health uses the same pattern).
+pgrep -u "$(id -u)" -f '/xidou-clipd$' >/dev/null 2>&1 || xidou-clipd &
 # ------------------------------------------------------------------------
 
 # Restore the last-selected wallpaper. quickshell/wallpaper/Wallpaper.qml

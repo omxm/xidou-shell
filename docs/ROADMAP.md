@@ -834,7 +834,34 @@ with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
   manager, copy as plain text).
 - Depends on: L9. Verify: `[CLOUD]`.
 
-**M16 — Xidou Health**
+**M16 — Xidou Health** — **Done** (branch `claude/m16-health`, stacked on F4; checked under Xvfb, not confirmed on the real machine)
+- Built:
+  - It lives at Settings > System > Health (the first of this item's two
+    suggested places).
+  - `bin/xidou-health` does the checks, printing one JSON line each, plus
+    `xidou-health fix <id>`. The tab runs it by repo path and adds two rows of
+    its own: config parse status (`Config.parseError` / `fileMissing`) and
+    sound effects loaded.
+  - Checks: xidouwm IPC; Quickshell version; pipewire / wireplumber /
+    pipewire-pulse running *and* on this D-Bus session (xinitrc's stale check);
+    picom with `$XIDOU_PICOM_CONF`; xidou-clipd; NetworkManager and BlueZ on
+    the system bus; the notification server owned by quickshell; matugen.
+  - Fixes (D23): only the audio daemons (xinitrc's reap-and-start sequence),
+    picom and xidou-clipd. Never a system service.
+  - Only processes of this session count (same `XDG_RUNTIME_DIR` for audio,
+    same `DISPLAY` for picom/clipd), so a test instance never sees or touches
+    the live daemons.
+- Found and fixed along the way: xidou-clipd runs as `sh .../xidou-clipd`, so
+  xinitrc's `pgrep -x xidou-clipd` never matched and a new instance started on
+  every login. xinitrc now matches the command line.
+- Checked under Xvfb:
+  - every check against a private session;
+  - clipd and picom failing, then the Fix button / `fix` bringing back only
+    the test session's processes;
+  - the read-only checks against the real session, all OK.
+  - The audio fix path was run once in a test session. That started an
+    unrestricted wireplumber there for a few seconds; see the auto-memory
+    note. Don't repeat it.
 - What: a diagnostics page (Settings > System > Health, or a CC section): dwm-ipc socket
   reachable, Quickshell version, PipeWire/WirePlumber/pipewire-pulse alive *and* on the
   current D-Bus session (reuse xinitrc's stale-daemon check), picom running with the

@@ -379,6 +379,13 @@ Singleton {
 
     signal reloaded()
 
+    // Last load result, for Settings > System > Health (ROADMAP M16):
+    // parseError is the parser's message when config.toml didn't parse
+    // (the shell is then on built-in defaults), fileMissing is true when
+    // there is no config.toml at all.
+    property string parseError: ""
+    property bool fileMissing: false
+
     FileView {
         id: configFile
         path: root.configPath
@@ -394,6 +401,8 @@ Singleton {
         }
         onLoadFailed: function (error) {
             console.warn("[xidou] no readable config at " + root.configPath + " — using built-in defaults");
+            root.fileMissing = true;
+            root.parseError = "";
             root.data = root.defaults;
             root.ready = true;
             root.reloaded();
@@ -412,9 +421,12 @@ Singleton {
         try {
             var parsed = Toml.parse(text);
             root.data = deepMerge(root.defaults, parsed);
+            root.parseError = "";
+            root.fileMissing = false;
             console.log("[xidou] config loaded from " + root.configPath);
         } catch (e) {
             console.warn("[xidou] failed to parse " + root.configPath + ": " + e + " — using built-in defaults");
+            root.parseError = String(e);
             root.data = root.defaults;
         }
         root.reloaded();

@@ -301,6 +301,11 @@ windows.
 
 ### External daemon dependencies
 
+Settings > System > Health (`bin/xidou-health`, ROADMAP M16) checks every one
+of these, and can restart the audio daemons, picom and xidou-clipd (D23: never
+a system service). xidou-clipd is a shell script, so match its command line
+(`pgrep -f '/xidou-clipd$'`), never `pgrep -x`.
+
 All handled in `session/xidou-xinitrc`'s single "check if running, start if not" block:
 pipewire, wireplumber, pipewire-pulse (with stale-daemon reaping across session
 restarts so a plain relogin doesn't leave orphaned instances from the previous dbus

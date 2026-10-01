@@ -59,12 +59,12 @@ PanelWindow {
         "Notifications": ["General"],
         "Bar": ["General", "Layout", "Shape", "Effects", "Widgets", "Modules", "Capsules"],
         // System-wide settings (ROADMAP M22's layout): Sound, Screenshot
-        // (moved here from its own top-level category), Input (L16) and
-        // Weather. Weather lives here, not as its own category -- its
+        // (moved here from its own top-level category), Input (L16),
+        // Weather, and Health (M16, diagnostics rather than settings). Weather lives here, not as its own category -- its
         // settings (location/units/auto_locate) are shared across the bar
         // module, Home tab's card, and control-center's own Weather tab,
         // not something that belongs to any one of them.
-        "System": ["Sound", "Screenshot", "Input", "Weather"],
+        "System": ["Sound", "Screenshot", "Input", "Weather", "Health"],
         "Wallpaper": ["General"]
     })
     readonly property var currentSubTabs: root.subTabsByCategory[root.categories[root.selectedCategoryIndex]] || []
@@ -357,7 +357,8 @@ PanelWindow {
                                 "Sound": soundTabComponent,
                                 "Screenshot": screenshotTabComponent,
                                 "Input": inputTabComponent,
-                                "Weather": weatherGeneralTabComponent
+                                "Weather": weatherGeneralTabComponent,
+                                "Health": healthTabComponent
                             },
                             "Wallpaper": {
                                 "General": wallpaperGeneralTabComponent
@@ -403,6 +404,13 @@ PanelWindow {
                         Component {
                             id: screenshotTabComponent
                             SystemTabs.ScreenshotTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: healthTabComponent
+                            SystemTabs.HealthTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }

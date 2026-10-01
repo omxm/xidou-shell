@@ -1,0 +1,229 @@
+#!/usr/bin/env sh
+# Xidou Health (ROADMAP M16): checks the pieces the shell depends on, so a
+# broken session says which piece broke.
+#
+#   xidou-health          one JSON object per line:
+#                         {"id","label","status","detail","fix"}
+#                         status is ok | warn | fail | info; fix is true when
+#                         `xidou-health fix <id>` can repair it.
+#   xidou-health fix <id> repair one check (D23: only restart the user-level
+#                         daemons the session itself starts -- the pipewire
+#                         family, picom, xidou-clipd -- never a system service).
+#
+# The Settings > System > Health tab runs this; it works from a terminal too.
+#
+# Only processes that belong to this session count: audio daemons whose
+# XDG_RUNTIME_DIR matches ours (that is where their sockets live), and picom
+# and xidou-clipd whose DISPLAY matches ours. In the real session that is
+# every such process of the user, the same set session/xidou-xinitrc
+# manages. A test instance on another display or runtime dir neither sees
+# nor touches the live session's daemons.
+set -u
+
+uid=$(id -u)
+
+envof() {
+    # $1 = pid, $2 = variable name
+    tr '\0' '\n' < "/proc/$1/environ" 2>/dev/null | sed -n "s/^$2=//p"
+}
+
+# PIDs of this user's processes named $1 (exact) whose $2 variable matches
+# ours.
+pids_in_session() {
+    name="$1" var="$2"
+    eval "want=\${$var:-}"
+    for pid in $(pgrep -u "$uid" -x "$name" 2>/dev/null); do
+        [ "$(envof "$pid" "$var")" = "$want" ] && echo "$pid"
+    done
+}
+
+# xidou-clipd is a shell script, so its process name is "sh"; match its
+# command line instead.
+clipd_pids() {
+    for pid in $(pgrep -u "$uid" -f '/xidou-clipd$' 2>/dev/null); do
+        [ "$(envof "$pid" DISPLAY)" = "${DISPLAY:-}" ] && echo "$pid"
+    done
+}
+
+json_escape() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n\t' '  '
+}
+
+emit() {
+    # id label status detail fix
+    printf '{"id":"%s","label":"%s","status":"%s","detail":"%s","fix":%s}\n' \
+        "$1" "$(json_escape "$2")" "$3" "$(json_escape "$4")" "$5"
+}
+
+check_wm() {
+    path=$(xidouwm-msg --socket-path 2>/dev/null)
+    if xidouwm-msg get_tags >/dev/null 2>&1; then
+        emit wm "XidouWM IPC" ok "answering on $path" false
+    else
+        emit wm "XidouWM IPC" fail "no answer on ${path:-its socket}" false
+    fi
+}
+
+check_quickshell() {
+    emit quickshell "Quickshell" info "$(quickshell --version 2>/dev/null | head -n 1)" false
+}
+
+check_audio() {
+    # $1 = process name
+    name="$1"
+    mine=$(pids_in_session "$name" XDG_RUNTIME_DIR)
+    if [ -z "$mine" ]; then
+        emit "$name" "$name" fail "not running" true
+        return
+    fi
+    for pid in $mine; do
+        if [ "$(envof "$pid" DBUS_SESSION_BUS_ADDRESS)" != "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+            emit "$name" "$name" warn "pid $pid is left over from an earlier D-Bus session" true
+            return
+        fi
+    done
+    emit "$name" "$name" ok "pid $(echo $mine | tr ' ' ',') on this D-Bus session" false
+}
+
+check_picom() {
+    mine=$(pids_in_session picom DISPLAY)
+    if [ -z "$mine" ]; then
+        emit picom "picom" fail "not running" true
+        return
+    fi
+    if [ -z "${XIDOU_PICOM_CONF:-}" ]; then
+        emit picom "picom" warn "running, but XIDOU_PICOM_CONF is unset, so the expected config is unknown" false
+        return
+    fi
+    for pid in $mine; do
+        if tr '\0' ' ' < "/proc/$pid/cmdline" | grep -qF -- "--config $XIDOU_PICOM_CONF"; then
+            emit picom "picom" ok "pid $pid with $XIDOU_PICOM_CONF" false
+            return
+        fi
+    done
+    emit picom "picom" warn "running without --config $XIDOU_PICOM_CONF" true
+}
+
+check_clipd() {
+    mine=$(clipd_pids)
+    if [ -n "$mine" ]; then
+        emit clipd "xidou-clipd" ok "pid $(echo $mine | tr ' ' ',')" false
+    else
+        emit clipd "xidou-clipd" fail "not running (clipboard history stops updating)" true
+    fi
+}
+
+dbus_has_owner() {
+    # $1 = --system | --session, $2 = bus name
+    dbus-send "$1" --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus \
+        org.freedesktop.DBus.NameHasOwner "string:$2" 2>/dev/null | grep -q 'boolean true'
+}
+
+check_system_service() {
+    # $1 id, $2 label, $3 bus name
+    if dbus_has_owner --system "$3"; then
+        emit "$1" "$2" ok "reachable on the system bus" false
+    else
+        emit "$1" "$2" fail "$3 is not on the system bus" false
+    fi
+}
+
+check_notifications() {
+    if ! dbus_has_owner --session org.freedesktop.Notifications; then
+        emit notifications "Notification server" fail "nothing owns org.freedesktop.Notifications" false
+        return
+    fi
+    pid=$(dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus \
+        org.freedesktop.DBus.GetConnectionUnixProcessID string:org.freedesktop.Notifications 2>/dev/null \
+        | sed -n 's/.*uint32 //p')
+    comm=$(cat "/proc/$pid/comm" 2>/dev/null)
+    if [ "$comm" = "quickshell" ]; then
+        emit notifications "Notification server" ok "owned by quickshell (pid $pid)" false
+    else
+        emit notifications "Notification server" warn "owned by ${comm:-pid $pid}, not Xidou" false
+    fi
+}
+
+check_matugen() {
+    if command -v matugen >/dev/null 2>&1; then
+        emit matugen "matugen" ok "$(command -v matugen)" false
+    else
+        emit matugen "matugen" warn "not installed (wallpaper-derived colors unavailable)" false
+    fi
+}
+
+# --- fixes ------------------------------------------------------------------
+
+start_detached() {
+    setsid -f "$@" >/dev/null 2>&1 < /dev/null
+}
+
+# Same sequence as session/xidou-xinitrc: reap this session's audio daemons
+# that belong to another D-Bus session, then start whatever is missing.
+fix_audio() {
+    for name in pipewire-pulse wireplumber pipewire; do
+        for pid in $(pids_in_session "$name" XDG_RUNTIME_DIR); do
+            [ "$(envof "$pid" DBUS_SESSION_BUS_ADDRESS)" != "${DBUS_SESSION_BUS_ADDRESS:-}" ] && kill "$pid" 2>/dev/null
+        done
+    done
+    i=0
+    while [ "$i" -lt 25 ] && [ -n "$(pids_in_session pipewire XDG_RUNTIME_DIR | while read -r p; do
+        [ "$(envof "$p" DBUS_SESSION_BUS_ADDRESS)" != "${DBUS_SESSION_BUS_ADDRESS:-}" ] && echo "$p"; done)" ]; do
+        sleep 0.2
+        i=$((i + 1))
+    done
+    [ -z "$(pids_in_session pipewire XDG_RUNTIME_DIR)" ] && start_detached pipewire
+    [ -z "$(pids_in_session pipewire-pulse XDG_RUNTIME_DIR)" ] && start_detached pipewire-pulse
+    i=0
+    while [ "$i" -lt 25 ] && [ ! -S "${XDG_RUNTIME_DIR:-/run/user/$uid}/pipewire-0" ]; do
+        sleep 0.2
+        i=$((i + 1))
+    done
+    [ -z "$(pids_in_session wireplumber XDG_RUNTIME_DIR)" ] && start_detached wireplumber
+    return 0
+}
+
+fix_picom() {
+    [ -n "${XIDOU_PICOM_CONF:-}" ] || { echo "XIDOU_PICOM_CONF is unset" >&2; return 1; }
+    for pid in $(pids_in_session picom DISPLAY); do
+        kill "$pid" 2>/dev/null
+    done
+    i=0
+    while [ "$i" -lt 25 ] && [ -n "$(pids_in_session picom DISPLAY)" ]; do
+        sleep 0.2
+        i=$((i + 1))
+    done
+    start_detached picom --config "$XIDOU_PICOM_CONF"
+}
+
+fix_clipd() {
+    [ -n "$(clipd_pids)" ] || start_detached xidou-clipd
+}
+
+case "${1:-}" in
+"")
+    check_wm
+    check_quickshell
+    check_audio pipewire
+    check_audio wireplumber
+    check_audio pipewire-pulse
+    check_picom
+    check_clipd
+    check_system_service networkmanager "NetworkManager" org.freedesktop.NetworkManager
+    check_system_service bluez "BlueZ" org.bluez
+    check_notifications
+    check_matugen
+    ;;
+fix)
+    case "${2:-}" in
+    pipewire|wireplumber|pipewire-pulse) fix_audio ;;
+    picom) fix_picom ;;
+    clipd) fix_clipd ;;
+    *) echo "xidou-health: no fix for '${2:-}'" >&2; exit 2 ;;
+    esac
+    ;;
+*)
+    echo "usage: xidou-health [fix <id>]" >&2
+    exit 2
+    ;;
+esac
