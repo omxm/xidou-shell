@@ -8,6 +8,9 @@ document has been implemented as part of writing it.
 - **Updated:** 2026-09-30, against `master` at `808c76a`. This covered the lock screen
   (1.2, #9, M1), the new panel work (section 2, "Shipped outside the backlog") and H3's
   status.
+- **Updated:** 2026-10-01, against `master` at `21455fd`: はる's D1–D25 decisions
+  (section 4, new D26), the sound map (section 7, M22, F6), the Settings > System layout
+  (M22, L3, L16), the XidouWM rename plan (H8) and the gesture plan (M23).
 - **Source:** はる's backlog "アイデア集&改善ポイント #1 / #2" plus the ChatGPT idea list
   (items marked [却下] are excluded; items marked [微妙] are listed at the end as parked).
 - **Method:** every backlog item was cross-referenced against the actual code, not
@@ -264,10 +267,10 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 30 | Theme export/import | Not started | M17 |
 | 31 | Unlimited bars, bar export/import/duplicate | Not started | H1 |
 | 32 | Stack 3+ notifications, click → CC Notifications | Not started | L7 |
-| 33 | Sound effects | Not started | F6, M22 |
+| 33 | Sound effects | Not started; design decided (uisfx "zen", section 7) | F6, M22 |
 | 34 | Tailscale status widget | Not started | M11 |
 | 35 | M3 color presets like Noctalia | Not started | M5 |
-| 36 | Trackpad gestures | Not started | M23 |
+| 36 | Trackpad gestures | Not started; mapping decided (D22), tool pending real-hardware check | M23, L16 |
 
 ### アイデア集 #2
 
@@ -383,9 +386,23 @@ Small things that unblock or de-risk everything else. Do these first.
 - **Depends on:** nothing now. Could drop to Light once started — the wrapper exists.
 
 ### F6 Sound service — Light `[SESSION]`
-- **What:** a `SoundFx` singleton with `play(eventName)`, global enable, volume, and
-  "mute while DND". Backend choice: Qt Multimedia `SoundEffect` if the installed
-  Quickshell/Qt has it, otherwise `pw-play` (PipeWire, already a dependency).
+- **What:** a `SoundFx` singleton with `play(cueName, category)`, following the rules
+  decided for D14 (M22):
+  - gain = cue's uisfx default volume × category volume × master volume;
+  - each category and the master can be turned off;
+  - DND mutes the Notifications category only;
+  - `playThen(cue, category, action)` is for the session-ending actions (M22).
+- **Assets:** vendor `packages/uisfx/sounds/zen/*.ogg` from `romainsimon/uisfx`
+  (checked at `9950fe6`: 78 cues, 888 KB including the `.mp3` copies, which aren't
+  needed). Include the upstream `LICENSE-AUDIO` (CC0) and a NOTICE naming the source
+  and commit. The per-cue default volumes come from `src/catalog.ts`'s `CUES` table.
+  Copy them into a small JSON file; the TypeScript runtime isn't used.
+- **Backend (decide when implementing — measure, don't assume):** Qt Multimedia's
+  `SoundEffect` has low latency but plays WAV only. That means converting the zen
+  `.ogg` files to WAV once and committing them; the license is CC0, so that's fine.
+  The alternative, `pw-play`, plays the `.ogg` files directly but spawns a process per
+  sound. UI feedback is latency-sensitive, so the WAV + `SoundEffect` path is the
+  default candidate.
 - **Unblocks:** M22, the reset-confirmation sound in L5.
 
 ### F7 dwm runtime settings channel — Heavy — see H4.
@@ -397,33 +414,38 @@ Small things that unblock or de-risk everything else. Do these first.
 Grouped by what they block. Each has a recommendation, but these are genuinely yours to
 make. Write the answer next to the question when decided.
 
-| ID | Question | Options | Recommendation | Blocks |
-|---|---|---|---|---|
-| D1 | `[panels.*].keybind`: remove, document as decorative, or make real? | remove / document / real (H4) | Document now, make real later with H4 | T0-2 |
-| D2 | Overridden/Reset position: left of the control (backlog) or right (today)? | left / right | Left, as specified — but it shifts every control horizontally when it appears. Reserve the space always so layout doesn't jump. | L5 |
-| D3 | Reset gesture: long-press, double-click, or both? With sound? | long-press / double-click / both | Long-press with a fill animation (it's discoverable and hard to trigger by accident); double-click as a secondary path. Sound only once F6 exists. | L5 |
-| D4 | Session menu slot 3 | Reload shell / Suspend / Reload config / Lock+Suspend | **Suspend.** It's the action a laptop needs most, and "Reload shell" can live in Switchboard. If you prefer Reload, say which (restart Quickshell vs re-read config). | L2 |
-| D5 | Switchboard: keep the grid, or make it a searchable command list? What does Tab do now that Emoji mode exists? | grid / searchable list / both | Both: empty query shows the grid, typing filters a list of all actions. Keep Tab cycling App → Switchboard → Emoji, and show the mode chip ("\|Switchboard\|") left of the input. Your spec said Tab toggles back to Launcher — that conflicts with Emoji mode's existence; decide. | M12 |
-| D6 | Widget click model: left-click → CC section for *every* widget that has one? | as backlog / per-widget default | As backlog, but configurable per widget in the gear panel (left/right/middle/scroll each pick from an action list). | M8 |
-| D7 | `custom_button`: allow a raw command field as the one exception, or only pick from the action registry? | raw command / registry only | Registry only, plus an "Advanced: shell command" field hidden behind an Advanced toggle. | M11 |
-| D8 | Templates: name and placement | "Templates" / "Theming" / "App Theming"; own category vs Appearance sub-tab | Call it **Templates** (same word as matugen and Noctalia, so docs line up) as a sub-tab of Appearance. Which apps first? Suggest kitty, GTK 3/4, Qt (qt6ct), Firefox (if you use pywalfox), dmenu/rofi if present. | M4 |
-| D9 | Who owns battery charge thresholds: TLP or Xidou? | TLP config / direct sysfs / remove TLP | Let TLP own them and have Xidou edit TLP's config (or call `tlp setcharge`) — least conflict with what's already installed. Revisit after T0-3. | M3 |
-| D10 | Idle stages and defaults | e.g. dim at 4 min, lock at 5, screen off at 6, suspend at 15 on battery | Separate AC/battery profiles; dim is a gradual fade over ~5–10 s, any input cancels it. Also: should media playback (MPRIS playing) block idle? (Recommend yes.) | M2 |
-| D11 | Screen Time definition | per-app focused time / total active time / both; retention | Per-app focused time (from dwm focus + idle), daily totals, 30-day retention, stored locally only. | M20 |
-| D12 | "Nicer icons" — what's wrong with the current ones? | Rounded style / filled for active states / different weight / different font | Stay on Material Symbols (one maintained font), but use the FILL axis for active/on states and possibly the Rounded variant. Needs your eye. | L13 |
-| D13 | M3 presets: seed colors or full hand-made palettes? | seeds via matugen / named palettes (Catppuccin etc.) / both | Both: a row of seed colors (matugen does the rest) plus a few hand-made palettes, all selectable from Appearance > Theme. | M5 |
-| D14 | Sound: where do the sound files come from? | freedesktop sound theme / self-made / licensed pack | Start with the freedesktop sound theme (license-clean) and let each event point to a file. | M22 |
-| D15 | CC "Monitor" vs "System": your CC list has both | split / merge | Split: **Monitor** = live numbers + history; **System** = static system info (CPU model, kernel, uptime, packages). | M13 |
-| D16 | Overview: full GNOME-style overview, or a window switcher first? | switcher first / overview first | Switcher first (M14), overview later (H2) — the switcher is most of the daily value at a fraction of the risk. | M14, H2 |
-| D17 | Screenshot editor: build in QML or delegate to an existing X11 editor? | build / delegate (e.g. satty, flameshot's editor) | Delegate first behind an "Edit" button, build only if the delegated editor feels out of place. | H6 |
-| D18 | Startup splash and first-run setup: one thing or two? | merge / separate | Merge: the splash's "Start" button leads into first-run setup the first time, and just dismisses afterwards. | M24 |
-| D19 | XidouWM: rename the vendored dwm? Fork picom? | rename / keep "dwm" name; fork picom yes/no | Renaming is cheap and fine if you want the identity. Don't fork picom (1.5). | H8 |
-| D20 | Appearance > Effects: what goes in it? | global blur / shadows / panel transparency / all | Decide after T0-3 (glx vs xrender). Probably: panel background opacity, global shadow, blur behind panels (needs glx). | M25 |
-| D21 | Multiple bars: what differs per bar? | everything / subset | Position, monitor, modules, and the Layout/Shape/Effects/Widgets/Capsules tables; theme stays global. | H1 |
-| D22 | Gestures: which gestures → which actions? | — | 3-finger swipe L/R → adjacent tag *by explicit number*; 3-finger up → switcher/overview; 3-finger down → close panels; 4-finger → your choice. | M23 |
-| D23 | Health auto-fix: what may it do without asking? | restart user daemons only / anything | Only restart user-level daemons it itself started (pipewire family, picom, xidou-clipd). Never touch system services. | M16 |
-| D24 | Top-level `[layout]` (window gaps) vs `[bar.layout]`: keep, or rename before more dwm settings join it? | keep / `[windows]` / `[wm]` | Rename to `[windows]` now, while only two keys and one reader exist; keep reading `[layout]` as a fallback for one release. | L14, H4 |
-| D25 | Widget List: is drag-and-drop wanted, or are up/down buttons enough once lanes are separate tabs? | drag / buttons only | Buttons first (they exist), lane tabs + "+" picker + multi-select; add drag only if it still feels missing. | M9 |
+**Status, 2026-10-01:** all of D1–D25 are decided, plus D26. Every recommendation was
+adopted except D5, D14, D19 and D22. Those four, and D26, are summarized in the last
+column, with details in the items they block.
+
+| ID | Question | Options | Recommendation | Blocks | Decision (2026-10-01) |
+|---|---|---|---|---|---|
+| D1 | `[panels.*].keybind`: remove, document as decorative, or make real? | remove / document / real (H4) | Document now, make real later with H4 | T0-2 | Adopted. |
+| D2 | Overridden/Reset position: left of the control (backlog) or right (today)? | left / right | Left, as specified — but it shifts every control horizontally when it appears. Reserve the space always so layout doesn't jump. | L5 | Adopted: left, with the space always reserved. |
+| D3 | Reset gesture: long-press, double-click, or both? With sound? | long-press / double-click / both | Long-press with a fill animation (it's discoverable and hard to trigger by accident); double-click as a secondary path. Sound only once F6 exists. | L5 | Adopted. |
+| D4 | Session menu slot 3 | Reload shell / Suspend / Reload config / Lock+Suspend | **Suspend.** It's the action a laptop needs most, and "Reload shell" can live in Switchboard. If you prefer Reload, say which (restart Quickshell vs re-read config). | L2 | Adopted: **Suspend**. |
+| D5 | Switchboard: keep the grid, or make it a searchable command list? What does Tab do now that Emoji mode exists? | grid / searchable list / both | Both: empty query shows the grid, typing filters a list of all actions. Keep Tab cycling App → Switchboard → Emoji, and show the mode chip ("\|Switchboard\|") left of the input. Your spec said Tab toggles back to Launcher — that conflicts with Emoji mode's existence; decide. | M12 | **Changed:** Switchboard keeps its current grid; no searchable list. |
+| D6 | Widget click model: left-click → CC section for *every* widget that has one? | as backlog / per-widget default | As backlog, but configurable per widget in the gear panel (left/right/middle/scroll each pick from an action list). | M8 | Adopted. |
+| D7 | `custom_button`: allow a raw command field as the one exception, or only pick from the action registry? | raw command / registry only | Registry only, plus an "Advanced: shell command" field hidden behind an Advanced toggle. | M11 | Adopted. |
+| D8 | Templates: name and placement | "Templates" / "Theming" / "App Theming"; own category vs Appearance sub-tab | Call it **Templates** (same word as matugen and Noctalia, so docs line up) as a sub-tab of Appearance. Which apps first? Suggest kitty, GTK 3/4, Qt (qt6ct), Firefox (if you use pywalfox), dmenu/rofi if present. | M4 | Adopted. |
+| D9 | Who owns battery charge thresholds: TLP or Xidou? | TLP config / direct sysfs / remove TLP | Let TLP own them and have Xidou edit TLP's config (or call `tlp setcharge`) — least conflict with what's already installed. Revisit after T0-3. | M3 | Adopted: TLP owns the thresholds. |
+| D10 | Idle stages and defaults | e.g. dim at 4 min, lock at 5, screen off at 6, suspend at 15 on battery | Separate AC/battery profiles; dim is a gradual fade over ~5–10 s, any input cancels it. Also: should media playback (MPRIS playing) block idle? (Recommend yes.) | M2 | Adopted. |
+| D11 | Screen Time definition | per-app focused time / total active time / both; retention | Per-app focused time (from dwm focus + idle), daily totals, 30-day retention, stored locally only. | M20 | Adopted. |
+| D12 | "Nicer icons" — what's wrong with the current ones? | Rounded style / filled for active states / different weight / different font | Stay on Material Symbols (one maintained font), but use the FILL axis for active/on states and possibly the Rounded variant. Needs your eye. | L13 | Adopted. |
+| D13 | M3 presets: seed colors or full hand-made palettes? | seeds via matugen / named palettes (Catppuccin etc.) / both | Both: a row of seed colors (matugen does the rest) plus a few hand-made palettes, all selectable from Appearance > Theme. | M5 | Adopted. |
+| D14 | Sound: where do the sound files come from? | freedesktop sound theme / self-made / licensed pack | Start with the freedesktop sound theme (license-clean) and let each event point to a file. | M22 | **Changed:** uisfx "zen" pack. Full rules in M22 and section 7. |
+| D15 | CC "Monitor" vs "System": your CC list has both | split / merge | Split: **Monitor** = live numbers + history; **System** = static system info (CPU model, kernel, uptime, packages). | M13 | Adopted. |
+| D16 | Overview: full GNOME-style overview, or a window switcher first? | switcher first / overview first | Switcher first (M14), overview later (H2) — the switcher is most of the daily value at a fraction of the risk. | M14, H2 | Adopted. |
+| D17 | Screenshot editor: build in QML or delegate to an existing X11 editor? | build / delegate (e.g. satty, flameshot's editor) | Delegate first behind an "Edit" button, build only if the delegated editor feels out of place. | H6 | Adopted. |
+| D18 | Startup splash and first-run setup: one thing or two? | merge / separate | Merge: the splash's "Start" button leads into first-run setup the first time, and just dismisses afterwards. | M24 | Adopted. |
+| D19 | XidouWM: rename the vendored dwm? Fork picom? | rename / keep "dwm" name; fork picom yes/no | Renaming is cheap and fine if you want the identity. Don't fork picom (1.5). | H8 | **Changed:** rename to **XidouWM**, keeping the MIT/X notices. Sequencing in H8. |
+| D20 | Appearance > Effects: what goes in it? | global blur / shadows / panel transparency / all | Decide after T0-3 (glx vs xrender). Probably: panel background opacity, global shadow, blur behind panels (needs glx). | M25 | Adopted. |
+| D21 | Multiple bars: what differs per bar? | everything / subset | Position, monitor, modules, and the Layout/Shape/Effects/Widgets/Capsules tables; theme stays global. | H1 | Adopted. |
+| D22 | Gestures: which gestures → which actions? | — | 3-finger swipe L/R → adjacent tag *by explicit number*; 3-finger up → switcher/overview; 3-finger down → close panels; 4-finger → your choice. | M23 | **Changed:** three-finger only. Left/right: adjacent tag; Shift + left/right: window + tag; up/down: window switcher (overview later). Tool: **pending real-hardware check** (M23). |
+| D23 | Health auto-fix: what may it do without asking? | restart user daemons only / anything | Only restart user-level daemons it itself started (pipewire family, picom, xidou-clipd). Never touch system services. | M16 | Adopted. |
+| D24 | Top-level `[layout]` (window gaps) vs `[bar.layout]`: keep, or rename before more dwm settings join it? | keep / `[windows]` / `[wm]` | Rename to `[windows]` now, while only two keys and one reader exist; keep reading `[layout]` as a fallback for one release. | L14, H4 | Adopted. |
+| D25 | Widget List: is drag-and-drop wanted, or are up/down buttons enough once lanes are separate tabs? | drag / buttons only | Buttons first (they exist), lane tabs + "+" picker + multi-select; add drag only if it still feels missing. | M9 | Adopted. |
+| D26 | Touchpad disable-while-typing (DWT): keep libinput's default (on)? | on / off / setting | — (raised by はる on 2026-10-01) | L16 | **Decided:** a Settings toggle, default **off** (はる's preference). |
 
 ---
 
@@ -447,14 +469,18 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - Verify: `[CLOUD]` for the tab and the picom.conf rewrite; `[SESSION]` for the look.
 
 **L2 — Session menu slot 3**
-- What: fill `Session.qml` item 3 and the SessionActions function behind it.
-- Decisions: D4. Verify: `[CLOUD]` for UI; `[HW]` if Suspend (lock-before-suspend
-  depends on M1).
+- What: fill `Session.qml` item 3 with **Suspend** (D4), and the SessionActions
+  function behind it. It must lock first, then suspend once the lock window is up. Lock
+  on suspend/lid close stayed an accepted limitation when M1 closed, so this menu path
+  locks explicitly. Plays `sleep` via M22's `playThen` rule.
+- Decisions: D4 (decided). Verify: `[CLOUD]` for UI; `[HW]` for suspend/resume.
 
 **L3 — Screenshot: separate "Save to file" and "Copy to clipboard" toggles**
 - What: `Screenshot.qml` always does `mkdir -p && maim … && xclip …`. Split into two
   config keys (`save_to_file`, `copy_to_clipboard`, both default true); at least one must
   stay on (grey out the other's Off when it would leave neither).
+- Location: these land in **Settings > System > Screenshot**. The Screenshot category
+  moves under System (decided 2026-10-01); see the layout in M22.
 - Verify: `[CLOUD]` (Xvfb + maim + xclip all work headless).
 
 **L4 — Launcher: wheel moves the selection**
@@ -540,6 +566,22 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - Fix: unlink and close first, then reset the statics.
 - Found during H3 testing (2026-09-27) and deliberately left for a cleanup pass.
 - Verify: `[CLOUD]` with a test dwm on `$XIDOU_DWM_SOCKET`.
+
+**L16 — Touchpad: disable-while-typing toggle (D26)**
+- What: Settings > System > Input > "Disable While Typing", default **off** (D26).
+  - Apply at shell start and on change with `xinput set-prop <id> "libinput Disable
+    While Typing Enabled" 0|1` on every device that has that property. Find them by
+    property, not by a hardcoded name — same rule as `90-xidou-touchpad.conf`.
+  - Store as `[input.touchpad] disable_while_typing = false`.
+- Why a toggle, not a hardcoded off: with DWT off, a palm resting during typing may
+  move the pointer. libinput's other palm detection (edge zones, touch size/pressure
+  where the hardware reports it) still applies, so the risk is reduced, not zero.
+  Whether it's acceptable on this touchpad is はる's call on the real machine.
+- Interaction with gestures (M23): libinput never lets modifier keys alone trigger DWT,
+  so Shift + three-finger swipe works whether DWT is on or off.
+- The Input sub-tab is created here, backed by this real setting (not a stub). Natural
+  scrolling stays in the xorg.conf.d file for now.
+- Depends on: nothing. Verify: `[HW]`.
 
 ### 5.2 Moderate
 
@@ -665,7 +707,12 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - Verify: mostly `[CLOUD]`; tailscale needs an account `[HW]`; privacy needs real mic
   `[SESSION]`.
 
-**M12 — Switchboard v2 (searchable action palette)**
+**M12 — Action registry (Switchboard keeps its grid — D5)**
+- **Revised 2026-10-01 per D5:** the Switchboard UI stays the current grid; the
+  searchable-list UI below is dropped. The action registry is still worth building,
+  because M8, M10, M23 and D7 use it. New Switchboard tiles come from the registry, and
+  the grid may need a second page if it outgrows 4×3.
+- Original plan, kept for reference:
 - What: an **action registry** (`services/Actions.qml`): id, label, icon, keywords,
   `run()`, optional `value`/`adjust(delta)` for sliders. Everything in the backlog list
   goes in: DND, Wi-Fi, Bluetooth, brightness and volume (←/→ adjust), mic mute, audio
@@ -752,17 +799,77 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   0 disables), larger text, high-contrast toggle.
 - Depends on: F4. Verify: `[SESSION]`.
 
-**M22 — Sound effects**
-- What: events per the list in section 7; each maps to a file with per-event on/off in
-  Settings > Sound (a new category, allowed since it's backed). USB detection needs a
-  `udevadm monitor --udev --subsystem-match=usb` listener process.
-- Depends on: F6, D14. Verify: `[SESSION]`.
+**M22 — Sound effects (decided 2026-10-01, D14)**
+- **Source:** uisfx "zen" pack, vendored per F6. Cue map: section 7.
+- **Rules (decided):**
+  - Nine Xidou categories (section 7). Each has on/off and a volume, plus a master
+    on/off and volume.
+  - High-frequency operations are mapped but default **off**: hover, typing, selection
+    movement, focus moves, held-key repeats.
+  - Gain = cue default volume × category volume × master volume.
+  - DND mutes **notification sounds only**; sounds from the user's own actions keep
+    playing.
+  - Session-ending actions (log out, restart, shut down) start their cue, then run the
+    action when the cue ends or **0.4 s** pass, whichever comes first. If playback fails
+    to start, they run immediately — a sound must never block or delay leaving the
+    session beyond 0.4 s.
+  - Rate-limit repeating cues (volume/brightness key repeat) to one per ~80 ms.
+- **Settings location (decided):** Settings > **System** > Sound. Screenshot also moves
+  under System, so the top-level Screenshot category goes away.
+- **Proposed System layout (awaiting はる's OK):**
+  - Sub-tabs, in order: **Sound · Screenshot · Input (L16) · Weather**. Weather is the
+    existing tab, unchanged.
+  - **Sound** is one flat page; 10 rows fit the 600 px panel without scrolling:
+    - **Master** row: on/off + volume slider.
+    - **Nine category rows**, each with on/off, a volume slider, and a ▶ preview
+      button playing that category's most typical cue.
+    - Rows are greyed while the master is off.
+    - One fixed note line: "Do Not Disturb silences notification sounds only".
+  - No sub-pages. The only collapsible part is an optional "What plays here"
+    disclosure per category (read-only list of operations, collapsed by default). It
+    helps explain the categories without adding settings.
+  - Each row holds two values (on/off and volume), so it uses SettingRow's
+    `customOverridden`/`customReset` rather than two rows per category. The settings
+    panel has no slider yet: generalize `controlcenter/VolumeSlider.qml` instead of
+    writing a new one.
+  - **Screenshot** is today's `settings/screenshot/GeneralTab.qml` moved as-is, plus L3's
+    two toggles (7 rows). Config keys (`[screenshot]`) are unchanged; only the sidebar
+    entry moves.
+  - Config schema: `[sound] enabled, volume, pack = "zen"`. `pack` is not exposed in the
+    UI yet. Each category is `[sound.<id>] enabled, volume`, with ids `panels`,
+    `controls`, `windows`, `media`, `notifications`, `capture`, `devices`, `session`,
+    `system`. Dotted tables already work in `Toml.js`.
+- USB connect/disconnect needs a `udevadm monitor --udev --subsystem-match=usb` listener
+  process.
+- Depends on: F6. Verify: `[CLOUD]` for the settings page and gain math; `[SESSION]` for
+  how it sounds.
 
-**M23 — Trackpad gestures**
-- What: `touchegg` (supports X11) or `libinput-gestures` (needs the user in the `input`
-  group), started from the xinitrc block, with actions calling `xidou msg …` from the
-  action registry. Per D22 and 1.5 #7 (explicit tag numbers only).
-- Depends on: T0-3, M12. Verify: `[HW]`.
+**M23 — Trackpad gestures (mapping decided, D22)**
+- **Mapping:** three-finger gestures only; no four-finger gestures.
+  - Left/right: view the adjacent tag.
+  - **Shift** + left/right: move the focused window to the adjacent tag and follow it.
+    This is dwm's `tag()`, which already follows.
+  - Up/down: window switcher (M14), replaced by the overview (H2) once it exists.
+  - "Adjacent" is computed as an explicit tag number from the current tagset, never
+    next/prev (lesson #6). Either add `cycleview`/`cycletag` to the IPC command table
+    (they already compute ±1 by bit position), or compute the mask shell-side and call
+    `view`/`tag`.
+- **Shift detection:** neither tool conditions a gesture on a held modifier (as far as
+  checked — verify on the machine). Every gesture runs one command
+  (`xidou gesture swipe-left` etc.), which asks X for the current modifier state
+  (`XQueryPointer`'s mask) and branches. That's a tiny C helper in `bin/`, the same
+  size as `xidou-focus-window`. libinput doesn't trigger disable-while-typing on
+  modifier keys alone, so a held Shift doesn't suppress the touchpad (see L16).
+- **Tool: pending real-hardware check on the X1CG5 (D22).**
+  - `libinput-gestures` is simple, but requires adding the user to the `input` group.
+    That lets any process running as the user read raw keyboard events, which is a
+    keylogging capability.
+  - `touchegg` uses a root daemon (an Artix runit service would be needed) and
+    unprivileged clients, which avoids the `input` group.
+  - Decide on the machine.
+- Neither tool tracks the finger 1:1. A gesture fires once on completion, which fits
+  the trigger-driven picom slide (H3).
+- Depends on: T0-3, M12 (registry), M14 for up/down. Verify: `[HW]`.
 
 **M24 — Logo, splash, first-run setup**
 - Logo/icon: human design work; Claude can produce SVG drafts, but whether it's right is
@@ -1708,9 +1815,60 @@ floating-drag, and glx-backend comparisons were not — see below.
   background `&`.
 - Verify: `[CLOUD]` for Undo; Safe Mode `[SESSION]`.
 
-**H8 — XidouWM identity / forks**
-- Per D19 and 1.5. Rename is Light (binary name, desktop file, IPC socket default path,
-  docs). A picom fork is not planned.
+**H8 — XidouWM rename (decided, D19)** — Light, but touches the live session
+- **Sequencing (decided):**
+  1. **Change 1 — names only**, as its own dedicated change with no behavior changes
+     mixed in (list below).
+  2. **Change 2 — move the socket** from `/tmp` to `$XDG_RUNTIME_DIR`, separately.
+     A natural place to also fix L15 (stale socket file on exit), since both touch the
+     same socket lifecycle code.
+- **Change 1 checklist** (checked against `master` at `21455fd`):
+  - Binaries: `dwm/Makefile` targets `dwm`/`dwm-msg` → `xidouwm`/`xidouwm-msg`, plus the
+    install/uninstall/dist targets and the man page `dwm.1` → `xidouwm.1`;
+    `dwm/.gitignore`.
+  - Directory `dwm/` → `xidouwm/` with `git mv`, so `--follow` keeps history. Comments
+    that cite `dwm/config.h`, `dwm/dwm.c` etc. across about 20 files get updated in the
+    same change.
+  - Socket file name: `/tmp/dwm.sock` → `/tmp/xidouwm.sock`, in **two** hardcoded
+    places: `config.def.h` `ipcsockpath` and `dwm-msg.c` `DEFAULT_SOCKET_PATH`. Also the
+    two checks in `session/xidou-xinitrc`. The location stays `/tmp` until change 2.
+  - Env var `$XIDOU_DWM_SOCKET` → `$XIDOU_WM_SOCKET` in `dwm.c`, `dwm-msg.c` and
+    comments. No fallback: only test runs use it.
+  - `dwm.c` strings: the `_NET_SUPPORTING_WM_CHECK` window name `"dwm"` (what fastfetch
+    and `wmctrl -m` show); the `XClassHint {"dwm","dwm"}`; the `die()`/`fprintf` prefixes
+    `dwm:`; the version string `dwm-"VERSION`.
+  - Callers: `session/xidou-xinitrc` (`exec "$REPO_DIR/dwm/dwm"`, two `dwm-msg` calls),
+    `quickshell/services/DwmIpc.qml` (`dwmMsg: "dwm-msg"`),
+    `quickshell/services/SessionActions.qml` (`["dwm-msg", ...]`), and `pgrep -x dwm`
+    in H3's step-1 handoff.
+  - Text: `session/xidou.desktop` Comment, CLAUDE.md, this roadmap.
+- **Not changed:**
+  - The dwm-ipc protocol names (commands, events, `get_dwm_client`).
+  - The QML type names `DwmIpc`/`DwmRole`, which refer to that protocol.
+  - The `_XIDOU_MOTION` atom and picom's rules: they match `_XIDOU_MOTION`,
+    `window_type` and `override_redirect`, never the WM name.
+  - `PANELWINNAME` (`xidou-panel`).
+  - `config.toml` keys: none contain "dwm".
+- **License:** `LICENSE` (MIT/X) keeps every existing copyright line and the permission
+  text. Add a line for the Xidou modifications. The README states that XidouWM derives
+  from suckless dwm and mihirlad55's dwm-ipc (today's `dwm/README.md` is dwm-ipc's
+  README; keep its credit). The per-file "See LICENSE file" headers stay.
+- **Rollout (decided):**
+  - The untracked `config.h` (copied from `config.def.h` only once, by the Makefile's
+    `config.h:` rule) **is fixed by hand** on the X1CG5. It still holds
+    `/tmp/dwm.sock`, and keeps it after the pull.
+  - Verify the renamed WM in **Xephyr** first, e.g.
+    `Xephyr :2 & DISPLAY=:2 XIDOU_WM_SOCKET=/tmp/xidouwm-test.sock xidouwm/xidouwm`,
+    then `xidouwm-msg get_monitors` with the same env var.
+  - Switch the real session at the **next login**.
+- **Hazard — Quickshell hot reload:** Quickshell reloads QML when its files change
+  (verify, but it's the default behavior). Pulling change 1 mid-session would make
+  `DwmIpc.qml` call `xidouwm-msg` against the still-running old `dwm`. The workspaces
+  widget and logout would break until relogin. Install the new binaries, pull, then log
+  out promptly — or pull while logged out.
+- Old `dwm`/`dwm-msg` binaries in PATH can stay until the new session is confirmed. The
+  Wayland session is unaffected.
+- A picom fork is not planned (1.5).
 
 ---
 
@@ -1736,18 +1894,124 @@ Not scheduled yet — pick what you like and it becomes an item.
   device).
 - **Widget entrance animation** when a conditionally visible widget appears (uses F4).
 
-## 7. Sound effect ideas (for M22)
+## 7. Sound map (M22 — decided 2026-10-01)
 
-Default-on candidates: notification arrival (different for critical urgency), battery
-low / critical, charger plugged / unplugged, screenshot shutter, lock and unlock (plus a
-soft "denied" on a wrong password), USB device connected / removed, Bluetooth device
-connected, wallpaper change (the paper-slide you described), volume change tick
-(rate-limited so holding the key doesn't machine-gun).
+Pack: uisfx **"zen"** ("Pure tones, dry wood, and brief washi detail"). Cue names are
+uisfx's own (`packages/uisfx/src/catalog.ts`, checked at `9950fe6`). "Off" means mapped
+but off by default (high-frequency). "(planned)" marks operations whose feature doesn't
+exist yet.
 
-Default-off candidates: launcher open, app launched, tag switch, panel open/close,
-Settings reset (long-press completion), startup chime.
+**1. Panels & navigation** (`panels`)
+| Operation | Cue | Default |
+|---|---|---|
+| Open a panel (launcher, control-center, settings, wallpaper, clipboard, session) | open | on |
+| Close a panel | close | on |
+| Launcher mode switch (Tab) | forward | on |
+| Launch an app | start | on |
+| Launcher selection move (keys, wheel) | hover | off |
+| Typing in a search field | typing | off |
+| Sidebar / sub-tab switch | select | on |
+| Open / leave a widget's gear panel | expand / collapse | on |
 
-All of them: muted during DND, one global volume, one global off switch.
+**2. Controls** (`controls`)
+| Operation | Cue | Default |
+|---|---|---|
+| Toggle switch (Settings, Home tiles, Switchboard) | toggle-on / toggle-off | on |
+| Choose an option | select | on |
+| Stepper +/− | progress-step | on (rate-limited) |
+| Commit a text field | check | on |
+| Add / remove a list item, module on/off | select / deselect | on |
+| Reorder a module, move it between lanes | reorder | on |
+| Reset long-press in progress → completed | long-press → undo | on |
+| Reset Page | undo | on |
+| Hover / click a bar widget | hover / press | off |
+
+**3. Windows & workspaces** (`windows`)
+| Operation | Cue | Default |
+|---|---|---|
+| View a higher-numbered tag (key, gesture, widget) | forward | on |
+| View a lower-numbered tag | back | on |
+| Send a window to another tag (incl. Shift gesture) | send | on |
+| Close a window (super+q) | collapse | on |
+| Toggle floating on / off | drag-start / snap | on |
+| Fullscreen on / off | expand / collapse | on |
+| Directional swap | reorder | on |
+| Directional focus | focus | off |
+| Layout change | select | on |
+| Mouse move/resize start / end | drag-start / drop | on |
+| Window switcher open·close / move / confirm (planned) | open·close / hover / select | on / off / on |
+| Scratchpad show / hide (planned) | expand / collapse | on |
+
+**4. Media & volume** (`media`)
+| Operation | Cue | Default |
+|---|---|---|
+| Volume up/down (plays at the new level) | volume-change | on (rate-limited) |
+| Mute / unmute, mic mute (planned) | toggle-off / toggle-on | on |
+| Play / pause / next / previous | play / pause / skip-next / skip-previous | on |
+| Seek, per-app volume | seek / volume-change | on |
+| Switch audio output/input | select | on |
+| Brightness up/down | progress-step | off |
+
+**5. Notifications** (`notifications` — the only category DND mutes)
+| Operation | Cue | Default |
+|---|---|---|
+| Normal notification | notification | on |
+| Critical notification | warning | on |
+| Message (`category` hint `im.received`) | receive | on |
+| Low-urgency notification | info | off |
+| Stacked notifications (planned, L7) | notification (once) | on |
+| Dismiss / clear all | close / delete | off / on |
+| DND on / off | toggle-on / toggle-off | on |
+
+**6. Capture & clipboard** (`capture`)
+| Operation | Cue | Default |
+|---|---|---|
+| Screenshot taken | snap | on |
+| Region select start / cancel | start / cancel | on |
+| Save / copy only / delete | success / copy / delete | on |
+| Restore from clipboard history / delete entry | paste / delete | on |
+| Pin / unpin (planned, M15) | check / uncheck | on |
+| Pick an emoji | reaction | on |
+| Any copy in any app (xidou-clipd) | copy | off |
+
+**7. Devices & network** (`devices`)
+| Operation | Cue | Default |
+|---|---|---|
+| Wi-Fi / Bluetooth on/off | toggle-on / toggle-off | on |
+| Connecting / Bluetooth scanning (loops) | connecting / scanning | off |
+| Connected / disconnected (Wi-Fi, BT device, USB (planned), Tailscale/VPN (planned)) | connect / disconnect | on |
+| Connection failed | error | on |
+
+**8. Power & session** (`session`)
+| Operation | Cue | Default |
+|---|---|---|
+| Lock / unlock | lock / unlock | on |
+| Wrong password | blocked | on |
+| Suspend / resume | sleep / wake | on |
+| Log out / restart / shut down (≤ 0.4 s wait, M22) | stop | on |
+| Charger plugged / unplugged | connect / disconnect | on |
+| Battery low / critical / reached charge limit | warning / error / complete | on |
+| Caffeine, Night Light, power profile (planned) | toggle-on/off / select | on |
+| Splash (planned) / first-run setup finished (planned, once) | wake / achievement | on |
+
+**9. Theme & system** (`system`)
+| Operation | Cue | Default |
+|---|---|---|
+| Wallpaper changed | **swipe** (zen's paper + brush texture — the "paper slide" はる asked for) | on |
+| Palette generating (loop) / done / failed | processing / complete / error | off / on / on |
+| Dark / light switch | sleep / wake | on |
+| Config reloaded / config error (planned, L10) | checkpoint / error | on |
+| Health: problem found / fix succeeded / retry (planned, M16) | warning / success / retry | on |
+| Theme export / import (planned, M17) | send / receive | on |
+| Settings undo / redo (planned, H7) | undo / redo | on |
+
+**Unused cues: 19 of 78** (59 are mapped above). Counted by script against `CUES`.
+An earlier chat summary said 17 and listed 18; the 19th, `invalid-drop`, had been named
+only as a future candidate. They are: `release`, `double-click`, `invalid-drop`,
+`mention`, `queued`, `loading`, `recording`, `streaming`, `reward`, `level-up`, `streak`,
+`badge`, `bonus`, `add-to-cart`, `remove-from-cart`, `checkout`, `purchase`, `coupon`,
+`refund`. Candidates if features appear: `invalid-drop` for M9 drag-and-drop,
+`recording` for a future screen recorder.
 
 ---
 
