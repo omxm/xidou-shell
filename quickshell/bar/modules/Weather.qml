@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Io
 import "../../config"
+import "../widgets"
 import "../../services"
 
 // Open-Meteo current conditions (no API key needed). Location resolution
@@ -242,23 +243,16 @@ Item {
         anchors.centerIn: parent
         spacing: Theme.fontSize / 4
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarIcon {
             text: root.icon
             visible: text.length > 0
-            color: Theme.textMuted
-            font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            stateColor: Theme.textMuted
         }
 
-        Text {
+        BarLabel {
             id: label
-            anchors.verticalCenter: parent.verticalCenter
             text: root.displayText
-            color: Theme.textMuted
-            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
-            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            stateColor: Theme.textMuted
         }
     }
 }

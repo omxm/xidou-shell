@@ -1,5 +1,6 @@
 import QtQuick
 import "../../config"
+import "../widgets"
 import "../../services"
 
 // Do-not-disturb indicator (Phase 4) -- reflects Notifications.dnd, toggled
@@ -20,18 +21,14 @@ Item {
         anchors.centerIn: parent
         spacing: Theme.fontSize / 4
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarIcon {
             text: root.icon
-            color: Notifications.dnd ? Theme.accent : Theme.textMuted
-            font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            stateColor: Notifications.dnd ? Theme.accent : Theme.textMuted
         }
     }
 
-    MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: Notifications.toggleDnd()
+    // Click slot for Bar.qml's widget wrapper (ROADMAP F5).
+    function leftClicked() {
+        Notifications.toggleDnd();
     }
 }

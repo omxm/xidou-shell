@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
 import "../../config"
+import "../widgets"
 import "../../services"
 
 // Tag/workspace switcher, driven by real dwm state over DwmIpc (dwm-ipc via
@@ -150,16 +151,14 @@ Item {
                     color: tagDelegate.isUrgent ? Theme.accent : (tagDelegate.isOccupied ? Theme.textMuted : Theme.border)
                 }
 
-                Text {
+                BarLabel {
                     id: minimalLabel
                     anchors.centerIn: parent
                     visible: root.cfg.style === "minimal"
                     text: tagDelegate.modelData.name
-                    font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
-                    font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
-                    font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
                     font.bold: tagDelegate.isSelected
-                    color: tagDelegate.isSelected ? Theme.accent : (tagDelegate.isUrgent ? Theme.accent : Theme.textMuted)
+                    anchors.verticalCenter: undefined
+                    stateColor: tagDelegate.isSelected ? Theme.accent : (tagDelegate.isUrgent ? Theme.accent : Theme.textMuted)
                 }
 
                 Row {
@@ -175,14 +174,10 @@ Item {
                         source: root.focusedIconSource
                     }
 
-                    Text {
+                    BarLabel {
                         id: pillLabel
-                        anchors.verticalCenter: parent.verticalCenter
                         text: tagDelegate.modelData.name
-                        font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
-                        font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
-                        font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
-                        color: tagDelegate.isSelected ? Theme.background : (tagDelegate.isUrgent ? Theme.background : Theme.textMuted)
+                        stateColor: tagDelegate.isSelected ? Theme.background : (tagDelegate.isUrgent ? Theme.background : Theme.textMuted)
                     }
                 }
 

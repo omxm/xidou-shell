@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Services.Pipewire
 import "../../config"
+import "../widgets"
 
 // Default sink volume/mute, via Quickshell's Pipewire service. PwObjectTracker
 // is required to keep the node's properties bound/updating — without it
@@ -29,31 +30,25 @@ Item {
         anchors.centerIn: parent
         spacing: Theme.fontSize / 4
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarIcon {
             text: root.icon
-            color: root.muted ? Theme.textMuted : (Config.data.bar.widgets.icon_color || Theme.text)
-            font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            stateColor: root.muted ? Theme.textMuted : undefined
         }
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarLabel {
             text: root.sink ? (root.muted ? "" : (root.volumePercent + "%")) : "--"
             visible: root.cfg.show_percentage && text.length > 0
-            color: root.muted ? Theme.textMuted : (Config.data.bar.widgets.color || Theme.text)
-            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
-            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            stateColor: root.muted ? Theme.textMuted : undefined
         }
     }
 
-    MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            if (root.sink && root.sink.audio)
-                root.sink.audio.muted = !root.sink.audio.muted;
-        }
+    // Click and tooltip slots for Bar.qml's widget wrapper (ROADMAP F5).
+    function leftClicked() {
+        if (root.sink && root.sink.audio)
+            root.sink.audio.muted = !root.sink.audio.muted;
     }
+
+    readonly property string tooltip: root.sink
+        ? ((root.sink.description || root.sink.name || "Output") + " · " + (root.muted ? "muted" : root.volumePercent + "%"))
+        : ""
 }

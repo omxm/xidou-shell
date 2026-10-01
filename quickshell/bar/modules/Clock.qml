@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "../../config"
+import "../widgets"
 
 // Time display + [bar_widgets.clock] overrides (time_format, timezone) --
 // distinct from any shared [clock]-style table since nothing else in the
@@ -25,6 +26,10 @@ Item {
     id: root
 
     readonly property var cfg: Config.data.bar_widgets.clock
+    // Tooltip slot for Bar.qml's widget wrapper (ROADMAP F5): today's full
+    // date (the bar shows only the time). Only with the system timezone:
+    // the SystemClock below is off when a timezone override is set.
+    readonly property string tooltip: root.useSystemTz ? Qt.formatDate(clock.date, "dddd, d MMMM yyyy") : ""
     readonly property bool useSystemTz: cfg.timezone === ""
     readonly property string dateFormatFlag: cfg.time_format === "12h" ? "%I:%M %p" : "%H:%M"
     readonly property string localFormatString: cfg.time_format === "12h" ? "hh:mm AP" : "HH:mm"
@@ -80,13 +85,10 @@ Item {
         }
     }
 
-    Text {
+    BarLabel {
         id: label
         anchors.centerIn: parent
         text: root.useSystemTz ? clock.date.toLocaleTimeString(Qt.locale(), root.localFormatString) : root.tzLabel
-        color: Config.data.bar.widgets.color || Theme.text
-        font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
-        font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
-        font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+        anchors.verticalCenter: undefined
     }
 }

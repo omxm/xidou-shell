@@ -82,7 +82,7 @@ Two things from the first pass still hold after the re-check:
   beforehand", but Dead Zone is still one hardcoded right-click → control-center handler
   (`Bar.qml` `handleDeadZoneClick`) with no config key and no Settings UI. M10 stands,
   and CLAUDE.md has been corrected.
-- **Widget styling is copy-pasted per module.** Each of the 12 module files now repeats
+- **Widget styling is copy-pasted per module.** *(Resolved by F5: BarLabel/BarIcon.)* Each of the 12 module files now repeats
   the same expressions for `bar.widgets.font_family`, the `font_weight` string → `Font.*`
   mapping, `layout.font_scale`, and `color`/`icon_color` fallbacks. That's fine at 12
   modules; at the ~30 the backlog wants (L8, M11) it becomes the thing that drifts. F5
@@ -422,7 +422,26 @@ Small things that unblock or de-risk everything else. Do these first.
 - **Why before M21:** same reasoning as "never hardcode a color" — otherwise the
   Motion System ends up being a search-and-replace later.
 
-### F5 Common bar widget wrapper — Moderate `[CLOUD]`
+### F5 Common bar widget wrapper — Moderate `[CLOUD]` — **Done** (branch `claude/f5-bar-widgets`; checked under Xvfb, not confirmed on the real machine)
+- Built, all three parts:
+  - **Shared components.** `bar/widgets/BarLabel.qml` and `BarIcon.qml` own the
+    font family/weight/scale and color fallbacks. All 20 module texts use them;
+    a state color goes in `stateColor`.
+  - **Click/scroll slots.** A module declares `leftClicked()`,
+    `rightClicked()`, `middleClicked()` or `scrolled(steps)`, and the wrapper
+    calls them. Undeclared buttons fall through to the dead zone. Dnd, Volume
+    and Media moved to these; Workspaces' tags and Tray's icons keep their
+    per-item MouseAreas.
+  - **Tooltips.** A module with a `tooltip` property gets the bar's shared
+    PopupWindow after 600 ms of hover. Clock (full date) and Volume (output
+    and level) use it.
+- Checked under Xvfb:
+  - the bar renders pixel-identical to master, with the default styling and
+    with custom font/weight/scale/colors;
+  - Volume/DND left-click;
+  - right-click on a module falls through to control-center;
+  - tag clicks still work;
+  - both tooltips show, and xidouwm doesn't manage the popup window.
 - **Already there** (`a941b03`): `Bar.qml`'s `capsuleModuleComponent` wraps every
   module with capsule background, content scale, and hover highlight.
 - **What's left:** (1) move click/scroll handling out of each module's own `MouseArea`
@@ -2232,11 +2251,11 @@ every day, then looks, then big bets. Within a milestone, order is flexible.
 **Milestone 0 — housekeeping (needs はる at the machine for T0-3)**
 ~~T0-1~~ (done), ~~T0-2~~ (done), ~~T0-3~~ (done).
 
-**Milestone A — safety and foundations**
-~~M1~~ (closed, 1.2), F1, F2, F4, M16 (Health — cheap, and it's the philosophy).
+**Milestone A — safety and foundations** — done
+~~M1~~ (closed, 1.2), ~~F1~~, ~~F2~~, ~~F4~~, ~~M16~~ (Health — cheap, and it's the philosophy).
 
 **Milestone B — the bar, finished properly**
-F5 (shared components first), M12's action registry (the list, before its UI), M8,
+~~F5~~ (shared components first), M12's action registry (the list, before its UI), M8,
 M9, M10, M7, L8, L12, L14, M3. The styling layer is done; this milestone is about
 behavior and adding widgets.
 

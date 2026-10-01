@@ -319,6 +319,75 @@ PanelWindow {
                 border.color: Theme.border
             }
 
+            // Click and scroll slots (ROADMAP F5). A module declares what it
+            // does by defining any of leftClicked(), rightClicked(),
+            // middleClicked() and scrolled(steps) (steps > 0 = wheel up);
+            // this MouseArea calls them. It only accepts the buttons the
+            // module declares, so anything else falls through to the bar's
+            // dead-zone handler underneath (right-click opens Home). It sits
+            // under the module, so a module's own per-item MouseAreas
+            // (Workspaces' tags, Tray's icons) still come first.
+            readonly property var module: loader.item
+            readonly property bool hasLeft: !!wrapper.module && typeof wrapper.module.leftClicked === "function"
+            readonly property bool hasRight: !!wrapper.module && typeof wrapper.module.rightClicked === "function"
+            readonly property bool hasMiddle: !!wrapper.module && typeof wrapper.module.middleClicked === "function"
+            readonly property bool hasScroll: !!wrapper.module && typeof wrapper.module.scrolled === "function"
+
+            MouseArea {
+                anchors.fill: parent
+                enabled: wrapper.hasContent && (wrapper.hasLeft || wrapper.hasRight || wrapper.hasMiddle)
+                acceptedButtons: (wrapper.hasLeft ? Qt.LeftButton : 0)
+                    | (wrapper.hasRight ? Qt.RightButton : 0)
+                    | (wrapper.hasMiddle ? Qt.MiddleButton : 0)
+                cursorShape: Qt.PointingHandCursor
+                onClicked: (mouse) => {
+                    if (mouse.button === Qt.LeftButton)
+                        wrapper.module.leftClicked();
+                    else if (mouse.button === Qt.RightButton)
+                        wrapper.module.rightClicked();
+                    else if (mouse.button === Qt.MiddleButton)
+                        wrapper.module.middleClicked();
+                }
+            }
+
+            // One step per notch: touchpads send many small pixel deltas,
+            // so they are summed until a full notch (120) builds up.
+            property real wheelAccum: 0
+            WheelHandler {
+                enabled: wrapper.hasContent && wrapper.hasScroll
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: (event) => {
+                    wrapper.wheelAccum += event.angleDelta.y;
+                    while (Math.abs(wrapper.wheelAccum) >= 120) {
+                        var step = wrapper.wheelAccum > 0 ? 1 : -1;
+                        wrapper.wheelAccum -= step * 120;
+                        wrapper.module.scrolled(step);
+                    }
+                }
+            }
+
+            // Tooltip slot (ROADMAP F5): a module with a non-empty
+            // `tooltip` property gets it shown in the bar's shared popup
+            // after hovering for a moment.
+            readonly property string tooltipText: (wrapper.module && wrapper.module.tooltip) ? String(wrapper.module.tooltip) : ""
+            Timer {
+                id: tooltipDelay
+                interval: 600
+                running: widgetHover.hovered && wrapper.hasContent && wrapper.tooltipText.length > 0
+                onTriggered: bar.showTooltip(wrapper, wrapper.tooltipText)
+            }
+            Connections {
+                target: widgetHover
+                function onHoveredChanged() {
+                    if (!widgetHover.hovered)
+                        bar.hideTooltip(wrapper);
+                }
+            }
+            onTooltipTextChanged: {
+                if (bar.tooltipTarget === wrapper)
+                    bar.tooltipText = wrapper.tooltipText;
+            }
+
             Loader {
                 id: loader
                 anchors.centerIn: parent
@@ -326,6 +395,53 @@ PanelWindow {
                 scale: bar.layoutCfg.content_scale
                 transformOrigin: Item.Center
                 sourceComponent: wrapper.modelData.component
+            }
+        }
+    }
+
+    // The bar's one tooltip popup, shared by every module (ROADMAP F5).
+    property Item tooltipTarget: null
+    property string tooltipText: ""
+
+    function showTooltip(target, text) {
+        bar.tooltipTarget = target;
+        bar.tooltipText = text;
+    }
+
+    function hideTooltip(target) {
+        if (bar.tooltipTarget === target) {
+            bar.tooltipTarget = null;
+            bar.tooltipText = "";
+        }
+    }
+
+    PopupWindow {
+        id: tooltipPopup
+        visible: bar.tooltipTarget !== null && bar.tooltipText.length > 0
+        anchor.item: bar.tooltipTarget
+        // Below a top bar, above a bottom one, centered on the widget.
+        anchor.edges: bar.barConfig.position === "bottom" ? Edges.Top : Edges.Bottom
+        anchor.gravity: bar.barConfig.position === "bottom" ? Edges.Top : Edges.Bottom
+        anchor.margins.top: bar.barConfig.position === "bottom" ? 0 : Theme.fontSize / 3
+        anchor.margins.bottom: bar.barConfig.position === "bottom" ? Theme.fontSize / 3 : 0
+        implicitWidth: tooltipLabel.implicitWidth + Theme.fontSize
+        implicitHeight: tooltipLabel.implicitHeight + Theme.fontSize * 0.6
+        color: "transparent"
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Theme.radius / 2
+            color: Theme.surface
+            border.width: 1
+            border.color: Theme.border
+
+            Text {
+                id: tooltipLabel
+                anchors.centerIn: parent
+                text: bar.tooltipText
+                color: Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSize * 0.85
             }
         }
     }

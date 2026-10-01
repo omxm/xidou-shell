@@ -186,6 +186,13 @@ Read-only survey; nothing was changed to collect it.
     `xidou msg panels open <panel> <section>`.
 - All panels import `quickshell/config/Theme.qml` and `quickshell/config/Config.qml` —
   no per-panel color/font literals.
+- Bar modules (ROADMAP F5):
+  - Text goes through `bar/widgets/BarLabel.qml` / `BarIcon.qml`, never
+    repeated font/color expressions; set `stateColor` for state colors.
+  - Clicks and scrolling are declared as `leftClicked()` / `rightClicked()`
+    / `middleClicked()` / `scrolled(steps)` functions. Bar.qml's wrapper
+    calls them, and undeclared buttons fall through to the dead zone.
+  - A `tooltip` property gets the bar's shared popup.
 - Animation durations and easing come from `quickshell/config/Motion.qml`
   (ROADMAP F4: `Motion.fast/normal/slow`, `Motion.standard/enter/exit/emphasized`,
   all derived from `[motion]`, 0 ms when motion is off). Never write a duration

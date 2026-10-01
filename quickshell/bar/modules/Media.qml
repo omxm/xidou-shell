@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Services.Mpris
 import "../../config"
+import "../widgets"
 import "../../services"
 
 // Now-playing title/artist for the first MPRIS player found. Collapses to
@@ -74,13 +75,12 @@ Item {
             fillMode: Image.PreserveAspectCrop
         }
 
-        Text {
+        BarIcon {
             anchors.centerIn: parent
             visible: !root.hasArt
             text: "" // music_note
-            color: Theme.textMuted
-            font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            anchors.verticalCenter: undefined
+            stateColor: Theme.textMuted
         }
     }
 
@@ -90,36 +90,24 @@ Item {
         visible: !root.cfg.album_art_only
         spacing: Theme.fontSize / 4
 
-        Text {
+        BarIcon {
             id: icon_
-            anchors.verticalCenter: parent.verticalCenter
             text: root.icon
-            color: Config.data.bar.widgets.icon_color || Theme.text
-            font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
 
-        Text {
+        BarLabel {
             id: label
-            anchors.verticalCenter: parent.verticalCenter
             width: parent.width - icon_.implicitWidth - parent.spacing
             elide: Text.ElideRight
             text: root.labelText
-            color: Config.data.bar.widgets.color || Theme.text
-            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
-            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
     }
 
-    MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            if (root.player && root.player.canTogglePlaying) {
-                SoundFx.play(root.player.isPlaying ? "media_pause" : "media_play");
-                root.player.togglePlaying();
-            }
+    // Click slot for Bar.qml's widget wrapper (ROADMAP F5).
+    function leftClicked() {
+        if (root.player && root.player.canTogglePlaying) {
+            SoundFx.play(root.player.isPlaying ? "media_pause" : "media_play");
+            root.player.togglePlaying();
         }
     }
 }

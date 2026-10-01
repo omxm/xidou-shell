@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Io
 import "../../config"
+import "../widgets"
 
 // Memory usage, read straight from /proc/meminfo and polled — no daemon or
 // service needed for a number this simple.
@@ -51,21 +52,14 @@ Item {
         anchors.centerIn: parent
         spacing: Theme.fontSize / 4
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarIcon {
             text: root.icon
-            color: root.warning ? Theme.warning : Theme.textMuted
-            font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            stateColor: root.warning ? Theme.warning : Theme.textMuted
         }
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarLabel {
             text: root.usedPercent + "%"
-            color: root.warning ? Theme.warning : Theme.textMuted
-            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
-            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            stateColor: root.warning ? Theme.warning : Theme.textMuted
         }
     }
 }

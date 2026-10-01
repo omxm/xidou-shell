@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Services.UPower
 import "../../config"
+import "../widgets"
 
 // Battery percentage from UPower's composite "display device" (the one
 // UPower itself picks as representative — the laptop battery here).
@@ -35,23 +36,14 @@ Item {
         anchors.centerIn: parent
         spacing: Theme.fontSize / 4
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarIcon {
             text: root.icon
             visible: root.hasBattery
-            color: Config.data.bar.widgets.icon_color || Theme.text
-            font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarLabel {
             text: root.hasBattery ? (root.cfg.show_percentage ? (root.percent + "%") : "") : "--"
             visible: !root.hasBattery || root.cfg.show_percentage
-            color: Config.data.bar.widgets.color || Theme.text
-            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
-            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
         }
     }
 }

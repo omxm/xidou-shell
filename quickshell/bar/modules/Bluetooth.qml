@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Bluetooth
 import "../../config"
+import "../widgets"
 
 // Adapter power state + connected-device count, via Quickshell's Bluez
 // service (talks to bluez over D-Bus directly, no bluetoothctl shelling).
@@ -32,22 +33,15 @@ Item {
         anchors.centerIn: parent
         spacing: Theme.fontSize / 4
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarIcon {
             text: root.icon
-            color: root.enabled ? (Config.data.bar.widgets.icon_color || Theme.text) : Theme.textMuted
-            font.family: Theme.iconFontFamily
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            stateColor: root.enabled ? undefined : Theme.textMuted
         }
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
+        BarLabel {
             text: !root.adapter ? "--" : (root.enabled ? String(root.connectedCount) : "")
             visible: root.cfg.show_device_count && text.length > 0
-            color: root.enabled ? (Config.data.bar.widgets.color || Theme.text) : Theme.textMuted
-            font.family: (Config.data.bar.widgets.font_family || Theme.fontFamily)
-            font.weight: Config.data.bar.widgets.font_weight === "bold" ? Font.Bold : (Config.data.bar.widgets.font_weight === "medium" ? Font.Medium : Font.Normal)
-            font.pixelSize: Theme.fontSize * Config.data.bar.layout.font_scale
+            stateColor: root.enabled ? undefined : Theme.textMuted
         }
     }
 }
