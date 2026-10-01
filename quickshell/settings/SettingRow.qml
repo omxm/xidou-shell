@@ -1,5 +1,6 @@
 import QtQuick
 import "../config"
+import "../services"
 
 // One labeled setting row: a label on the left, the actual control (dropped
 // in via the default `data` property by whatever uses this) in the middle,
@@ -31,6 +32,11 @@ Item {
     // Position, which stacks a vertical and a horizontal picker rather than
     // needing a new composite-position widget shape.
     property real rowHeight: Theme.fontSize * 2.6
+
+    // A clickable label (pointer cursor, labelClicked()) -- e.g. the Sound
+    // page's "What plays here" disclosure per category.
+    property bool labelClickable: false
+    signal labelClicked()
 
     property var customOverridden: undefined // set a bool to bypass the tableHeader/settingKey/defaultValue comparison entirely
     property var customReset: null // set a function to bypass the default Config.setValue(tableHeader, settingKey, defaultValue) reset
@@ -64,6 +70,7 @@ Item {
     function reset() {
         if (!root.overridden)
             return;
+        SoundFx.play("reset");
         if (root.customReset) {
             root.customReset();
             return;
@@ -87,6 +94,13 @@ Item {
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSize
             wrapMode: Text.WordWrap
+
+            MouseArea {
+                anchors.fill: parent
+                enabled: root.labelClickable
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.labelClicked()
+            }
         }
 
         Item {

@@ -9,7 +9,7 @@ import "appearance"
 // Namespaced (not bare) -- multiple categories each have their own
 // "General" sub-tab, and a bare import of both would collide on that
 // identical type name.
-import "screenshot" as ScreenshotTabs
+import "system" as SystemTabs
 import "osd" as OsdTabs
 import "notifications" as NotificationTabs
 import "bar" as BarTabs
@@ -46,7 +46,7 @@ PanelWindow {
     readonly property int panelHeight: 600
     readonly property int barReservedHeight: (Config.data.bar.position !== "bottom") ? Config.data.bar.height : 0
 
-    readonly property var categories: ["Appearance", "Screenshot", "OSD", "Notifications", "Bar", "System", "Wallpaper"]
+    readonly property var categories: ["Appearance", "OSD", "Notifications", "Bar", "System", "Wallpaper"]
     property int selectedCategoryIndex: 0
 
     // Category name -> its sub-tab list. Categories not listed here would
@@ -55,17 +55,16 @@ PanelWindow {
     // convention of failing soft on anything not yet wired up.
     readonly property var subTabsByCategory: ({
         "Appearance": ["Theme", "Interface", "Accessibility", "Motion", "Borders", "Effects"],
-        "Screenshot": ["General"],
         "OSD": ["General"],
         "Notifications": ["General"],
         "Bar": ["General", "Layout", "Shape", "Effects", "Widgets", "Modules", "Capsules"],
-        // Weather lives here, not as its own category -- its settings
-        // (location/units/auto_locate) are shared across the bar module,
-        // Home tab's card, and control-center's own Weather tab, not
-        // something that belongs to any one of them. More system-wide
-        // settings join this array as they get real backing, same as
-        // Appearance's own sub-tab list grew.
-        "System": ["Weather"],
+        // System-wide settings (ROADMAP M22's layout): Sound, Screenshot
+        // (moved here from its own top-level category), Input (L16) and
+        // Weather. Weather lives here, not as its own category -- its
+        // settings (location/units/auto_locate) are shared across the bar
+        // module, Home tab's card, and control-center's own Weather tab,
+        // not something that belongs to any one of them.
+        "System": ["Sound", "Screenshot", "Input", "Weather"],
         "Wallpaper": ["General"]
     })
     readonly property var currentSubTabs: root.subTabsByCategory[root.categories[root.selectedCategoryIndex]] || []
@@ -82,8 +81,10 @@ PanelWindow {
     // no-op there rather than needing every unbuilt tab to stub the
     // function out just to satisfy this call).
     function resetCurrentPage() {
-        if (tabLoader.item && tabLoader.item.resetAll)
+        if (tabLoader.item && tabLoader.item.resetAll) {
+            SoundFx.play("reset_page");
             tabLoader.item.resetAll();
+        }
     }
 
     visible: PanelManager.isOpen("settings") && root.cfg.enabled
@@ -175,8 +176,10 @@ PanelWindow {
 
                     Keys.onEscapePressed: PanelManager.close("settings")
                     Keys.onTabPressed: {
-                        if (root.currentSubTabs.length > 0)
+                        if (root.currentSubTabs.length > 1) {
                             root.selectedSubTabIndex = (root.selectedSubTabIndex + 1) % root.currentSubTabs.length;
+                            SoundFx.play("tab_switch");
+                        }
                     }
                 }
             }
@@ -335,9 +338,6 @@ PanelWindow {
                                 "Interface": interfaceTabComponent,
                                 "Borders": bordersTabComponent
                             },
-                            "Screenshot": {
-                                "General": screenshotGeneralTabComponent
-                            },
                             "OSD": {
                                 "General": osdGeneralTabComponent
                             },
@@ -354,6 +354,9 @@ PanelWindow {
                                 "Capsules": barCapsulesTabComponent
                             },
                             "System": {
+                                "Sound": soundTabComponent,
+                                "Screenshot": screenshotTabComponent,
+                                "Input": inputTabComponent,
                                 "Weather": weatherGeneralTabComponent
                             },
                             "Wallpaper": {
@@ -391,8 +394,22 @@ PanelWindow {
                         }
 
                         Component {
-                            id: screenshotGeneralTabComponent
-                            ScreenshotTabs.GeneralTab {
+                            id: soundTabComponent
+                            SystemTabs.SoundTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: screenshotTabComponent
+                            SystemTabs.ScreenshotTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: inputTabComponent
+                            SystemTabs.InputTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }

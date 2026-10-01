@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Services.Mpris
 import "../../config"
+import "../../services"
 
 // Now-playing title/artist for the first MPRIS player found. Collapses to
 // zero width when nothing is playing, rather than showing an empty label.
@@ -115,8 +116,10 @@ Item {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            if (root.player && root.player.canTogglePlaying)
+            if (root.player && root.player.canTogglePlaying) {
+                SoundFx.play(root.player.isPlaying ? "media_pause" : "media_play");
                 root.player.togglePlaying();
+            }
         }
     }
 }

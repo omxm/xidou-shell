@@ -1,5 +1,6 @@
 import QtQuick
 import "../config"
+import "../services"
 
 // Horizontal sub-tab strip within a settings category (e.g. Appearance's
 // Theme / Interface / Accessibility / Motion / Borders / Effects) -- same
@@ -41,7 +42,11 @@ Row {
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.tabClicked(delegateRoot.index)
+                onClicked: {
+                    if (delegateRoot.index !== root.selectedIndex)
+                        SoundFx.play("tab_switch");
+                    root.tabClicked(delegateRoot.index);
+                }
             }
         }
     }

@@ -90,13 +90,22 @@ PanelWindow {
             focus: true
 
             Keys.onEscapePressed: PanelManager.close("control-center")
-            Keys.onTabPressed: root.selectedIndex = (root.selectedIndex + 1) % root.sections.length
+            Keys.onTabPressed: {
+                root.selectedIndex = (root.selectedIndex + 1) % root.sections.length;
+                SoundFx.play("tab_switch");
+            }
             // Up/Down cycle sections the same way Tab does, alongside it
             // (not replacing it) — same wraparound math as dwm's own
             // cycletag(), computed directly rather than tracking "visited"
             // sections.
-            Keys.onDownPressed: root.selectedIndex = (root.selectedIndex + 1) % root.sections.length
-            Keys.onUpPressed: root.selectedIndex = (root.selectedIndex - 1 + root.sections.length) % root.sections.length
+            Keys.onDownPressed: {
+                root.selectedIndex = (root.selectedIndex + 1) % root.sections.length;
+                SoundFx.play("tab_switch");
+            }
+            Keys.onUpPressed: {
+                root.selectedIndex = (root.selectedIndex - 1 + root.sections.length) % root.sections.length;
+                SoundFx.play("tab_switch");
+            }
 
             Row {
                 anchors.fill: parent

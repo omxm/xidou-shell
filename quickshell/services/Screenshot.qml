@@ -16,7 +16,7 @@ import "../config"
 //
 // The four behavior toggles + save directory below are real config.toml
 // keys under [screenshot] (Config.qml's defaults), wired up to the
-// settings panel's Screenshot category -- readonly properties bound
+// settings panel's System > Screenshot tab -- readonly properties bound
 // reactively to Config.data, same pattern as every panel's own `cfg`.
 Singleton {
     id: root
@@ -26,6 +26,11 @@ Singleton {
     readonly property bool rememberLastRegion: Config.data.screenshot.remember_last_region
     readonly property bool includeCursor: Config.data.screenshot.include_cursor
     readonly property string saveDirectory: root.expandHome(Config.data.screenshot.save_directory)
+    // L3. At least one of the two stays on: Settings won't turn the last
+    // one off, and if config.toml has both false anyway, the file is still
+    // saved rather than the capture silently going nowhere.
+    readonly property bool copyToClipboard: Config.data.screenshot.copy_to_clipboard
+    readonly property bool saveToFile: Config.data.screenshot.save_to_file || !root.copyToClipboard
     readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/xidou"
 
     function expandHome(p) {
@@ -86,18 +91,22 @@ Singleton {
 
     Process {
         id: fullscreenProc
+        property string tempPath: ""
         onExited: function (exitCode, exitStatus) {
-            if (exitCode !== 0)
+            if (exitCode !== 0) {
                 console.warn("[xidou] Screenshot: fullscreen capture failed (exit " + exitCode + ")");
+                return;
+            }
+            SoundFx.play("screenshot");
+            root.deliver(fullscreenProc.tempPath, "");
         }
     }
 
     function fullscreen() {
-        var finalPath = root.finalPathFor("");
+        var tempPath = root.cacheDir + "/screenshot-full-" + Date.now() + ".png";
         var cursorFlag = root.includeCursor ? "" : "-u ";
-        var cmd = "mkdir -p " + shQuote(root.saveDirectory) + " && maim " + cursorFlag
-            + shQuote(finalPath) + " && xclip -selection clipboard -t image/png -i " + shQuote(finalPath);
-        fullscreenProc.command = ["sh", "-c", cmd];
+        fullscreenProc.tempPath = tempPath;
+        fullscreenProc.command = ["sh", "-c", "mkdir -p " + shQuote(root.cacheDir) + " && maim " + cursorFlag + shQuote(tempPath)];
         fullscreenProc.running = false;
         fullscreenProc.running = true;
     }
@@ -125,8 +134,10 @@ Singleton {
             id: liveSlopOut
         }
         onExited: function (exitCode, exitStatus) {
-            if (exitCode !== 0)
+            if (exitCode !== 0) {
+                SoundFx.play("region_cancel");
                 return; // cancelled
+            }
             var reg = root.parseSlop(liveSlopOut.text);
             if (!reg)
                 return;
@@ -136,6 +147,7 @@ Singleton {
     }
 
     function startLiveSelection() {
+        SoundFx.play("region_start");
         liveSlopProc.command = ["slop", "-f", "%x %y %w %h"];
         liveSlopProc.running = false;
         liveSlopProc.running = true;
@@ -180,6 +192,7 @@ Singleton {
             }
             root.backdropImagePath = backdropCaptureProc.targetPath;
             root.backdropVisible = true;
+            SoundFx.play("region_start");
             frozenSlopProc.command = ["slop", "-f", "%x %y %w %h"];
             frozenSlopProc.running = false;
             frozenSlopProc.running = true;
@@ -205,6 +218,7 @@ Singleton {
             root.backdropVisible = false;
             if (exitCode !== 0) {
                 root.discardTemp(root.backdropImagePath);
+                SoundFx.play("region_cancel");
                 return; // cancelled
             }
             var reg = root.parseSlop(frozenSlopOut.text);
@@ -245,22 +259,27 @@ Singleton {
     // --- confirm / finalize (shared by both selection paths) -----------
 
     function presentCandidate(candidatePath) {
+        SoundFx.play("screenshot");
         if (root.confirmSelection) {
             root.candidateImagePath = candidatePath;
             root.confirmVisible = true;
         } else {
-            root.finalize(candidatePath);
+            root.deliver(candidatePath, "-region");
         }
     }
 
+    // The confirm dialog's Save. Its sound says where the capture went:
+    // saved (with or without the clipboard), or copied only.
     function confirmSave() {
         root.confirmVisible = false;
-        root.finalize(root.candidateImagePath);
+        SoundFx.play(root.saveToFile ? "capture_save" : "capture_copy");
+        root.deliver(root.candidateImagePath, "-region");
         root.candidateImagePath = "";
     }
 
     function confirmCancel() {
         root.confirmVisible = false;
+        SoundFx.play("capture_delete");
         root.discardTemp(root.candidateImagePath);
         root.candidateImagePath = "";
     }
@@ -278,19 +297,36 @@ Singleton {
     }
 
     Process {
-        id: finalizeProc
+        id: deliverProc
         onExited: function (exitCode, exitStatus) {
             if (exitCode !== 0)
                 console.warn("[xidou] Screenshot: save/clipboard failed (exit " + exitCode + ")");
         }
     }
 
-    function finalize(candidatePath) {
-        var finalPath = root.finalPathFor("-region");
-        var cmd = "mkdir -p " + shQuote(root.saveDirectory) + " && mv " + shQuote(candidatePath) + " "
-            + shQuote(finalPath) + " && xclip -selection clipboard -t image/png -i " + shQuote(finalPath);
-        finalizeProc.command = ["sh", "-c", cmd];
-        finalizeProc.running = false;
-        finalizeProc.running = true;
+    // Sends a finished capture (a temp file in cacheDir) where L3's two
+    // toggles say: moved into saveDirectory, copied to the clipboard, or
+    // both. A copy-only capture's temp file is removed once xclip has read
+    // it (xclip -i reads the whole file before it starts serving).
+    function deliverCommand(tempPath, suffix) {
+        var src = tempPath;
+        var parts = [];
+        if (root.saveToFile) {
+            var finalPath = root.finalPathFor(suffix);
+            parts.push("mkdir -p " + shQuote(root.saveDirectory));
+            parts.push("mv " + shQuote(tempPath) + " " + shQuote(finalPath));
+            src = finalPath;
+        }
+        if (root.copyToClipboard)
+            parts.push("xclip -selection clipboard -t image/png -i " + shQuote(src));
+        if (!root.saveToFile)
+            parts.push("rm -f " + shQuote(tempPath));
+        return parts.join(" && ");
+    }
+
+    function deliver(tempPath, suffix) {
+        deliverProc.command = ["sh", "-c", root.deliverCommand(tempPath, suffix)];
+        deliverProc.running = false;
+        deliverProc.running = true;
     }
 }

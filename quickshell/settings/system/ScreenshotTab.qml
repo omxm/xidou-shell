@@ -3,7 +3,8 @@ import "../../config"
 import "../../services"
 import ".." as Settings
 
-// Screenshot > General: the four behavior toggles and the save directory
+// System > Screenshot (moved from the old top-level Screenshot category,
+// ROADMAP M22): the four behavior toggles and the save directory
 // that services/Screenshot.qml already implemented -- they were hardcoded
 // sensible defaults before config.toml's [screenshot] table and
 // Screenshot.qml's own Config.data.screenshot.* bindings existed (both
@@ -21,7 +22,14 @@ Item {
         rememberRow.reset();
         cursorRow.reset();
         saveDirRow.reset();
+        saveFileRow.reset();
+        copyRow.reset();
     }
+
+    // L3: at least one of Save to File / Copy to Clipboard stays on, so
+    // the Off of whichever is the last one on is greyed out.
+    readonly property bool saveOn: Config.data.screenshot.save_to_file
+    readonly property bool copyOn: Config.data.screenshot.copy_to_clipboard
 
     readonly property var onOffOptions: [
         { value: true, label: "On" },
@@ -93,6 +101,45 @@ Item {
                 options: root.onOffOptions
                 currentValue: Config.data.screenshot.include_cursor
                 onOptionSelected: (value) => Config.setValue("screenshot", "include_cursor", value)
+            }
+        }
+
+        Settings.SettingRow {
+            id: saveFileRow
+            label: "Save to File"
+            tableHeader: "screenshot"
+            settingKey: "save_to_file"
+            defaultValue: Config.defaults.screenshot.save_to_file
+            showOverriddenOnly: root.showOverriddenOnly
+            // Resetting turns it back on, which is always allowed.
+
+            Settings.OptionRow {
+                width: parent.width
+                options: [
+                    { value: true, label: "On" },
+                    { value: false, label: "Off", disabled: !root.copyOn }
+                ]
+                currentValue: root.saveOn
+                onOptionSelected: (value) => Config.setValue("screenshot", "save_to_file", value)
+            }
+        }
+
+        Settings.SettingRow {
+            id: copyRow
+            label: "Copy to Clipboard"
+            tableHeader: "screenshot"
+            settingKey: "copy_to_clipboard"
+            defaultValue: Config.defaults.screenshot.copy_to_clipboard
+            showOverriddenOnly: root.showOverriddenOnly
+
+            Settings.OptionRow {
+                width: parent.width
+                options: [
+                    { value: true, label: "On" },
+                    { value: false, label: "Off", disabled: !root.saveOn }
+                ]
+                currentValue: root.copyOn
+                onOptionSelected: (value) => Config.setValue("screenshot", "copy_to_clipboard", value)
             }
         }
 

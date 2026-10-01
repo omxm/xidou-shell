@@ -118,6 +118,7 @@ Scope {
             } else {
                 root.statusText = "Incorrect password";
                 root.statusIsError = true;
+                SoundFx.play("wrong_password");
                 root.resetInput();
                 // Delay the restart a little so a burst of Enter presses
                 // doesn't hammer PAM.

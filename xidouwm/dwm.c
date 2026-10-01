@@ -1225,6 +1225,7 @@ focusdir(const Arg *arg)
 	if ((c = dirtoclient((const int *)arg->v))) {
 		focus(c);
 		restack(selmon);
+		ipc_wm_action_event(selmon->num, "focus");
 	}
 }
 
@@ -1285,6 +1286,7 @@ exchange_client(const Arg *arg)
 	if ((c = dirtoclient((const int *)arg->v))) {
 		swapclients(sel, c);
 		arrange(selmon);
+		ipc_wm_action_event(selmon->num, "swap");
 	}
 }
 
@@ -1495,6 +1497,7 @@ killclient(const Arg *arg)
 {
 	if (!selmon->sel)
 		return;
+	ipc_wm_action_event(selmon->num, "kill");
 	if (!sendevent(selmon->sel, wmatom[WMDelete])) {
 		XGrabServer(dpy);
 		XSetErrorHandler(xerrordummy);
@@ -1690,6 +1693,7 @@ movemouse(const Arg *arg)
 		return;
 	if (!getrootptr(&x, &y))
 		return;
+	ipc_wm_action_event(selmon->num, "move_start");
 	do {
 		XMaskEvent(dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
 		switch(ev.type) {
@@ -1722,6 +1726,7 @@ movemouse(const Arg *arg)
 		}
 	} while (ev.type != ButtonRelease);
 	XUngrabPointer(dpy, CurrentTime);
+	ipc_wm_action_event(selmon->num, "move_end");
 	if ((m = recttomon(c->x, c->y, c->w, c->h)) != selmon) {
 		sendmon(c, m);
 		selmon = m;
@@ -1885,6 +1890,7 @@ resizemouse(const Arg *arg)
 	if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
 		None, cursor[CurResize]->cursor, CurrentTime) != GrabSuccess)
 		return;
+	ipc_wm_action_event(selmon->num, "resize_start");
 	XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
 	do {
 		XMaskEvent(dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
@@ -1915,6 +1921,7 @@ resizemouse(const Arg *arg)
 	} while (ev.type != ButtonRelease);
 	XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
 	XUngrabPointer(dpy, CurrentTime);
+	ipc_wm_action_event(selmon->num, "resize_end");
 	while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 	if ((m = recttomon(c->x, c->y, c->w, c->h)) != selmon) {
 		sendmon(c, m);
@@ -2438,6 +2445,8 @@ tag(const Arg *arg)
 	 * see commit ec597a4) by reusing view()'s own tagset-switch/focus/
 	 * arrange logic instead of duplicating it here. */
 	if (selmon->sel && arg->ui & TAGMASK) {
+		if ((selmon->sel->tags & TAGMASK) != (arg->ui & TAGMASK))
+			ipc_wm_action_event(selmon->num, "send");
 		selmon->sel->tags = arg->ui & TAGMASK;
 		view(arg);
 	}

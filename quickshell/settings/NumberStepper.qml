@@ -1,5 +1,6 @@
 import QtQuick
 import "../config"
+import "../services"
 
 // A "− value +" numeric stepper, clamped to [minValue, maxValue] --
 // factored out from Font Size and Corner Radius, the first two controls
@@ -45,7 +46,10 @@ Row {
             anchors.fill: parent
             enabled: root.value > root.minValue
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.stepped(Math.max(root.minValue, root.value - 1))
+            onClicked: {
+                SoundFx.play("stepper");
+                root.stepped(Math.max(root.minValue, root.value - 1));
+            }
         }
     }
 
@@ -87,7 +91,10 @@ Row {
             anchors.fill: parent
             enabled: root.value < root.maxValue
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.stepped(Math.min(root.maxValue, root.value + 1))
+            onClicked: {
+                SoundFx.play("stepper");
+                root.stepped(Math.min(root.maxValue, root.value + 1));
+            }
         }
     }
 }

@@ -30,10 +30,17 @@ ShellRoot {
     // unlike Weather's singletons, nothing else always-loaded reads from it,
     // so without this the config.toml -> picom.conf bridge would silently
     // never exist until something else happened to touch MotionSync first.
+    // SoundFx is touched for the same reason: its sounds load
+    // asynchronously, and the first sound shouldn't be the one that
+    // triggers loading (and is lost to it).
     Component.onCompleted: {
         logTheme();
         MotionSync.picomConfPath;
+        SoundFx.soundDir;
+        InputSettings.disableWhileTyping;
     }
+
+    SoundEvents {}
 
     Connections {
         target: Config
@@ -124,20 +131,26 @@ ShellRoot {
 
         function next(): void {
             var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
-            if (p && p.canGoNext)
+            if (p && p.canGoNext) {
                 p.next();
+                SoundFx.play("media_next");
+            }
         }
 
         function previous(): void {
             var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
-            if (p && p.canGoPrevious)
+            if (p && p.canGoPrevious) {
                 p.previous();
+                SoundFx.play("media_previous");
+            }
         }
 
         function playPause(): void {
             var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
-            if (p && p.canTogglePlaying)
+            if (p && p.canTogglePlaying) {
+                SoundFx.play(p.isPlaying ? "media_pause" : "media_play");
                 p.togglePlaying();
+            }
         }
     }
 
@@ -150,6 +163,7 @@ ShellRoot {
 
         function brightness(): void {
             Brightness.refreshAndShow();
+            SoundFx.play("brightness");
         }
     }
 

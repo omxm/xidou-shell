@@ -1,5 +1,6 @@
 import QtQuick
 import "../config"
+import "../services"
 
 // A single-line text field that commits on Return/focus-loss rather than
 // every keystroke, and explicitly resyncs its displayed text from
@@ -61,8 +62,11 @@ Rectangle {
         Keys.onReturnPressed: input.focus = false
         Keys.onEnterPressed: input.focus = false
         onEditingFinished: {
-            if (root.isValid)
+            if (root.isValid) {
+                if (String(input.text) !== String(root.value))
+                    SoundFx.play("text_commit");
                 root.committed(input.text);
+            }
             else
                 root.syncFromValue(); // discard the bad input, revert to the last real value
         }

@@ -193,6 +193,72 @@ confirm_selection = true        # show the Save/Cancel preview dialog after a ca
 remember_last_region = false    # off by default: with no second keybind for "reselect", turning this on leaves no way back to a fresh selection short of restarting the shell
 include_cursor = false          # include the mouse pointer in the captured image
 save_directory = "~/Pictures/Screenshots"
+# What happens to a finished capture. At least one stays on: Settings won't
+# turn off the last one, and with both false the file is saved anyway.
+save_to_file = true
+copy_to_clipboard = true
+
+# Sound effects (Settings > System > Sound). Volume = each sound's own
+# default x the category volume x the master volume (0.0-1.0). Do Not
+# Disturb silences incoming notification sounds only. `extra` turns on
+# operations that are off by default, by their id from
+# quickshell/lib/SoundMap.js (e.g. "launcher_move", "window_focus"); the
+# Sound page's "What plays here" lists them.
+[sound]
+enabled = true
+volume = 1.0
+pack = "zen"   # assets/sounds/<pack>/; not in the UI yet
+
+[sound.panels]
+enabled = true
+volume = 1.0
+extra = []
+
+[sound.controls]
+enabled = true
+volume = 1.0
+extra = []
+
+[sound.windows]
+enabled = true
+volume = 1.0
+extra = []
+
+[sound.media]
+enabled = true
+volume = 1.0
+extra = []
+
+[sound.notifications]
+enabled = true
+volume = 1.0
+extra = []
+
+[sound.capture]
+enabled = true
+volume = 1.0
+extra = []
+
+[sound.devices]
+enabled = true
+volume = 1.0
+extra = []
+
+[sound.session]
+enabled = true
+volume = 1.0
+extra = []
+
+[sound.system]
+enabled = true
+volume = 1.0
+extra = []
+
+# Settings > System > Input. Applied with xinput to every device that has
+# libinput's "Disable While Typing Enabled" property, at shell start and on
+# change.
+[input.touchpad]
+disable_while_typing = false
 
 # The keybind / dnd_keybind / lock_keybind keys in the [panels.*] tables
 # below are documentation only for now. Nothing reads them: every key

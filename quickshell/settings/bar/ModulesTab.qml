@@ -111,6 +111,8 @@ Item {
     // thing to ask for a currently-off widget too, so this doesn't require
     // isEnabled() first the way the plain On/Off toggle's semantics do.
     function moveModuleToSection(name, targetKey) {
+        if (root.currentSectionOf(name) !== targetKey)
+            SoundFx.play("reorder");
         root.sectionKeys.forEach(function (key) {
             var arr = Config.data.bar[key];
             if (arr.indexOf(name) !== -1)
@@ -149,6 +151,7 @@ Item {
         var tmp = arr[idx];
         arr[idx] = arr[newIdx];
         arr[newIdx] = tmp;
+        SoundFx.play("reorder");
         Config.setValue("bar", section, arr);
     }
 
@@ -216,6 +219,8 @@ Item {
                         { value: false, label: "Off" }
                     ]
                     currentValue: root.isEnabled(moduleRowWrapper.modelData)
+                    onSound: "item_add"
+                    offSound: "item_remove"
                     onOptionSelected: (value) => {
                         if (value)
                             root.enableModule(moduleRowWrapper.modelData);
@@ -304,7 +309,10 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.editingModule = moduleRowWrapper.modelData
+                    onClicked: {
+                        SoundFx.play("gear_open");
+                        root.editingModule = moduleRowWrapper.modelData;
+                    }
                 }
             }
         }
@@ -471,7 +479,10 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.editingModule = ""
+                    onClicked: {
+                        SoundFx.play("gear_close");
+                        root.editingModule = "";
+                    }
                 }
             }
 

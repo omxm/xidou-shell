@@ -242,7 +242,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 5 | Wallpaper directories in Settings | **Done** (Wallpaper > General) | — |
 | 6 | Everything (dwm config, resolution, scale) in Settings | **Partial**: window gaps are config-driven via dwm IPC (`a941b03`) but have no Settings UI and apply only at session start; everything else in dwm is still compile-time | L14, H4, H5 |
 | 7 | Overridden / Reset UI, long-press or double-click reset | **Partial**: badge + one-click reset exist (right side of row) | L5 |
-| 8 | Screenshot settings | **Mostly done**; missing separate "copy to clipboard" / "save to file" toggles | L3 |
+| 8 | Screenshot settings | **Done** (L3 on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check) | L3 |
 | 9 | Lock screen | **Done**, closed by はる's call with four accepted limitations (1.2). Shipped via #3 (`1fb3a33`): per-screen coverage, always on top, panel/IPC refusal while locked, dwm lock mode, and the redesign. Not addressed: X grab, fail-open if Quickshell dies, lock on suspend, VT switching. | M1 |
 | 10 | Settings panel separate from control-center | **Done** | — |
 | 11 | Bar customization (general … dead zone) | **Done** for General/Layout/Shape/Effects/Widgets/Capsules (`a941b03`). **Partial** for Widget List (on/off, lane moves, up/down reorder — no lane tabs, add-picker, multi-select, drag). Dead Zone UI **not started** (1.1). | M9, M10, section 6 |
@@ -267,7 +267,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 30 | Theme export/import | Not started | M17 |
 | 31 | Unlimited bars, bar export/import/duplicate | Not started | H1 |
 | 32 | Stack 3+ notifications, click → CC Notifications | Not started | L7 |
-| 33 | Sound effects | Not started; design decided (uisfx "zen", section 7) | F6, M22 |
+| 33 | Sound effects | **Done** (on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check) | F6, M22 |
 | 34 | Tailscale status widget | Not started | M11 |
 | 35 | M3 color presets like Noctalia | Not started | M5 |
 | 36 | Trackpad gestures | Not started; mapping decided (D22), tool pending real-hardware check | M23, L16 |
@@ -394,7 +394,11 @@ Small things that unblock or de-risk everything else. Do these first.
 - **Unblocks:** M8 (click model), L8/M11 (new widgets reuse it for free).
 - **Depends on:** nothing now. Could drop to Light once started — the wrapper exists.
 
-### F6 Sound service — Light `[SESSION]`
+### F6 Sound service — Light `[SESSION]` — **Done** (on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check)
+- Built as planned: `services/SoundFx.qml` with WAV + `SoundEffect` (59 cues, 2.93 MB),
+  `lib/SoundMap.js`, `assets/sounds/zen/` with `LICENSE-AUDIO`, `NOTICE`, `cues.json`.
+  Volume math measured end to end under Xvfb with a private PipeWire null sink
+  (recorded peak / source peak = computed gain). See CLAUDE.md, "Sound effects".
 - **What:** a `SoundFx` singleton with `play(cueName, category)`, following the rules
   decided for D14 (M22):
   - gain = cue's uisfx default volume × category volume × master volume;
@@ -484,7 +488,11 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   locks explicitly. Plays `sleep` via M22's `playThen` rule.
 - Decisions: D4 (decided). Verify: `[CLOUD]` for UI; `[HW]` for suspend/resume.
 
-**L3 — Screenshot: separate "Save to file" and "Copy to clipboard" toggles**
+**L3 — Screenshot: separate "Save to file" and "Copy to clipboard" toggles** — **Done**
+(on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check)
+- Fullscreen and region now share one delivery step (`Screenshot.deliver()`): move
+  into the save directory and/or copy, and a copy-only capture's temp file is
+  removed. Checked under Xvfb in all three modes, with the greyed-out Off.
 - What: `Screenshot.qml` always does `mkdir -p && maim … && xclip …`. Split into two
   config keys (`save_to_file`, `copy_to_clipboard`, both default true); at least one must
   stay on (grey out the other's Off when it would leave neither).
@@ -582,7 +590,12 @@ with H8 change 2 (`6dbdf76`, confirmed on the X1CG5)
 - Found during H3 testing (2026-09-27) and deliberately left for a cleanup pass.
 - Verify: `[CLOUD]` with a test xidouwm on `$XIDOU_WM_SOCKET`.
 
-**L16 — Touchpad: disable-while-typing toggle (D26)**
+**L16 — Touchpad: disable-while-typing toggle (D26)** — **Done** (on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check)
+- `services/InputSettings.qml` + System > Input. The xinput logic was checked
+  against a fake `xinput` only (no real device touched): it sets the property
+  on every device that has it, at shell start and on change.
+- Default off means the real touchpad's DWT turns off at the first shell start
+  after this lands (D26).
 - What: Settings > System > Input > "Disable While Typing", default **off** (D26).
   - Apply at shell start and on change with `xinput set-prop <id> "libinput Disable
     While Typing Enabled" 0|1` on every device that has that property. Find them by
@@ -814,7 +827,24 @@ with H8 change 2 (`6dbdf76`, confirmed on the X1CG5)
   0 disables), larger text, high-contrast toggle.
 - Depends on: F4. Verify: `[SESSION]`.
 
-**M22 — Sound effects (decided 2026-10-01, D14)**
+**M22 — Sound effects (decided 2026-10-01, D14)** — **Done** (on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check)
+- **How it was built, where it differs from the plan below:**
+  - Off-by-default operations can be turned on per category with an `extra`
+    list in `[sound.<id>]`, which is config only. The Sound page's "What plays
+    here" names each operation's id.
+  - Home tiles and Switchboard toggles sound through the state they change
+    (Wi-Fi, BT, DND, ...) with the same toggle cues. They don't add a second,
+    `controls`-category sound.
+  - DND silences incoming notifications only. Dismiss, clear all and the DND
+    toggle itself are user actions and keep playing.
+  - Window close, send, swap, directional focus and mouse move/resize need
+    xidouwm's new `wm_action_event`, so the real session needs the new
+    xidouwm. The other window sounds use existing dwm-ipc events.
+  - Not wired, because the feature doesn't exist: clipboard "delete entry",
+    suspend/resume, the reset long-press (L5), and every "(planned)" row.
+    Charger, battery, Wi-Fi/BT, Caffeine, Night Light, palette, wallpaper and
+    lock/unlock/wrong password were only code-reviewed: testing them would
+    have touched real system state or real PAM.
 - **Source:** uisfx "zen" pack, vendored per F6. Cue map: section 7.
 - **Rules (decided):**
   - Nine Xidou categories (section 7). Each has on/off and a volume, plus a master
@@ -831,7 +861,7 @@ with H8 change 2 (`6dbdf76`, confirmed on the X1CG5)
   - Rate-limit repeating cues (volume/brightness key repeat) to one per ~80 ms.
 - **Settings location (decided):** Settings > **System** > Sound. Screenshot also moves
   under System, so the top-level Screenshot category goes away.
-- **Proposed System layout (awaiting はる's OK):**
+- **System layout (built as proposed):**
   - Sub-tabs, in order: **Sound · Screenshot · Input (L16) · Weather**. Weather is the
     existing tab, unchanged.
   - **Sound** is one flat page; 10 rows fit the 600 px panel without scrolling:

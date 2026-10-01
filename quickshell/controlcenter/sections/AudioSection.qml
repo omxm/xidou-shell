@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Services.Pipewire
 import "../../config"
+import "../../services"
 import ".." as ControlCenter
 
 // Output/Input device selectors + a per-app volume mixer, both built directly
@@ -89,7 +90,11 @@ Item {
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: Pipewire.preferredDefaultAudioSink = modelData
+                                onClicked: {
+                                    if (Pipewire.defaultAudioSink !== modelData)
+                                        SoundFx.play("audio_device");
+                                    Pipewire.preferredDefaultAudioSink = modelData;
+                                }
                             }
                         }
                     }
@@ -137,7 +142,11 @@ Item {
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: Pipewire.preferredDefaultAudioSource = modelData
+                                onClicked: {
+                                    if (Pipewire.defaultAudioSource !== modelData)
+                                        SoundFx.play("audio_device");
+                                    Pipewire.preferredDefaultAudioSource = modelData;
+                                }
                             }
                         }
                     }
@@ -210,7 +219,12 @@ Item {
                                 width: parent.width * 0.7 - Theme.fontSize * 2 - parent.spacing * 2
                                 anchors.verticalCenter: parent.verticalCenter
                                 value: modelData.audio ? modelData.audio.volume : 0
-                                onMoved: (v) => { if (modelData.audio) modelData.audio.volume = v; }
+                                onMoved: (v) => {
+                                    if (modelData.audio) {
+                                        modelData.audio.volume = v;
+                                        SoundFx.play("app_volume");
+                                    }
+                                }
                             }
                         }
                     }

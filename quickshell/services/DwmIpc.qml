@@ -107,96 +107,37 @@ Singleton {
         id: runCommand
     }
 
-    // Long-lived subscription. xidouwm-msg pretty-prints each event as
-    // multi-line JSON (not one line per event), so SplitParser's
-    // newline-delimited chunks are JSON *fragments*, not whole documents —
-    // accumulate them here, tracking brace depth (string/escape-aware, so
-    // braces inside a quoted value like a window title don't miscount),
-    // and only hand a chunk to JSON.parse once it closes its top-level
-    // object. Restarted on exit (e.g. dwm restarting) so the shell
-    // recovers without a manual reload.
-    property string eventBuffer: ""
-    property int eventBraceDepth: 0
-    property bool eventInString: false
-    property bool eventEscapeNext: false
+    // Emitted from the event streams below, for services/SoundEvents.qml.
+    // tagViewChanged only fires when the *viewed* tags change, not on
+    // occupied/urgent changes. wmAction carries xidouwm's wm_action_event
+    // ("kill", "send", "swap", "focus", "move_start", "move_end",
+    // "resize_start", "resize_end").
+    signal tagViewChanged(int monitor, int oldSelected, int newSelected)
+    signal layoutChanged(int monitor)
+    signal focusedStateChanged(var oldState, var newState)
+    signal wmAction(string action)
 
-    Process {
-        id: subscribe
-        command: [root.dwmMsg, "--ignore-reply", "subscribe", "tag_change_event", "monitor_focus_change_event", "client_focus_change_event"]
-        running: true
+    // The workspace widget's events, plus layout/state changes for sounds.
+    // Every xidouwm supports these, so this stream never depends on a
+    // newer binary.
+    IpcEventStream {
+        command: [root.dwmMsg, "--ignore-reply", "subscribe", "tag_change_event", "monitor_focus_change_event", "client_focus_change_event", "layout_change_event", "focused_state_change_event"]
+        onEvent: obj => root.handleEvent(obj)
+        onExited: root.connected = false
+    }
 
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => root.bufferEventChunk(data)
-        }
-
-        onExited: {
-            root.connected = false;
-            root.eventBuffer = "";
-            root.eventBraceDepth = 0;
-            root.eventInString = false;
-            root.eventEscapeNext = false;
-            restartTimer.start();
+    // wm_action_event is newer than the stream above. An older xidouwm
+    // rejects the subscription; keeping it in its own stream means that
+    // only costs the sounds of those actions, never the workspace widget.
+    IpcEventStream {
+        command: [root.dwmMsg, "--ignore-reply", "subscribe", "wm_action_event"]
+        onEvent: obj => {
+            if (obj.wm_action_event)
+                root.wmAction(obj.wm_action_event.action);
         }
     }
 
-    Timer {
-        id: restartTimer
-        interval: 2000
-        onTriggered: subscribe.running = true
-    }
-
-    // Called once per newline-delimited chunk from the subscribe stream;
-    // appends to eventBuffer and dispatches to handleEvent() only once a
-    // complete top-level JSON object has been accumulated.
-    function bufferEventChunk(chunk) {
-        if (!chunk)
-            return;
-        // SplitParser strips the newline; put it back so the reassembled
-        // text is valid whitespace-separated JSON, matching the original
-        // pretty-printed output.
-        var text = chunk + "\n";
-        for (var i = 0; i < text.length; i++) {
-            var ch = text[i];
-            root.eventBuffer += ch;
-
-            if (root.eventEscapeNext) {
-                root.eventEscapeNext = false;
-                continue;
-            }
-            if (root.eventInString) {
-                if (ch === "\\")
-                    root.eventEscapeNext = true;
-                else if (ch === "\"")
-                    root.eventInString = false;
-                continue;
-            }
-            if (ch === "\"") {
-                root.eventInString = true;
-            } else if (ch === "{") {
-                root.eventBraceDepth++;
-            } else if (ch === "}") {
-                root.eventBraceDepth--;
-                if (root.eventBraceDepth === 0) {
-                    root.handleEvent(root.eventBuffer);
-                    root.eventBuffer = "";
-                }
-            }
-        }
-    }
-
-    function handleEvent(text) {
-        var trimmed = text.trim();
-        if (!trimmed)
-            return;
-        var event;
-        try {
-            event = JSON.parse(trimmed);
-        } catch (e) {
-            console.warn("[xidou] xidouwm-msg subscribe: failed to parse event: " + trimmed);
-            return;
-        }
-
+    function handleEvent(event) {
         if (event.tag_change_event) {
             var e = event.tag_change_event;
             var mon = root.monitorsByNum[e.monitor_number];
@@ -206,6 +147,8 @@ Singleton {
                 byNum[e.monitor_number] = updated;
                 root.monitorsByNum = byNum;
             }
+            if (e.old_state && e.new_state && e.old_state.selected !== e.new_state.selected)
+                root.tagViewChanged(e.monitor_number, e.old_state.selected, e.new_state.selected);
         } else if (event.monitor_focus_change_event) {
             root.focusedMonitor = event.monitor_focus_change_event.new_monitor_number;
         } else if (event.client_focus_change_event) {
@@ -213,6 +156,11 @@ Singleton {
             var focusedByNum2 = Object.assign({}, root.focusedWinIdByMonitor);
             focusedByNum2[c.monitor_number] = c.new_win_id || 0;
             root.focusedWinIdByMonitor = focusedByNum2;
+        } else if (event.layout_change_event) {
+            root.layoutChanged(event.layout_change_event.monitor_number);
+        } else if (event.focused_state_change_event) {
+            var f = event.focused_state_change_event;
+            root.focusedStateChanged(f.old_state, f.new_state);
         }
     }
 

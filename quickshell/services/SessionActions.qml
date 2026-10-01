@@ -15,34 +15,47 @@ Singleton {
     property bool locked: false
 
     function lock() {
-        PanelManager.closeAll();
+        PanelManager.closeAll(true);
+        if (!root.locked)
+            SoundFx.play("lock");
         root.locked = true;
     }
 
     function unlock() {
+        if (root.locked)
+            SoundFx.play("unlock");
         root.locked = false;
     }
 
+    // Log out, restart and shut down start the "stop" cue and run once it
+    // ends, or after 0.4 s at most (SoundFx.playThen(), ROADMAP M22). If
+    // the cue can't play, they run immediately.
     function logout() {
         // dwm is the session's exec'd process (session/xidou-xinitrc) --
         // quitting it ends the X session, same as dwm's own super+shift+e
         // bind. This is window-manager lifecycle, not shell UI state, so it
         // goes through dwm-ipc (xidouwm-msg) rather than Quickshell's own IPC.
-        PanelManager.closeAll();
-        logoutProc.running = false;
-        logoutProc.running = true;
+        PanelManager.closeAll(true);
+        SoundFx.playThen("session_end", function () {
+            logoutProc.running = false;
+            logoutProc.running = true;
+        });
     }
 
     function reboot() {
-        PanelManager.closeAll();
-        rebootProc.running = false;
-        rebootProc.running = true;
+        PanelManager.closeAll(true);
+        SoundFx.playThen("session_end", function () {
+            rebootProc.running = false;
+            rebootProc.running = true;
+        });
     }
 
     function shutdown() {
-        PanelManager.closeAll();
-        shutdownProc.running = false;
-        shutdownProc.running = true;
+        PanelManager.closeAll(true);
+        SoundFx.playThen("session_end", function () {
+            shutdownProc.running = false;
+            shutdownProc.running = true;
+        });
     }
 
     Process {

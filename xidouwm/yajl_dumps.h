@@ -62,4 +62,6 @@ int dump_focused_state_change_event(yajl_gen gen, const int mon_num,
 
 int dump_error_message(yajl_gen gen, const char *reason);
 
+int dump_wm_action_event(yajl_gen gen, const int mon_num, const char *action);
+
 #endif  // YAJL_DUMPS_H_

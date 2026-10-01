@@ -1,5 +1,6 @@
 import QtQuick
 import "../config"
+import "../services"
 
 // One notification popup card (Phase 4). Visual structure -- bell icon,
 // title/body, X dismiss top-right, app-name label bottom-right, a thin
@@ -102,7 +103,10 @@ Item {
                         anchors.margins: -Theme.fontSize * 0.4
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.notification.dismiss()
+                        onClicked: {
+                            SoundFx.play("notify_dismiss");
+                            root.notification.dismiss();
+                        }
                     }
                 }
             }

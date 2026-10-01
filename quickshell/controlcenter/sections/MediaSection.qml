@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Services.Mpris
 import "../../config"
 import ".." as ControlCenter
+import "../../services"
 
 // Fuller player view than Home's compact NowPlayingCard: album art, seek bar,
 // per-player volume, shuffle/loop, and a player switcher when more than one
@@ -139,6 +140,7 @@ Item {
                 visible: root.player && root.player.positionSupported && root.player.length > 0
                 value: root.player && root.player.length > 0 ? root.player.position / root.player.length : 0
                 onMoved: (v) => { if (root.player) root.player.position = v * root.player.length; }
+                onReleased: SoundFx.play("media_seek")
             }
 
             Row {
@@ -167,7 +169,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: if (root.player && root.player.canGoPrevious) root.player.previous()
+                        onClicked: if (root.player && root.player.canGoPrevious) { root.player.previous(); SoundFx.play("media_previous"); }
                     }
                 }
 
@@ -179,7 +181,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: if (root.player && root.player.canTogglePlaying) root.player.togglePlaying()
+                        onClicked: if (root.player && root.player.canTogglePlaying) { SoundFx.play(root.player.isPlaying ? "media_pause" : "media_play"); root.player.togglePlaying(); }
                     }
                 }
 
@@ -191,7 +193,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: if (root.player && root.player.canGoNext) root.player.next()
+                        onClicked: if (root.player && root.player.canGoNext) { root.player.next(); SoundFx.play("media_next"); }
                     }
                 }
 

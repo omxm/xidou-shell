@@ -54,25 +54,35 @@ Singleton {
         if (!wasOpen)
             next[name] = true;
         root.openPanels = next;
+        SoundFx.play(wasOpen ? "panel_close" : "panel_open");
     }
 
-    function close(name) {
+    // `silent` skips the close sound, for a close that is part of an
+    // action with its own sound (launching an app, picking an emoji).
+    function close(name, silent) {
         if (!root.openPanels[name])
             return;
         var next = Object.assign({}, root.openPanels);
         next[name] = false;
         root.openPanels = next;
+        if (!silent)
+            SoundFx.play("panel_close");
     }
 
     // For SessionActions.lock()/logout()/reboot()/shutdown() -- these need
     // every dock panel gone (nothing left interactive behind/through the
     // lock screen, nothing left open across a session that's about to end)
-    // without opening a replacement the way toggle(name) would.
-    function closeAll() {
+    // without opening a replacement the way toggle(name) would. `silent`
+    // skips the close sound, for callers that play their own (lock,
+    // session end).
+    function closeAll(silent) {
+        var hadOpen = root.anyOpen();
         var next = {};
         for (var key in root.openPanels)
             next[key] = false;
         root.openPanels = next;
+        if (hadOpen && !silent)
+            SoundFx.play("panel_close");
     }
 
     function anyOpen() {

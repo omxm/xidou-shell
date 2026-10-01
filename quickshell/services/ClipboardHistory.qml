@@ -53,6 +53,10 @@ Singleton {
                 path: root.clipDir + "/" + ts + "." + ext
             });
         }
+        // A new newest entry is a copy made anywhere (xidou-clipd records
+        // every clipboard change). Not on the first load.
+        if (root.entries.length > 0 && out.length > 0 && out[0].ts !== root.entries[0].ts)
+            SoundFx.play("clip_any");
         root.entries = out;
     }
 

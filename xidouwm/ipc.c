@@ -488,6 +488,8 @@ ipc_event_stoi(const char *subscription, IPCEvent *event)
     *event = IPC_EVENT_FOCUSED_TITLE_CHANGE;
   else if (strcmp(subscription, "focused_state_change_event") == 0)
     *event = IPC_EVENT_FOCUSED_STATE_CHANGE;
+  else if (strcmp(subscription, "wm_action_event") == 0)
+    *event = IPC_EVENT_WM_ACTION;
   else
     return -1;
   return 0;
@@ -1112,6 +1114,19 @@ ipc_focused_state_change_event(const int mon_num, const Window client_id,
   dump_focused_state_change_event(gen, mon_num, client_id, old_state,
                                   new_state);
   ipc_event_prepare_send_message(gen, IPC_EVENT_FOCUSED_STATE_CHANGE);
+}
+
+void
+ipc_wm_action_event(const int mon_num, const char *action)
+{
+  yajl_gen gen;
+  ipc_event_init_message(&gen);
+  dump_wm_action_event(gen, mon_num, action);
+  ipc_event_prepare_send_message(gen, IPC_EVENT_WM_ACTION);
+
+  for (IPCClient *c = ipc_clients; c; c = c->next)
+    if ((c->subscriptions & IPC_EVENT_WM_ACTION) && c->buffer_size)
+      ipc_write_client(c);
 }
 
 void

@@ -1,5 +1,6 @@
 import QtQuick
 import "../config"
+import "../services"
 
 // Left tab list — click selects a section directly; Tab-key cycling (see
 // ControlCenter.qml) also drives the same selectedIndex property.
@@ -39,7 +40,11 @@ Column {
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.sectionClicked(delegateRoot.index)
+                onClicked: {
+                    if (delegateRoot.index !== root.selectedIndex)
+                        SoundFx.play("tab_switch");
+                    root.sectionClicked(delegateRoot.index);
+                }
             }
         }
     }

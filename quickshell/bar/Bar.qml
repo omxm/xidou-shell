@@ -273,6 +273,21 @@ PanelWindow {
             // module beneath it.
             HoverHandler {
                 id: widgetHover
+                onHoveredChanged: {
+                    if (hovered && wrapper.hasContent)
+                        SoundFx.play("bar_hover");
+                }
+            }
+
+            // Press sound (off by default). PointHandler only ever takes a
+            // passive grab, so the module's own MouseArea still gets the
+            // click.
+            PointHandler {
+                acceptedButtons: Qt.AllButtons
+                onActiveChanged: {
+                    if (active && wrapper.hasContent)
+                        SoundFx.play("bar_press");
+                }
             }
 
             Rectangle {

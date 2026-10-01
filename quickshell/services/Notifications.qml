@@ -36,7 +36,23 @@ Singleton {
     }
 
     function clearHistory() {
+        if (root.history.length > 0)
+            SoundFx.play("notify_clear");
         root.history = [];
+    }
+
+    // Section 7: critical -> warning, a message (`category` hint
+    // im.received) -> receive, low urgency -> info (off by default),
+    // everything else -> notification.
+    function soundFor(notification) {
+        if (notification.urgency === NotificationUrgency.Critical)
+            return "notify_critical";
+        var hints = notification.hints || {};
+        if (hints.category === "im.received")
+            return "notify_message";
+        if (notification.urgency === NotificationUrgency.Low)
+            return "notify_low";
+        return "notify";
     }
 
     NotificationServer {
@@ -61,6 +77,10 @@ Singleton {
                 time: Date.now()
             };
             root.history = [entry].concat(root.history).slice(0, root.historyLimit);
+
+            // SoundFx silences these incoming sounds under DND itself
+            // (SoundMap's `incoming`), so no DND check here.
+            SoundFx.play(root.soundFor(notification));
 
             if (root.dnd)
                 return;

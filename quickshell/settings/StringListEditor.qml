@@ -1,5 +1,6 @@
 import QtQuick
 import "../config"
+import "../services"
 
 // An editable list of plain strings -- one row per entry with its own
 // remove button, plus an "Add" row at the bottom. Built for
@@ -28,6 +29,7 @@ Item {
     function removeAt(index) {
         var next = root.items.slice();
         next.splice(index, 1);
+        SoundFx.play("item_remove");
         root.commitItems(next);
     }
 
@@ -37,6 +39,7 @@ Item {
             return;
         var next = root.items.slice();
         next.push(trimmed);
+        SoundFx.play("item_add");
         root.commitItems(next);
         newItemField.text = "";
     }

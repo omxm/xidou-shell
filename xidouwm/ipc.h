@@ -32,7 +32,9 @@ typedef enum IPCEvent {
   IPC_EVENT_LAYOUT_CHANGE = 1 << 2,
   IPC_EVENT_MONITOR_FOCUS_CHANGE = 1 << 3,
   IPC_EVENT_FOCUSED_TITLE_CHANGE = 1 << 4,
-  IPC_EVENT_FOCUSED_STATE_CHANGE = 1 << 5
+  IPC_EVENT_FOCUSED_STATE_CHANGE = 1 << 5,
+  // Xidou: a window-manager action the shell plays a sound for
+  IPC_EVENT_WM_ACTION = 1 << 6
 } IPCEvent;
 
 typedef enum IPCSubscriptionAction {
@@ -273,6 +275,15 @@ void ipc_focused_title_change_event(const int mon_num, const Window client_id,
 void ipc_focused_state_change_event(const int mon_num, const Window client_id,
                                     const ClientState *old_state,
                                     const ClientState *new_state);
+
+/**
+ * Send a wm_action_event to subscribed clients: one of "kill", "send",
+ * "swap", "focus", "move_start", "move_end", "resize_start", "resize_end".
+ * Written to the sockets right away rather than on the next main-loop pass,
+ * because move_start is sent just before movemouse()/resizemouse() block the
+ * main loop until the button is released.
+ */
+void ipc_wm_action_event(const int mon_num, const char *action);
 /**
  * Check to see if an event has occured and call the *_change_event functions
  * accordingly

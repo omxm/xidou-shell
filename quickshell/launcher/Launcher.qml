@@ -134,6 +134,7 @@ PanelWindow {
     function cycleMode() {
         var idx = root.modeOrder.indexOf(root.mode);
         root.mode = root.modeOrder[(idx + 1) % root.modeOrder.length];
+        SoundFx.play("launcher_mode");
     }
 
     // Escape from a non-default mode, or a second press of the launcher's
@@ -203,7 +204,8 @@ PanelWindow {
             var app = filteredApps[selectedIndex];
             UsageStats.recordUse("apps", app.id);
             app.execute();
-            PanelManager.close("launcher");
+            SoundFx.play("app_launch");
+            PanelManager.close("launcher", true);
         }
     }
 
@@ -275,7 +277,8 @@ PanelWindow {
         emojiCopyProc.command = ["sh", "-c", cmd];
         emojiCopyProc.running = false;
         emojiCopyProc.running = true;
-        PanelManager.close("launcher");
+        SoundFx.play("emoji_pick");
+        PanelManager.close("launcher", true);
     }
 
     // Switchboard: a fixed 4x3 grid of quick actions, every one of them
@@ -418,17 +421,22 @@ PanelWindow {
                             font.pixelSize: Theme.fontSize
                             clip: true
 
+                            onTextChanged: {
+                                if (text.length > 0)
+                                    SoundFx.play("search_typing");
+                            }
+
                             Keys.onTabPressed: root.cycleMode()
                             Keys.onEscapePressed: PanelManager.close("launcher")
                             Keys.onReturnPressed: root.launchSelected()
                             Keys.onEnterPressed: root.launchSelected()
                             Keys.onDownPressed: {
                                 if (root.selectedIndex < root.filteredApps.length - 1)
-                                    root.selectedIndex++;
+                                    { root.selectedIndex++; SoundFx.play("launcher_move"); }
                             }
                             Keys.onUpPressed: {
                                 if (root.selectedIndex > 0)
-                                    root.selectedIndex--;
+                                    { root.selectedIndex--; SoundFx.play("launcher_move"); }
                             }
                         }
                     }
@@ -562,21 +570,21 @@ PanelWindow {
                     Keys.onEnterPressed: root.triggerSwitchboardTile(root.switchboardSelectedIndex)
                     Keys.onLeftPressed: {
                         if (root.switchboardSelectedIndex > 0)
-                            root.switchboardSelectedIndex--;
+                            { root.switchboardSelectedIndex--; SoundFx.play("launcher_move"); }
                     }
                     Keys.onRightPressed: {
                         if (root.switchboardSelectedIndex < switchboardGrid.children.length - 1)
-                            root.switchboardSelectedIndex++;
+                            { root.switchboardSelectedIndex++; SoundFx.play("launcher_move"); }
                     }
                     Keys.onUpPressed: {
                         var prev = root.switchboardSelectedIndex - root.switchboardColumns;
                         if (prev >= 0)
-                            root.switchboardSelectedIndex = prev;
+                            { root.switchboardSelectedIndex = prev; SoundFx.play("launcher_move"); }
                     }
                     Keys.onDownPressed: {
                         var next = root.switchboardSelectedIndex + root.switchboardColumns;
                         if (next < switchboardGrid.children.length)
-                            root.switchboardSelectedIndex = next;
+                            { root.switchboardSelectedIndex = next; SoundFx.play("launcher_move"); }
                     }
 
                     GridLayout {
@@ -730,7 +738,11 @@ PanelWindow {
                             font.pixelSize: Theme.fontSize
                             clip: true
 
-                            onTextChanged: root.emojiQuery = text
+                            onTextChanged: {
+                                root.emojiQuery = text;
+                                if (text.length > 0)
+                                    SoundFx.play("search_typing");
+                            }
 
                             Keys.onTabPressed: root.cycleMode()
                             Keys.onEscapePressed: root.resetToAppSearch()
@@ -738,21 +750,21 @@ PanelWindow {
                             Keys.onEnterPressed: root.copySelectedEmoji()
                             Keys.onLeftPressed: {
                                 if (root.emojiSelectedIndex > 0)
-                                    root.emojiSelectedIndex--;
+                                    { root.emojiSelectedIndex--; SoundFx.play("launcher_move"); }
                             }
                             Keys.onRightPressed: {
                                 if (root.emojiSelectedIndex < root.filteredEmoji.length - 1)
-                                    root.emojiSelectedIndex++;
+                                    { root.emojiSelectedIndex++; SoundFx.play("launcher_move"); }
                             }
                             Keys.onDownPressed: {
                                 var next = root.emojiSelectedIndex + emojiGrid.columns;
                                 if (next < root.filteredEmoji.length)
-                                    root.emojiSelectedIndex = next;
+                                    { root.emojiSelectedIndex = next; SoundFx.play("launcher_move"); }
                             }
                             Keys.onUpPressed: {
                                 var prev = root.emojiSelectedIndex - emojiGrid.columns;
                                 if (prev >= 0)
-                                    root.emojiSelectedIndex = prev;
+                                    { root.emojiSelectedIndex = prev; SoundFx.play("launcher_move"); }
                             }
                         }
                     }

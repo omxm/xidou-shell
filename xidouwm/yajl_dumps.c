@@ -349,3 +349,18 @@ dump_error_message(yajl_gen gen, const char *reason)
 
   return 0;
 }
+
+int
+dump_wm_action_event(yajl_gen gen, const int mon_num, const char *action)
+{
+  // clang-format off
+  YMAP(
+    YSTR("wm_action_event"); YMAP(
+      YSTR("monitor_number"); YINT(mon_num);
+      YSTR("action"); YSTR(action);
+    )
+  )
+  // clang-format on
+
+  return 0;
+}

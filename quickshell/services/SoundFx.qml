@@ -31,6 +31,14 @@ Singleton {
     property var lastPlayed: ({})
     // loop key -> cue currently looping under that key.
     property var loops: ({})
+    // XIDOU_SOUND_LOG=1 logs every operation: what played, at what volume,
+    // or why it stayed silent.
+    readonly property bool logEnabled: !!Quickshell.env("XIDOU_SOUND_LOG")
+
+    function log(opId, msg) {
+        if (root.logEnabled)
+            console.log("[xidou] sound " + opId + ": " + msg);
+    }
 
     FileView {
         id: cuesFile
@@ -95,20 +103,27 @@ Singleton {
             return false;
         }
         var g = root.gainFor(opId);
-        if (g <= 0)
+        if (g <= 0) {
+            root.log(opId, "silent (off, muted or DND)");
             return false;
+        }
         var fx = root.effects[op.cue];
-        if (!fx || fx.status !== SoundEffect.Ready)
+        if (!fx || fx.status !== SoundEffect.Ready) {
+            root.log(opId, "silent (" + op.cue + " not loaded)");
             return false;
+        }
         var now = Date.now();
         var last = root.lastPlayed[op.cue] || 0;
         var gap = Math.max(SoundMap.DEDUPE_MS, SoundMap.COOLDOWN_MS[op.cue] || 0);
-        if (now - last < gap)
+        if (now - last < gap) {
+            root.log(opId, "dropped (" + op.cue + " played " + (now - last) + " ms ago)");
             return false;
+        }
         root.lastPlayed[op.cue] = now;
         fx.loops = 1;
         fx.volume = g;
         fx.play();
+        root.log(opId, op.cue + " at " + g.toFixed(4));
         return true;
     }
 

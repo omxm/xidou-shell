@@ -113,6 +113,7 @@ PanelWindow {
         setWallpaperProc.command = ["feh", "--bg-fill", path];
         setWallpaperProc.running = false;
         setWallpaperProc.running = true;
+        SoundFx.play("wallpaper_changed");
 
         if (Config.data.theme.source === "wallpaper") {
             var matugenMode = root.uiMode === "auto" ? "smart" : root.uiMode;

@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Services.Mpris
 import "../../config"
 import ".." as ControlCenter
+import "../../services"
 
 // Larger now-playing display than the bar's compact Media.qml, but the same
 // data source (Mpris.players.values[0] — there's no separate project-authored
@@ -61,7 +62,7 @@ ControlCenter.Card {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: if (root.player && root.player.canGoPrevious) root.player.previous()
+                    onClicked: if (root.player && root.player.canGoPrevious) { root.player.previous(); SoundFx.play("media_previous"); }
                 }
             }
 
@@ -74,7 +75,7 @@ ControlCenter.Card {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: if (root.player && root.player.canTogglePlaying) root.player.togglePlaying()
+                    onClicked: if (root.player && root.player.canTogglePlaying) { SoundFx.play(root.player.isPlaying ? "media_pause" : "media_play"); root.player.togglePlaying(); }
                 }
             }
 
@@ -87,7 +88,7 @@ ControlCenter.Card {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: if (root.player && root.player.canGoNext) root.player.next()
+                    onClicked: if (root.player && root.player.canGoNext) { root.player.next(); SoundFx.play("media_next"); }
                 }
             }
         }

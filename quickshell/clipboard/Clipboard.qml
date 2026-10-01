@@ -69,7 +69,8 @@ PanelWindow {
         if (index < 0 || index >= ClipboardHistory.entries.length)
             return;
         ClipboardHistory.copy(index);
-        PanelManager.close("clipboard");
+        SoundFx.play("clip_restore");
+        PanelManager.close("clipboard", true);
     }
 
     Rectangle {

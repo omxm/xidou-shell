@@ -234,6 +234,45 @@ windows.
   `QSG_RENDER_LOOP=basic` were each ruled out. If a future Quickshell upgrade
   changes that workaround, revisit this.
 
+### Sound effects (ROADMAP F6 + M22)
+
+- **Assets:** the uisfx "zen" pack (CC0), 59 cues converted once from .ogg to
+  16-bit WAV, in `quickshell/assets/sounds/zen/` with `LICENSE-AUDIO`, a `NOTICE`
+  and `cues.json` (per-cue default volume, loop flag). Qt's `SoundEffect` plays
+  WAV only. Never spawn a process per sound.
+- **`lib/SoundMap.js`** is ROADMAP section 7 in code: operation id -> cue,
+  category, on/off by default, `incoming` (the only sounds DND silences). Callers
+  name operations (`SoundFx.play("panel_open")`), never cues or files.
+  `SoundMap.gain()` is the pure volume rule: cue default x category x master, 0
+  when anything is off.
+- **`services/SoundFx.qml`**: one preloaded `SoundEffect` per cue. It also does:
+  - per-cue cooldowns (hover, focus, progress-step, volume-change);
+  - a 60 ms dedupe, so one action seen from two places sounds once;
+  - loops (`startLoop`/`stopLoop`);
+  - `playThen()` for log out/restart/shut down: run when the cue ends or after
+    0.4 s, immediately if it can't play.
+  - `XIDOU_SOUND_LOG=1` logs every operation (played, volume, or why it was
+    silent).
+  - `xidou msg sound play|gain|status <op>` is the IPC side.
+- **Where sounds come from:**
+  - explicit `play()` calls at UI actions (PanelManager, the shared settings
+    controls, launcher, media, capture);
+  - `services/SoundEvents.qml` (instantiated in shell.qml), which watches state
+    changing from anywhere: Wi-Fi/BT, sink volume/mute, DND, caffeine, night
+    light, battery, theme mode, palette, and xidouwm's events. It plays nothing
+    for 3 s after startup, while bindings settle.
+- **xidouwm events:** tags, layout and floating/fullscreen come from the
+  existing dwm-ipc events. Window close, send, swap, directional focus and mouse
+  move/resize come from Xidou's own `wm_action_event` (`ipc_wm_action_event()`).
+  - It is written to the socket immediately, because `movemouse()` blocks the
+    main loop.
+  - DwmIpc subscribes to it in a separate `IpcEventStream`, so an older xidouwm
+    rejecting it can't break the workspace widget.
+- **Testing without touching the real audio:** run a private PipeWire in a short
+  test `XDG_RUNTIME_DIR`, with a null sink and `wireplumber -p policy` (no
+  hardware monitors), and record the sink monitor to measure levels. See the
+  auto-memory note.
+
 ### Icons & font
 
 - **Google Material Symbols** (Outlined, variable font), sourced directly from
@@ -294,7 +333,6 @@ panel that wasn't in the original plan:
   today:
   - **Appearance**: Theme, Interface, Borders — real. **Accessibility, Motion, Effects
     are still `PlaceholderTab`.**
-  - **Screenshot**: General — real.
   - **OSD**: General — real.
   - **Notifications**: General — real.
   - **Bar**: General (Enabled, Position, Auto-Hide off/on/smart, Reserve Space —
@@ -369,9 +407,17 @@ panel that wasn't in the original plan:
     override these) is separate, larger deferred work. Capsule Foreground (recoloring
     each widget's text/icon to contrast the fill) is deferred too — it would touch
     every module file's `Text.color`, real cross-cutting scope not bundled here.
-  - **System**: Weather (deliberately lives here, not its own category, since
-    location/units/auto_locate are shared across the bar module, Home tab's card, and
-    control-center's Weather section).
+  - **System**: Sound, Screenshot, Input, Weather.
+    - Sound: Master plus nine category rows, each with On/Off, volume and a
+      preview, and a read-only "What plays here" per category.
+    - Screenshot: moved here from its own top-level category, plus L3's Save to
+      File / Copy to Clipboard (at least one stays on).
+    - Input: L16's Disable While Typing, applied with xinput by
+      `services/InputSettings.qml` to every device with libinput's DWT property.
+      Default off.
+    - Weather lives here, not as its own category, since location/units/
+      auto_locate are shared across the bar module, Home tab's card, and
+      control-center's Weather section.
   - **Wallpaper**: General (Directories).
 - Toggles wired to real backing: Wi-Fi and Night Light (Home tab), Caffeine.
 - Window-open/close animations (picom's, not dwm's); session-lifecycle bugs around
