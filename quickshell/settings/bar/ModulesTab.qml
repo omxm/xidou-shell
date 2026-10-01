@@ -715,7 +715,7 @@ Item {
         // Workspaces' real "Widget" section: hide_when_empty/style/
         // show_icons under [bar_widgets.workspaces]. Max Label Characters
         // (from the same Noctalia reference screenshots) is deliberately
-        // NOT here -- confirmed against dwm/config.h that tags are always
+        // NOT here -- confirmed against xidouwm/config.h that tags are always
         // plain numbers 1-9 with no naming concept in this repo, so there
         // is no "custom tag name" for a length cap to apply to.
         Component {

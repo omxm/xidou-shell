@@ -1,7 +1,7 @@
 [Desktop Entry]
 Encoding=UTF-8
 Name=Xidou
-Comment=Xidou Shell (dwm + Quickshell, X11)
+Comment=Xidou Shell (XidouWM + Quickshell, X11)
 Exec=dbus-run-session startx /home/haru/projects/xidou-shell/session/xidou-xinitrc
 Icon=xidou
 Type=Application

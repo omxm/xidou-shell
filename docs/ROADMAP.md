@@ -38,7 +38,7 @@ made, write the answer inline next to the question, so the next session doesn't 
 
 | Tag | Meaning |
 |---|---|
-| `[CLOUD]` | Logic and layout can be built and checked under Xvfb with `$XIDOU_CONFIG_PATH` (and `$XIDOU_DWM_SOCKET` for a test dwm). Screenshots are enough evidence. |
+| `[CLOUD]` | Logic and layout can be built and checked under Xvfb with `$XIDOU_CONFIG_PATH` (and `$XIDOU_WM_SOCKET` for a test xidouwm). Screenshots are enough evidence. |
 | `[SESSION]` | Needs the real X session to judge: compositor behavior (picom), focus/grab behavior, animation feel, scroll feel, sound. Buildable in the cloud, but "done" can only be declared after はる tries it. |
 | `[HW]` | Depends on X1CG5 hardware facts (battery sysfs, backlight, touchpad, TLP, GPU, external monitor). Cannot even be designed with confidence until the hardware inventory (T0-3) exists. |
 
@@ -169,7 +169,7 @@ These are pushback, not refusals — each one has a decision entry in section 4.
    is `~/.icons/default/index.theme` + `Xcursor.theme`/`Xcursor.size` in X resources +
    `xsetroot -cursor_name left_ptr` for the root window. None of that touches the window
    manager. It's a nice idea; it just doesn't depend on a WM fork.
-3. **dwm is already forked.** `dwm/` is a vendored, heavily patched dwm (IPC, dwindle,
+3. **dwm is already forked.** `xidouwm/` (formerly `dwm/`) is a vendored, heavily patched dwm (IPC, dwindle,
    Shape corners, dock stacking, directional focus, strut support). "Forking to XidouWM"
    is mostly a rename. What *would* be new is making dwm read settings at runtime
    instead of compile time — that's the real work, and it's H4.
@@ -196,7 +196,7 @@ These are pushback, not refusals — each one has a decision entry in section 4.
 ### 1.6 A useful correction for the animation question
 
 `session/picom.conf`'s comment says a dwm tag switch "is a plain unmap/map". This dwm
-doesn't do that: `showhide()` (`dwm/dwm.c:2195`) hides clients by `XMoveWindow` to
+doesn't do that: `showhide()` (`xidouwm/dwm.c:2195`) hides clients by `XMoveWindow` to
 `-2 * width` offscreen and shows them by moving them back. Two consequences:
 
 - A tag switch is a **geometry change**, not a map/unmap. picom v12's animation system
@@ -219,7 +219,7 @@ Two things to tidy before it becomes the pattern:
   does nothing until relogin, and the `awk` block is a second, hand-rolled TOML reader
   (it ignores `$XIDOU_CONFIG_PATH`, and it would misread a value written with a trailing
   comment containing digits). Once a Settings UI exists (L14), the natural home for
-  "push to dwm" is the shell: on `Config.reloaded`, call `dwm-msg run_command
+  "push to dwm" is the shell: on `Config.reloaded`, call `xidouwm-msg run_command
   setgappih …` — live, and the xinitrc block can then be deleted.
 - **Naming:** top-level `[layout]` (window gaps) and `[bar.layout]` (bar geometry) are
   unrelated but read as siblings. Worth deciding before more dwm settings land in
@@ -259,7 +259,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 22 | Tray drawer (collapsible), open/closed default | Not started (Tray's gear panel has icon size only); right-click still has no menu | M7 |
 | 23 | Xidou icon and logo | Not started (Logo module is a placeholder wordmark) | M24 |
 | 24 | Launcher Switchboard (chip, many actions, ←→ sliders) | **Partial**: 4×3 grid mode exists, Tab cycles 3 modes | M12 |
-| 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | Decision | H8 |
+| 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Partial**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) done; change 2 (socket to `$XDG_RUNTIME_DIR`) not started | H8 |
 | 26 | Make config easier to change | Mostly = Settings panel; concrete remainder | L10 |
 | 27 | Big list of bar widgets | 12 exist (logo, workspaces, media, clock, weather, tray, mem, cpu, bluetooth, volume, dnd, power); the rest are new | L8, M11, section 6 |
 | 28 | Left-click → CC page, right-click → configurable action | Not started | F2, M8 |
@@ -301,7 +301,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 
 | Item | Status | Ref |
 |---|---|---|
-| Panels (launcher, control-center, settings, session, wallpaper, clipboard, screenshot confirm) keep keyboard focus while open, and focus returns to the selected client when they close. Anything done outside a panel closes it: a click on a client or the desktop, or any dwm keybinding not in `panelsafecmds` (`dwm/config.h`). Print closes panels and waits for them to leave the screen before capturing. The bar no longer blinks for a frame when a panel closes. | **Done** (#4, merged as `808c76a`; confirmed on the real X1CG5 by はる) | CLAUDE.md, "Window roles between dwm and the shell" |
+| Panels (launcher, control-center, settings, session, wallpaper, clipboard, screenshot confirm) keep keyboard focus while open, and focus returns to the selected client when they close. Anything done outside a panel closes it: a click on a client or the desktop, or any dwm keybinding not in `panelsafecmds` (`xidouwm/config.h`). Print closes panels and waits for them to leave the screen before capturing. The bar no longer blinks for a frame when a panel closes. | **Done** (#4, merged as `808c76a`; confirmed on the real X1CG5 by はる) | CLAUDE.md, "Window roles between dwm and the shell" |
 
 ### Still-open items from CLAUDE.md (not in the backlog, kept for completeness)
 
@@ -342,13 +342,13 @@ Small things that unblock or de-risk everything else. Do these first.
 
 ### F1 dwm-ipc: expose per-client metadata — Light/Moderate `[CLOUD]`
 - **What:** add `class`, `instance`, `pid`, and on-screen geometry to `get_dwm_client`
-  (`dwm/yajl_dumps.c`), and a "client list" query (all clients with tags + monitor).
+  (`xidouwm/yajl_dumps.c`), and a "client list" query (all clients with tags + monitor).
   Today `Workspaces.qml` shells out to `xdotool getwindowclassname` once per focus
   change because IPC lacks WM_CLASS.
 - **Unblocks:** window switcher (M14), overview (H2), Screen Time (M20), active_window
   and taskbar widgets (M11, section 6), Window Rules "add rule from focused window" (H4),
   and removes the xdotool dependency.
-- **Verify:** testable with a test dwm on `$XIDOU_DWM_SOCKET` under Xvfb.
+- **Verify:** testable with a test xidouwm on `$XIDOU_WM_SOCKET` under Xvfb.
 
 ### F2 Open control-center at a given section — Light `[CLOUD]`
 - **What:** `PanelManager` only has `toggle(name)`. Add an `open(name, section)` path and
@@ -549,15 +549,15 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 
 **L14 — Window gaps in Settings**
 - What: a Settings page for `[layout] gap_inner/gap_outer` (backing already exists:
-  config keys + dwm IPC). Apply live from the shell on change (`dwm-msg run_command
+  config keys + dwm IPC). Apply live from the shell on change (`xidouwm-msg run_command
   setgappih/setgappoh`) and on shell startup, then delete xinitrc's `awk` block (1.7).
 - Placement: there's no dwm/"Windows" category yet — this would be its first real tab,
   and where Window Rules (H4) and Scratchpad (M18) settings later go.
-- Decisions: D24 (naming). Verify: `[CLOUD]` with a test dwm on `$XIDOU_DWM_SOCKET`;
+- Decisions: D24 (naming). Verify: `[CLOUD]` with a test xidouwm on `$XIDOU_WM_SOCKET`;
   `[SESSION]` for look.
 
 **L15 — dwm leaves its IPC socket file behind on exit (known minor bug)**
-- What: in `dwm/ipc.c`, `ipc_cleanup()` clears `sockaddr` before calling
+- What: in `xidouwm/ipc.c`, `ipc_cleanup()` clears `sockaddr` before calling
   `unlink(sockaddr.sun_path)`, and sets `sock_fd = -1` before `shutdown()`/`close()`.
   As a result the socket file survives dwm's exit. This is pre-existing, from the
   upstream dwm-ipc patch.
@@ -565,7 +565,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   test runs leave stale socket files that need removing by hand.
 - Fix: unlink and close first, then reset the statics.
 - Found during H3 testing (2026-09-27) and deliberately left for a cleanup pass.
-- Verify: `[CLOUD]` with a test dwm on `$XIDOU_DWM_SOCKET`.
+- Verify: `[CLOUD]` with a test xidouwm on `$XIDOU_WM_SOCKET`.
 
 **L16 — Touchpad: disable-while-typing toggle (D26)**
 - What: Settings > System > Input > "Disable While Typing", default **off** (D26).
@@ -782,8 +782,8 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 
 **M19 — Keyboard shortcut viewer (read-only)**
 - What: a Settings page listing every bind with a human label. Source of truth: generate
-  a JSON from `dwm/config.h`'s `keys[]` at build time (a small script run by
-  `dwm/Makefile`), or add an IPC command that dumps the table. Editing is H4.
+  a JSON from `xidouwm/config.h`'s `keys[]` at build time (a small script run by
+  `xidouwm/Makefile`), or add an IPC command that dumps the table. Editing is H4.
 - Verify: `[CLOUD]`.
 
 **M20 — Screen Time**
@@ -1381,6 +1381,11 @@ claim below is "true of upstream HEAD" until step 1 confirms it locally.
 
 *H3 step 2 final handoff — for the local Claude Code session on the X1CG5*
 
+_Written before the H8 rename and kept as run. If re-running it, read `dwm/` as
+`xidouwm/`, the binaries `dwm`/`dwm-msg` as `xidouwm`/`xidouwm-msg` (so `pgrep -x
+xidouwm`), `$XIDOU_DWM_SOCKET` as `$XIDOU_WM_SOCKET`, and `/tmp/dwm.sock` as
+`/tmp/xidouwm.sock`._
+
 **Status: done.** #2 merged as `353526b` on 2026-09-27; はる confirmed it working
 on the real live X1CG5 session after relogin. The checklist below is kept as the
 record of how it was rolled out.
@@ -1594,6 +1599,11 @@ Known behaviour — these are not failures:
 | Anything unexpected | |
 
 *H3 step 1 handoff — for the local Claude Code session on the X1CG5*
+
+_Written before the H8 rename and kept as run. If re-running it, read `dwm/` as
+`xidouwm/`, the binaries `dwm`/`dwm-msg` as `xidouwm`/`xidouwm-msg` (so `pgrep -x
+xidouwm`), `$XIDOU_DWM_SOCKET` as `$XIDOU_WM_SOCKET`, and `/tmp/dwm.sock` as
+`/tmp/xidouwm.sock`._
 
 Goal: see what dwm's **current, unmodified** tag switch looks like under the most naive
 picom `position` animation, and report it honestly. This is observation only: no
@@ -1816,6 +1826,17 @@ floating-drag, and glx-backend comparisons were not — see below.
 - Verify: `[CLOUD]` for Undo; Safe Mode `[SESSION]`.
 
 **H8 — XidouWM rename (decided, D19)** — Light, but touches the live session
+- **Status (2026-10-01):** change 1 is done on branch `claude/xidouwm-rename`,
+  checked in Xephyr (start, tag switch + slide, Workspaces widget, logout, gaps).
+  Merged to `master` only after はる's real-session check. Change 2 not started.
+  How change 1 was done, where it differs from the checklist below:
+  - The source files keep their names (`dwm.c`, `dwm-msg.c`, `dwm.png`). Only the
+    directory, the binaries and the man page (`xidouwm.1`) were renamed.
+  - The H3 handoffs were not rewritten, since both have already run. Each got a note
+    mapping the old names to the new ones.
+  - Prose "dwm" in code comments and docs (meaning this WM) was left as is.
+    CLAUDE.md says so.
+  - `xidouwm/README.md` is dwm-ipc's README with a short XidouWM header on top.
 - **Sequencing (decided):**
   1. **Change 1 — names only**, as its own dedicated change with no behavior changes
      mixed in (list below).
@@ -2100,7 +2121,7 @@ CLAUDE.md already planned), H8.
 
 - Re-read CLAUDE.md and the auto-memory file first; re-check this document's status
   table against `git log` — it will drift.
-- Test under Xvfb with `$XIDOU_CONFIG_PATH` (and `$XIDOU_DWM_SOCKET` for a test dwm).
+- Test under Xvfb with `$XIDOU_CONFIG_PATH` (and `$XIDOU_WM_SOCKET` for a test xidouwm).
   Never touch the real config from a test run.
 - Any new daemon goes in `session/xidou-xinitrc`'s `ensure_running` block; system-level
   services (tailscaled, TLP) do not — they are runit services.

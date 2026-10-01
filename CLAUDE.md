@@ -12,8 +12,8 @@ truth over this file's own prior claims whenever the two disagree.
 
 ## Naming
 
-**Xidou** = X11's "X" + 軌道 (*kidou*, Japanese for "orbit"). dwm (the tiling engine) is
-the gravitational core; the independent Quickshell panels (bar, launcher, control-center,
+**Xidou** = X11's "X" + 軌道 (*kidou*, Japanese for "orbit"). XidouWM (the tiling engine, a dwm
+derivative) is the gravitational core; the independent Quickshell panels (bar, launcher, control-center,
 wallpaper picker, etc.) orbit around it — each an independent window, governed by one
 shared theme/config "gravity."
 
@@ -30,7 +30,7 @@ because "if one piece breaks, you can't tell which piece broke." Rules that foll
 - **Full customizability** via `~/.config/xidou/config.toml` — bar position, module
   order, colors and fonts are config-driven. Keybinds are not yet: the
   `[panels.*].keybind` keys aren't read by anything, and every bind is hardcoded in
-  dwm's `config.h` (see "What's still open").
+  XidouWM's `config.h` (see "What's still open").
 - **Unified theming**: every panel reads colors/fonts from `quickshell/config/Theme.qml`.
   Never hardcode a color or font literal in a panel's QML.
 - **All repo file/folder names, code comments, README text, and commit messages: English.**
@@ -62,19 +62,30 @@ inventoried into this file yet.
 
 ## Architecture
 
-### Window manager: dwm (X11)
+### Window manager: XidouWM (X11)
 
+- **XidouWM** is the project's fork of suckless dwm, in `xidouwm/` (renamed from
+  `dwm/`, ROADMAP H8 change 1). Binaries: `xidouwm` (exec'd by
+  `session/xidou-xinitrc` straight from the repo) and `xidouwm-msg` (the dwm-ipc
+  CLI, installed into PATH by `make install`; the shell calls it by name). The man
+  page is `xidouwm.1`. `xidouwm/LICENSE` keeps every dwm MIT/X notice.
+  - The source files keep their upstream names (`dwm.c`, `dwm-msg.c`, `dwm.png`),
+    and so do the dwm-ipc protocol names (`DWM-IPC` magic, `get_dwm_client`) and
+    the QML types built on them (`DwmIpc`, `DwmRole`).
+  - In prose, in this file and in code comments, "dwm" still means this WM.
 - Base: vanilla suckless dwm, patched. Layout: **dwindle** (fibonacci.c — BSP,
   Hyprland-like feel). `showbar=0`; the bar is entirely a Quickshell panel reserving
   space via `_NET_WM_STRUT_PARTIAL`/`_NET_WM_STRUT` (implemented in dwm itself,
   `37c9415`).
-- **dwm-ipc** patch adds the Unix socket JSON-RPC bridge (`dwm/ipc.c`, `IPCClient.*`,
-  `yajl_dumps.*`) — querying/controlling dwm and subscribing to tag/focus/layout-change
-  events. Socket path overridable via `$XIDOU_DWM_SOCKET` for test isolation. A
-  path longer than 107 bytes (`sun_path`) is an error, never a fallback: dwm keeps
-  running without IPC and dwm-msg exits 1. Neither ever touches the live
-  `/tmp/dwm.sock`; until this was fixed, both silently fell back to it, and a
-  test dwm would take it over.
+- **dwm-ipc** patch adds the Unix socket JSON-RPC bridge (`xidouwm/ipc.c`,
+  `IPCClient.*`, `yajl_dumps.*`) — querying/controlling dwm and subscribing to tag/focus/layout-change
+  events. The socket is `/tmp/xidouwm.sock` (`ipcsockpath` in `config.def.h`,
+  `DEFAULT_SOCKET_PATH` in `dwm-msg.c`; moving it to `$XDG_RUNTIME_DIR` is H8
+  change 2). Overridable via `$XIDOU_WM_SOCKET` for test isolation. A path longer
+  than 107 bytes (`sun_path`) is an error, never a fallback: xidouwm keeps running
+  without IPC and xidouwm-msg exits 1. Neither ever touches the live socket; until
+  this was fixed, both silently fell back to it, and a test instance would take it
+  over.
 - **dwm owns all keybindings.** Keypresses spawn `xidou msg <command>` (see `bin/xidou`),
   mirroring the MangoWM/Noctalia convention. Keybind migration from MangoWM/Noctalia
   muscle memory is done (`ec597a4`), including directional focus/swap
@@ -131,7 +142,7 @@ windows.
   - When the last panel unmaps, `focus(NULL)` returns focus to the selected
     client. It used to fall to PointerRoot.
   - **Anything done outside the panel closes it.** Any keybinding not listed in
-    `panelsafecmds` (`dwm/config.h`) closes it first. So does a click on a client
+    `panelsafecmds` (`xidouwm/config.h`) closes it first. So does a click on a client
     or the desktop; the click still goes through, replayed via XAllowEvents.
     - `panelsafecmds` is currently volume, brightness, media keys, DND, panel
       toggles, lock and screenshot. It's the one place to change what keeps a
@@ -144,7 +155,7 @@ windows.
     pending screenshot confirm. Print/Ctrl+Print close panels themselves via
     `PanelManager.closeAllThen()` and wait out the `[motion]` close duration
     +150ms, so the panel isn't in the picture.
-  - `dwm/config.h` is gitignored. Copy `config.def.h` over it after pulling
+  - `xidouwm/config.h` is gitignored. Copy `config.def.h` over it after pulling
     changes to either.
 - **Quickshell's 1x1 resize, dropped by dwm.** Whenever any panel hides,
   Quickshell 0.3.1 re-lays out every remaining panel window, the bar included

@@ -6,7 +6,7 @@ import "../services"
 import "../lib"
 
 // Wallpaper picker: toggled by `xidou msg panel-toggle wallpaper` (dwm's
-// super+y bind, dwm/config.h) via PanelManager.isOpen("wallpaper"). Same
+// super+y bind, xidouwm/config.h) via PanelManager.isOpen("wallpaper"). Same
 // window type/centering/corner style/focus workaround as Launcher.qml and
 // control-center, but sized to match control-center specifically (820x560,
 // not Launcher's 480x360) -- the two content-heavy panels share a footprint

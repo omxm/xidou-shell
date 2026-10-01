@@ -152,7 +152,7 @@ show_percentage = true      # false hides the numeric label, icon only
 low_battery_threshold = 20  # percent at/below which the low-battery icon shows instead of full
 
 [layout]
-# Window gaps for the tiling layout -- a real dwm feature (dwm/fibonacci.c),
+# Window gaps for the tiling layout -- a real dwm feature (xidouwm/fibonacci.c),
 # not a Quickshell-side cosmetic effect. Applied once at session start
 # (session/xidou-xinitrc pushes these into dwm via its setgappih/setgappoh
 # IPC commands once dwm's socket is up); no settings-panel UI yet.

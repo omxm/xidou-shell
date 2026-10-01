@@ -6,7 +6,7 @@ import "../services"
 import "../lib"
 
 // Session/power menu: toggled by `xidou msg panel-toggle session` (dwm's
-// super+escape bind, dwm/config.h) via PanelManager.isOpen("session").
+// super+escape bind, xidouwm/config.h) via PanelManager.isOpen("session").
 // super+l bypasses this entirely and locks directly (dwm's sessionlockcmd),
 // same SessionActions.lock() this menu's own "1" calls.
 //

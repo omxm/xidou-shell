@@ -11,7 +11,7 @@
  * effect either. A direct XSetInputFocus from an external process, by
  * contrast, was confirmed to work and to persist reliably. dwm itself is
  * uninvolved here: the target windows are the shell's own unmanaged
- * _NET_WM_WINDOW_TYPE_DOCK panels (see manage() in dwm/dwm.c), which never
+ * _NET_WM_WINDOW_TYPE_DOCK panels (see manage() in xidouwm/dwm.c), which never
  * go through dwm's focus()/setfocus() machinery at all.
  *
  * Matches by mapped size rather than a raw window ID or title, since

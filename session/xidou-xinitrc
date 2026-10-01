@@ -34,7 +34,7 @@ ensure_running() {
 }
 
 # pipewire/wireplumber/pipewire-pulse are backgrounded with `&` below, not
-# exec'd, so a plain relogin (dwm/X exiting, then this whole script
+# exec'd, so a plain relogin (xidouwm/X exiting, then this whole script
 # re-running with a fresh dbus-daemon) never kills them -- they're
 # reparented to PID 1 and linger bound to a D-Bus session address that no
 # longer exists. wireplumber specifically needs a live bus to finish
@@ -137,7 +137,7 @@ ensure_running xidou-clipd xidou-clipd
 quickshell -p "$REPO_DIR/quickshell" &
 
 # Window gaps ([layout] in config.toml) -- a real dwm feature (see
-# dwm/fibonacci.c), so it can only be applied by talking to dwm's own IPC
+# xidouwm/fibonacci.c), so it can only be applied by talking to dwm's own IPC
 # socket, not by anything Quickshell-side. Backgrounded (not exec'd) so it
 # doesn't disturb dwm remaining the foreground/session-owning process below
 # -- it just waits for the socket dwm creates on startup, pushes the config
@@ -146,11 +146,11 @@ quickshell -p "$REPO_DIR/quickshell" &
 # never shows up.
 (
     i=0
-    while [ "$i" -lt 25 ] && [ ! -S /tmp/dwm.sock ]; do
+    while [ "$i" -lt 25 ] && [ ! -S /tmp/xidouwm.sock ]; do
         sleep 0.2
         i=$((i + 1))
     done
-    [ -S /tmp/dwm.sock ] || exit 0
+    [ -S /tmp/xidouwm.sock ] || exit 0
 
     config_toml="$HOME/.config/xidou/config.toml"
     [ -f "$config_toml" ] || exit 0
@@ -168,9 +168,9 @@ quickshell -p "$REPO_DIR/quickshell" &
             gsub(/[^0-9]/, "", $2); print $2; exit
         }' "$config_toml")
 
-    [ -n "$gap_inner" ] && dwm-msg --ignore-reply run_command setgappih "$gap_inner" >/dev/null 2>&1
-    [ -n "$gap_outer" ] && dwm-msg --ignore-reply run_command setgappoh "$gap_outer" >/dev/null 2>&1
+    [ -n "$gap_inner" ] && xidouwm-msg --ignore-reply run_command setgappih "$gap_inner" >/dev/null 2>&1
+    [ -n "$gap_outer" ] && xidouwm-msg --ignore-reply run_command setgappoh "$gap_outer" >/dev/null 2>&1
     :
 ) &
 
-exec "$REPO_DIR/dwm/dwm"
+exec "$REPO_DIR/xidouwm/xidouwm"

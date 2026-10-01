@@ -186,7 +186,7 @@ Scope {
             focusable: true
 
             // dwm keeps windows with this title above every other dock (see
-            // LOCKWINNAME in dwm/dwm.c) -- all Quickshell windows are
+            // LOCKWINNAME in xidouwm/dwm.c) -- all Quickshell windows are
             // otherwise just "quickshell". PanelWindow has no title property,
             // but QtQuick's Window attached property reaches the real window.
             Item {

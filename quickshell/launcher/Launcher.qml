@@ -13,7 +13,7 @@ import "../controlcenter" as ControlCenter
 import "../lib/EmojiData.js" as EmojiData
 
 // App launcher: toggled by `xidou msg panel-toggle launcher` (see
-// dwm/config.h's super+d bind and bin/xidou), via PanelManager.isOpen()
+// xidouwm/config.h's super+d bind and bin/xidou), via PanelManager.isOpen()
 // rather than dwm-ipc — this is shell UI state, not window-manager state.
 // PanelManager also enforces that opening this closes any other dock panel
 // (control-center, etc.) instead of leaving both stacked.

@@ -10,7 +10,7 @@ import "../config"
 // -- the same "shell out to a real tool" philosophy as ColorScheme.qml's
 // matugen pipeline, not a reimplementation of any of this in QML/JS.
 //
-// dwm's Print / Ctrl+Print binds (dwm/config.h's screenshotfullcmd /
+// dwm's Print / Ctrl+Print binds (xidouwm/config.h's screenshotfullcmd /
 // screenshotregioncmd) land on `xidou msg screenshot fullscreen|region`,
 // routed here via shell.qml's "screenshot" IpcHandler.
 //

@@ -7,7 +7,7 @@ import "../lib"
 import "sections"
 
 // Control-center ("Home") panel: toggled by `xidou msg panel-toggle
-// control-center` (dwm's super+e bind, dwm/config.h) or a right-click on the
+// control-center` (dwm's super+e bind, xidouwm/config.h) or a right-click on the
 // bar's dead zone (Bar.qml), via PanelManager.isOpen() — which also ensures
 // opening this closes any other dock panel (Launcher, etc.) instead of
 // leaving both stacked.

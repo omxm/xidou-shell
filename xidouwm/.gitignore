@@ -1,0 +1,5 @@
+config.h
+*.o
+xidouwm
+xidouwm-msg
+xidouwm-*.tar.gz

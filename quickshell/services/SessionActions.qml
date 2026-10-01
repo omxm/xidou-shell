@@ -27,7 +27,7 @@ Singleton {
         // dwm is the session's exec'd process (session/xidou-xinitrc) --
         // quitting it ends the X session, same as dwm's own super+shift+e
         // bind. This is window-manager lifecycle, not shell UI state, so it
-        // goes through dwm-ipc (dwm-msg) rather than Quickshell's own IPC.
+        // goes through dwm-ipc (xidouwm-msg) rather than Quickshell's own IPC.
         PanelManager.closeAll();
         logoutProc.running = false;
         logoutProc.running = true;
@@ -47,7 +47,7 @@ Singleton {
 
     Process {
         id: logoutProc
-        command: ["dwm-msg", "run_command", "quit"]
+        command: ["xidouwm-msg", "run_command", "quit"]
     }
 
     // loginctl (elogind) rather than a bare `reboot`/`poweroff` binary call --

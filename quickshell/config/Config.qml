@@ -15,8 +15,8 @@ Singleton {
 
     // Overridable via $XIDOU_CONFIG_PATH so a test instance (Xvfb runs, in
     // particular) can point at a throwaway config file instead of ever
-    // touching the real one -- same convention as dwm's $XIDOU_DWM_SOCKET
-    // override (dwm/dwm.c) for the same reason: a test instance shouldn't
+    // touching the real one -- same convention as dwm's $XIDOU_WM_SOCKET
+    // override (xidouwm/dwm.c) for the same reason: a test instance shouldn't
     // share live state with a real one. Falls back to the real path when
     // unset or empty.
     readonly property string configPath: {
@@ -206,7 +206,7 @@ Singleton {
             }
         },
         // Window gaps for the tiling layout -- a real dwm feature
-        // (dwm/fibonacci.c), not a Quickshell-side cosmetic effect. Pushed
+        // (xidouwm/fibonacci.c), not a Quickshell-side cosmetic effect. Pushed
         // into dwm once at session start via session/xidou-xinitrc calling
         // its setgappih/setgappoh IPC commands once dwm's socket is up.
         // Read here only so a future settings-panel UI has a real

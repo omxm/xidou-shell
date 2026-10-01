@@ -3,7 +3,7 @@
 #
 # No CLI brightness tool (brightnessctl, light) is installed on this system,
 # so this writes /sys/class/backlight directly instead — matching how
-# dwm/config.h's volume keys go straight to wpctl rather than through a
+# xidouwm/config.h's volume keys go straight to wpctl rather than through a
 # wrapper. Needs the udev rule in session/udev/90-xidou-backlight.rules
 # installed and this user in the `video` group for write access; see that
 # file's header comment for the one-time setup. Without it, the `echo`

@@ -6,7 +6,7 @@ import "../../config"
 import "../../services"
 
 // Tag/workspace switcher, driven by real dwm state over DwmIpc (dwm-ipc via
-// dwm-msg) rather than mock data. Tags are switched by explicit bit mask
+// xidouwm-msg) rather than mock data. Tags are switched by explicit bit mask
 // (dwm's `view` ipc command), never by a next/prev abstraction — see the
 // dwm tag-cycling lesson in CLAUDE.md.
 //
@@ -16,8 +16,8 @@ import "../../services"
 // style with an icon slot at all).
 //
 // focus_hint's icon needs the focused window's app icon, which dwm-ipc
-// itself cannot provide -- confirmed against its real source (dwm/ipc.c,
-// dwm/yajl_dumps.c): get_dwm_client exposes window title and a tags
+// itself cannot provide -- confirmed against its real source (xidouwm/ipc.c,
+// xidouwm/yajl_dumps.c): get_dwm_client exposes window title and a tags
 // bitmask, but no WM_CLASS or PID anywhere. The real fix, verified
 // empirically against a live window: shell out to `xdotool
 // getwindowclassname <id>` (same "shell out to a real tool" convention as

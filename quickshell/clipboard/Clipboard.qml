@@ -6,7 +6,7 @@ import "../services"
 import "../lib"
 
 // Clipboard history: toggled by `xidou msg panel-toggle clipboard` (dwm's
-// super+v bind, see dwm/config.h's clipboardtogglecmd) via PanelManager,
+// super+v bind, see xidouwm/config.h's clipboardtogglecmd) via PanelManager,
 // same centered-floating window pattern as Launcher.qml/ScreenshotConfirm.qml.
 // Selecting an entry restores it to the live CLIPBOARD selection
 // (ClipboardHistory.copy()) rather than auto-typing it -- same as

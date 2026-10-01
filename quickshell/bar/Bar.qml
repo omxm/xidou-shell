@@ -64,7 +64,7 @@ PanelWindow {
     // Auto-Hide: "on" always auto-hides; "smart" only auto-hides while the
     // currently-viewed tag on this bar's own monitor actually has a client
     // on it (empty tag -> behaves like "off", bar stays fully shown).
-    // tag_state's selected/occupied are both bitmasks (dwm/yajl_dumps.c) --
+    // tag_state's selected/occupied are both bitmasks (xidouwm/yajl_dumps.c) --
     // a nonzero AND means the selected tag is one of the occupied ones.
     readonly property var monitorState: DwmIpc.monitorsByNum[bar.monitorNum]
     readonly property bool tagOccupied: {

@@ -17,7 +17,7 @@ import "weather" as WeatherTabs
 import "wallpaper" as WallpaperTabs
 
 // Settings panel: toggled by `xidou msg settings toggle` (dwm's super+comma
-// bind, dwm/config.h's settingstogglecmd -- already reserved there ahead of
+// bind, xidouwm/config.h's settingstogglecmd -- already reserved there ahead of
 // this panel existing) via its own dedicated "settings" IpcHandler in
 // shell.qml, same as screenshot/theme/notifications each get their own
 // target rather than sharing the generic "panels" one. Bridges straight

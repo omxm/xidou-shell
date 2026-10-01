@@ -272,7 +272,7 @@ static const Button buttons[] = {
 	{ ClkRootWin,           MODKEY|ShiftMask, Button5,      cycletag,       {.i = +1 } },
 };
 
-static const char *ipcsockpath = "/tmp/dwm.sock";
+static const char *ipcsockpath = "/tmp/xidouwm.sock";
 static IPCCommand ipccommands[] = {
   IPCCOMMAND(  view,                1,      {ARG_TYPE_UINT}   ),
   IPCCOMMAND(  toggleview,          1,      {ARG_TYPE_UINT}   ),

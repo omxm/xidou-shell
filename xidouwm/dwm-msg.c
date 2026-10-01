@@ -44,7 +44,7 @@
 
 typedef unsigned long Window;
 
-const char *DEFAULT_SOCKET_PATH = "/tmp/dwm.sock";
+const char *DEFAULT_SOCKET_PATH = "/tmp/xidouwm.sock";
 static int sock_fd = -1;
 static unsigned int ignore_reply = 0;
 
@@ -185,7 +185,7 @@ static void
 connect_to_socket()
 {
   struct sockaddr_un addr;
-  const char *socket_path = getenv("XIDOU_DWM_SOCKET");
+  const char *socket_path = getenv("XIDOU_WM_SOCKET");
 
   // A path that is too long is an error, never a fallback: the default is
   // the live session's socket, so falling back would send a test's
@@ -194,7 +194,7 @@ connect_to_socket()
     socket_path = DEFAULT_SOCKET_PATH;
   else if (strlen(socket_path) >= sizeof(addr.sun_path)) {
     fprintf(stderr,
-            "dwm-msg: XIDOU_DWM_SOCKET too long (%zu bytes, max %zu); "
+            "xidouwm-msg: XIDOU_WM_SOCKET too long (%zu bytes, max %zu); "
             "not falling back to %s\n",
             strlen(socket_path), sizeof(addr.sun_path) - 1, DEFAULT_SOCKET_PATH);
     exit(1);

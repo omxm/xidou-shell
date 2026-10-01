@@ -87,7 +87,7 @@ ShellRoot {
     NotificationPopups {}
 
     // Shell-side IPC target for dwm's spawned commands (see bin/xidou and
-    // dwm/config.h's super+d bind) — this is shell UI state (panel
+    // xidouwm/config.h's super+d bind) — this is shell UI state (panel
     // visibility), not window-manager state, so it goes through Quickshell's
     // own IPC rather than dwm-ipc.
     IpcHandler {
@@ -106,7 +106,7 @@ ShellRoot {
                 PanelManager.toggle(name);
         }
 
-        // dwm runs this (panelclosecmd in dwm/config.h) when something is
+        // dwm runs this (panelclosecmd in xidouwm/config.h) when something is
         // done outside an open panel: a click on a client or the desktop, or
         // a keybinding not in its panelsafecmds list.
         function closeAll(): void {
@@ -116,7 +116,7 @@ ShellRoot {
         }
     }
 
-    // ctrl+<arrow> media keys (dwm/config.h) go here rather than a
+    // ctrl+<arrow> media keys (xidouwm/config.h) go here rather than a
     // playerctl-style external CLI — the bar's Media module already holds
     // a live MprisPlayer, this just drives the same one.
     IpcHandler {
@@ -141,7 +141,7 @@ ShellRoot {
         }
     }
 
-    // Nudged by bin/xidou-brightness (dwm/config.h's MonBrightness keybinds)
+    // Nudged by bin/xidou-brightness (xidouwm/config.h's MonBrightness keybinds)
     // after it writes the new sysfs value — brightness has no live signal
     // to watch passively the way Osd.qml watches Pipewire for volume, so it
     // has to be told explicitly. See services/Brightness.qml.
@@ -153,7 +153,7 @@ ShellRoot {
         }
     }
 
-    // dwm's super+n keybind (dwm/config.h's notificationdndcmd) lands here.
+    // dwm's super+n keybind (xidouwm/config.h's notificationdndcmd) lands here.
     IpcHandler {
         target: "notifications"
 
@@ -191,7 +191,7 @@ ShellRoot {
         }
     }
 
-    // dwm's super+l bind (dwm/config.h's sessionlockcmd) -- locks directly,
+    // dwm's super+l bind (xidouwm/config.h's sessionlockcmd) -- locks directly,
     // bypassing the session menu entirely.
     IpcHandler {
         target: "session"
@@ -201,7 +201,7 @@ ShellRoot {
         }
     }
 
-    // dwm's super+comma bind (dwm/config.h's settingstogglecmd) -- its own
+    // dwm's super+comma bind (xidouwm/config.h's settingstogglecmd) -- its own
     // dedicated target rather than going through "panels" above, same as
     // screenshot/theme/notifications each get their own; still bridges
     // straight into the shared PanelManager so it keeps the same
@@ -214,7 +214,7 @@ ShellRoot {
         }
     }
 
-    // dwm's Print / Ctrl+Print binds (dwm/config.h's screenshotfullcmd /
+    // dwm's Print / Ctrl+Print binds (xidouwm/config.h's screenshotfullcmd /
     // screenshotregioncmd) land here.
     IpcHandler {
         target: "screenshot"
