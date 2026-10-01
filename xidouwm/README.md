@@ -6,8 +6,19 @@ XidouWM is the window manager of Xidou Shell. It is derived from
 Xidou's own changes (dwindle layout, docks and struts, panel and lock modes,
 animations, rounded borders). The binaries are `xidouwm` and `xidouwm-msg`;
 the source files keep their upstream names (`dwm.c`, `dwm-msg.c`), so the
-`dwm-msg` described below is installed here as `xidouwm-msg`. See
-`LICENSE` for the copyright and license notices.
+`dwm-msg` described below is installed here as `xidouwm-msg`.
+
+## License
+
+- `LICENSE`: dwm's MIT/X license, with every upstream copyright line, plus a
+  line for the XidouWM modifications.
+- `LICENSE.dwm-ipc`: dwm-ipc's license, copied verbatim from
+  <https://github.com/mihirlad55/dwm-ipc/blob/b3eebba7c043482d454afc5c882f513fc1b157ad/LICENSE>
+  (the `master` head, 2020-11-06). It is the MIT/X license dwm shipped at the
+  time. Upstream adds no copyright line of its own for the IPC code, and its
+  release patches carry no copyright headers either. The IPC code
+  (`ipc.*`, `IPCClient.*`, `yajl_dumps.*`, `dwm-msg.c`) is by Mihir Lad
+  (mihirlad55).
 
 The dwm-ipc patch's own README follows, kept for credit and reference. Its IPC
 protocol names (`DWM-IPC`, `get_dwm_client`, ...) are unchanged in XidouWM.
