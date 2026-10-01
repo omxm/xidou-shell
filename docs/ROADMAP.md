@@ -403,7 +403,18 @@ Small things that unblock or de-risk everything else. Do these first.
   tests (a small `node` test script against fixture files works in the cloud).
 - **Unblocks:** H1, H4, M4 (if templates are listed in config).
 
-### F4 `Motion.qml` token singleton — Light `[CLOUD]` for code, `[SESSION]` for feel
+### F4 `Motion.qml` token singleton — Light `[CLOUD]` for code, `[SESSION]` for feel — **Done** (branch `claude/f4-motion-tokens`; checked under Xvfb, not confirmed on the real machine)
+- Built:
+  - `config/Motion.qml`: `fast` / `normal` / `slow` (ms; [motion].duration x
+    0.8 / 1 / 2) and the easing roles `standard` / `enter` / `exit` /
+    `emphasized`.
+  - The multiplier is 1 or 0 from `[motion].enabled`, so motion off makes every
+    QML animation snap, as picom's do. No new config key; M21 extends it.
+  - Every hardcoded duration and easing now uses tokens: OSD bar, bar auto-hide,
+    the launcher's two list scrolls, PanelManager.closeAllThen() and the
+    launcher's screenshot delay. With the default [motion], the values are
+    unchanged (120 / 150 ms). The one difference: with motion off, the OSD and
+    launcher animations now snap instead of always taking 120 ms.
 - **What:** the QML-side equivalent of `Theme.qml` for motion: named durations and
   easing (`Motion.fast/normal/slow`, `Motion.enter/exit/emphasized`), all derived from
   `[motion]`, with a global "reduce motion" multiplier. Replace hardcoded durations

@@ -332,8 +332,8 @@ PanelWindow {
     }
 
     // Closes the launcher first and waits for picom's real "disappear"
-    // animation (session/picom.conf's motion block, driven by
-    // Config.data.motion.duration/enabled) to actually finish before
+    // animation (session/picom.conf's motion block; Motion.normal is the
+    // same [motion] duration, 0 when motion is off) to actually finish before
     // capturing -- confirmed empirically (a fixed 100ms guess landed a
     // half-faded launcher in the capture, since that preset's default
     // duration alone is already 150ms). Reacts to the same config the
@@ -346,7 +346,7 @@ PanelWindow {
 
     Timer {
         id: screenshotDelayTimer
-        interval: (Config.data.motion.enabled ? Config.data.motion.duration * 1000 : 0) + 60
+        interval: Motion.normal + 60
         onTriggered: Screenshot.fullscreen()
     }
 
@@ -486,8 +486,8 @@ PanelWindow {
 
                         Behavior on contentY {
                             NumberAnimation {
-                                duration: 120
-                                easing.type: Easing.OutCubic
+                                duration: Motion.fast
+                                easing.type: Motion.standard
                             }
                         }
 
@@ -800,8 +800,8 @@ PanelWindow {
 
                         Behavior on contentY {
                             NumberAnimation {
-                                duration: 120
-                                easing.type: Easing.OutCubic
+                                duration: Motion.fast
+                                easing.type: Motion.standard
                             }
                         }
 

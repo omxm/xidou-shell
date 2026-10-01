@@ -117,7 +117,10 @@ PanelWindow {
                         color: Theme.accent
 
                         Behavior on width {
-                            NumberAnimation { duration: 120 }
+                            NumberAnimation {
+                                duration: Motion.fast
+                                easing.type: Motion.standard
+                            }
                         }
                     }
                 }

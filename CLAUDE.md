@@ -186,6 +186,10 @@ Read-only survey; nothing was changed to collect it.
     `xidou msg panels open <panel> <section>`.
 - All panels import `quickshell/config/Theme.qml` and `quickshell/config/Config.qml` —
   no per-panel color/font literals.
+- Animation durations and easing come from `quickshell/config/Motion.qml`
+  (ROADMAP F4: `Motion.fast/normal/slow`, `Motion.standard/enter/exit/emphasized`,
+  all derived from `[motion]`, 0 ms when motion is off). Never write a duration
+  or easing literal in a panel either.
 - X11-specific quirk: `PanelWindow.focusable` does nothing on this backend. dwm now
   gives panels focus itself (see below). The older `xidou-focus-window` helper
   (`bin/`), which forces focus by matching window size, is still called by every

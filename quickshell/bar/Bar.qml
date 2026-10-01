@@ -91,8 +91,8 @@ PanelWindow {
     implicitHeight: bar.effectiveHeight
     Behavior on implicitHeight {
         NumberAnimation {
-            duration: Config.data.motion.enabled ? Config.data.motion.duration * 1000 : 0
-            easing.type: Easing.OutCubic
+            duration: Motion.normal
+            easing.type: Motion.standard
         }
     }
 

@@ -155,8 +155,7 @@ Singleton {
         }
         root.closeAll();
         root.pendingAfterClose = fn;
-        var motion = Config.data.motion;
-        settleTimer.interval = (motion.enabled ? Math.round(motion.duration * 1000) : 0) + 150;
+        settleTimer.interval = Motion.normal + 150;
         settleTimer.restart();
     }
 
