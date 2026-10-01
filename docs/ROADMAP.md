@@ -242,7 +242,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 5 | Wallpaper directories in Settings | **Done** (Wallpaper > General) | — |
 | 6 | Everything (dwm config, resolution, scale) in Settings | **Partial**: window gaps are config-driven via dwm IPC (`a941b03`) but have no Settings UI and apply only at session start; everything else in dwm is still compile-time | L14, H4, H5 |
 | 7 | Overridden / Reset UI, long-press or double-click reset | **Partial**: badge + one-click reset exist (right side of row) | L5 |
-| 8 | Screenshot settings | **Done** (L3 on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check) | L3 |
+| 8 | Screenshot settings | **Done** (L3 merged as `8ca7e24`, confirmed on the X1CG5 by はる) | L3 |
 | 9 | Lock screen | **Done**, closed by はる's call with four accepted limitations (1.2). Shipped via #3 (`1fb3a33`): per-screen coverage, always on top, panel/IPC refusal while locked, dwm lock mode, and the redesign. Not addressed: X grab, fail-open if Quickshell dies, lock on suspend, VT switching. | M1 |
 | 10 | Settings panel separate from control-center | **Done** | — |
 | 11 | Bar customization (general … dead zone) | **Done** for General/Layout/Shape/Effects/Widgets/Capsules (`a941b03`). **Partial** for Widget List (on/off, lane moves, up/down reorder — no lane tabs, add-picker, multi-select, drag). Dead Zone UI **not started** (1.1). | M9, M10, section 6 |
@@ -267,7 +267,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 30 | Theme export/import | Not started | M17 |
 | 31 | Unlimited bars, bar export/import/duplicate | Not started | H1 |
 | 32 | Stack 3+ notifications, click → CC Notifications | Not started | L7 |
-| 33 | Sound effects | **Done** (on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check) | F6, M22 |
+| 33 | Sound effects | **Done** (merged as `8ca7e24`, confirmed on the X1CG5 by はる) | F6, M22 |
 | 34 | Tailscale status widget | Not started | M11 |
 | 35 | M3 color presets like Noctalia | Not started | M5 |
 | 36 | Trackpad gestures | Not started; mapping decided (D22), tool pending real-hardware check | M23, L16 |
@@ -394,7 +394,7 @@ Small things that unblock or de-risk everything else. Do these first.
 - **Unblocks:** M8 (click model), L8/M11 (new widgets reuse it for free).
 - **Depends on:** nothing now. Could drop to Light once started — the wrapper exists.
 
-### F6 Sound service — Light `[SESSION]` — **Done** (on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check)
+### F6 Sound service — Light `[SESSION]` — **Done** (merged as `8ca7e24`, confirmed on the X1CG5 by はる)
 - Built as planned: `services/SoundFx.qml` with WAV + `SoundEffect` (59 cues, 2.93 MB),
   `lib/SoundMap.js`, `assets/sounds/zen/` with `LICENSE-AUDIO`, `NOTICE`, `cues.json`.
   Volume math measured end to end under Xvfb with a private PipeWire null sink
@@ -502,7 +502,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - Decisions: D4 (decided). Verify: `[CLOUD]` for UI; `[HW]` for suspend/resume.
 
 **L3 — Screenshot: separate "Save to file" and "Copy to clipboard" toggles** — **Done**
-(on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check)
+(merged as `8ca7e24`, confirmed on the X1CG5 by はる)
 - Fullscreen and region now share one delivery step (`Screenshot.deliver()`): move
   into the save directory and/or copy, and a copy-only capture's temp file is
   removed. Checked under Xvfb in all three modes, with the greyed-out Off.
@@ -603,7 +603,7 @@ with H8 change 2 (`6dbdf76`, confirmed on the X1CG5)
 - Found during H3 testing (2026-09-27) and deliberately left for a cleanup pass.
 - Verify: `[CLOUD]` with a test xidouwm on `$XIDOU_WM_SOCKET`.
 
-**L16 — Touchpad: disable-while-typing toggle (D26)** — **Done** (on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check)
+**L16 — Touchpad: disable-while-typing toggle (D26)** — **Done** (merged as `8ca7e24`, confirmed on the X1CG5 by はる)
 - `services/InputSettings.qml` + System > Input. The xinput logic was checked
   against a fake `xinput` only (no real device touched): it sets the property
   on every device that has it, at shell start and on change.
@@ -840,7 +840,7 @@ with H8 change 2 (`6dbdf76`, confirmed on the X1CG5)
   0 disables), larger text, high-contrast toggle.
 - Depends on: F4. Verify: `[SESSION]`.
 
-**M22 — Sound effects (decided 2026-10-01, D14)** — **Done** (on branch `claude/sound`, checked under Xvfb; awaiting はる's real-session check)
+**M22 — Sound effects (decided 2026-10-01, D14)** — **Done** (merged as `8ca7e24`, confirmed on the X1CG5 by はる)
 - **How it was built, where it differs from the plan below:**
   - Off-by-default operations can be turned on per category with an `extra`
     list in `[sound.<id>]`, which is config only. The Sound page's "What plays
