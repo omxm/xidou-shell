@@ -105,10 +105,11 @@ fixed the paths that can be closed without an X grab:
   keystrokes.
 - A redesign (wallpaper card with clock, plus password form) shipped in the same PR.
 
-Checked on the real X1CG5 (はる):
-- the panel keybinds open nothing while locked;
-- `super+Return` no longer steals input;
-- a real-PAM unlock works on the redesigned screen.
+Confirmed on the real X1CG5 by はる: `super+Return` no longer steals input.
+
+Implemented, not confirmed on the real machine: the panel keybinds opening nothing
+while locked, and a real-PAM unlock on the redesigned screen (CLAUDE.md lists the
+lock screen's other unverified points).
 
 **Known limitations — はる decided on 2026-09-30 not to address these; recorded, not
 planned:**
@@ -242,7 +243,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 5 | Wallpaper directories in Settings | **Done** (Wallpaper > General) | — |
 | 6 | Everything (dwm config, resolution, scale) in Settings | **Partial**: window gaps are config-driven via dwm IPC (`a941b03`) but have no Settings UI and apply only at session start; everything else in dwm is still compile-time | L14, H4, H5 |
 | 7 | Overridden / Reset UI, long-press or double-click reset | **Partial**: badge + one-click reset exist (right side of row) | L5 |
-| 8 | Screenshot settings | **Done** (L3 merged as `8ca7e24`, confirmed on the X1CG5 by はる) | L3 |
+| 8 | Screenshot settings | **Done** (L3 merged as `8ca7e24`; implemented, not confirmed on the real machine) | L3 |
 | 9 | Lock screen | **Done**, closed by はる's call with four accepted limitations (1.2). Shipped via #3 (`1fb3a33`): per-screen coverage, always on top, panel/IPC refusal while locked, dwm lock mode, and the redesign. Not addressed: X grab, fail-open if Quickshell dies, lock on suspend, VT switching. | M1 |
 | 10 | Settings panel separate from control-center | **Done** | — |
 | 11 | Bar customization (general … dead zone) | **Done** for General/Layout/Shape/Effects/Widgets/Capsules (`a941b03`). **Partial** for Widget List (on/off, lane moves, up/down reorder — no lane tabs, add-picker, multi-select, drag). Dead Zone UI **not started** (1.1). | M9, M10, section 6 |
@@ -259,7 +260,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 22 | Tray drawer (collapsible), open/closed default | Not started (Tray's gear panel has icon size only); right-click still has no menu | M7 |
 | 23 | Xidou icon and logo | Not started (Logo module is a placeholder wordmark) | M24 |
 | 24 | Launcher Switchboard (chip, many actions, ←→ sliders) | **Partial**: 4×3 grid mode exists, Tab cycles 3 modes | M12 |
-| 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Done**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) and change 2 (socket in `$XDG_RUNTIME_DIR`, with L15), both confirmed on the X1CG5. No picom fork (1.5) | H8 |
+| 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Done**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) and change 2 (socket in `$XDG_RUNTIME_DIR`), both confirmed on the X1CG5. L15 (socket removed on exit): implemented, not confirmed on the real machine. No picom fork (1.5) | H8 |
 | 26 | Make config easier to change | Mostly = Settings panel; concrete remainder | L10 |
 | 27 | Big list of bar widgets | 12 exist (logo, workspaces, media, clock, weather, tray, mem, cpu, bluetooth, volume, dnd, power); the rest are new | L8, M11, section 6 |
 | 28 | Left-click → CC page, right-click → configurable action | Not started | F2, M8 |
@@ -267,7 +268,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 30 | Theme export/import | Not started | M17 |
 | 31 | Unlimited bars, bar export/import/duplicate | Not started | H1 |
 | 32 | Stack 3+ notifications, click → CC Notifications | Not started | L7 |
-| 33 | Sound effects | **Done** (merged as `8ca7e24`, confirmed on the X1CG5 by はる) | F6, M22 |
+| 33 | Sound effects | **Done** (merged as `8ca7e24`). Confirmed on the X1CG5 by はる: the loudness. Every individual sound and the session-end wait: implemented, not confirmed on the real machine | F6, M22 |
 | 34 | Tailscale status widget | Not started | M11 |
 | 35 | M3 color presets like Noctalia | Not started | M5 |
 | 36 | Trackpad gestures | Not started; mapping decided (D22), tool pending real-hardware check | M23, L16 |
@@ -301,7 +302,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 
 | Item | Status | Ref |
 |---|---|---|
-| Panels (launcher, control-center, settings, session, wallpaper, clipboard, screenshot confirm) keep keyboard focus while open, and focus returns to the selected client when they close. Anything done outside a panel closes it: a click on a client or the desktop, or any dwm keybinding not in `panelsafecmds` (`xidouwm/config.h`). Print closes panels and waits for them to leave the screen before capturing. The bar no longer blinks for a frame when a panel closes. | **Done** (#4, merged as `808c76a`; confirmed on the real X1CG5 by はる) | CLAUDE.md, "Window roles between dwm and the shell" |
+| Panels (launcher, control-center, settings, session, wallpaper, clipboard, screenshot confirm) keep keyboard focus while open, and focus returns to the selected client when they close. Anything done outside a panel closes it: a click on a client or the desktop, or any dwm keybinding not in `panelsafecmds` (`xidouwm/config.h`). Print closes panels and waits for them to leave the screen before capturing. The bar no longer blinks for a frame when a panel closes. | **Done** (#4, merged as `808c76a`). Confirmed on the X1CG5 by はる: panels keep and return focus. Closing on outside actions, Print waiting, and the bar not blinking: implemented, not confirmed on the real machine | CLAUDE.md, "Window roles between dwm and the shell" |
 
 ### Still-open items from CLAUDE.md (not in the backlog, kept for completeness)
 
@@ -394,7 +395,7 @@ Small things that unblock or de-risk everything else. Do these first.
 - **Unblocks:** M8 (click model), L8/M11 (new widgets reuse it for free).
 - **Depends on:** nothing now. Could drop to Light once started — the wrapper exists.
 
-### F6 Sound service — Light `[SESSION]` — **Done** (merged as `8ca7e24`, confirmed on the X1CG5 by はる)
+### F6 Sound service — Light `[SESSION]` — **Done** (merged as `8ca7e24`; loudness confirmed on the X1CG5 by はる, the rest implemented, not confirmed on the real machine)
 - Built as planned: `services/SoundFx.qml` with WAV + `SoundEffect` (59 cues, 2.93 MB),
   `lib/SoundMap.js`, `assets/sounds/zen/` with `LICENSE-AUDIO`, `NOTICE`, `cues.json`.
   Volume math measured end to end under Xvfb with a private PipeWire null sink
@@ -502,7 +503,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
 - Decisions: D4 (decided). Verify: `[CLOUD]` for UI; `[HW]` for suspend/resume.
 
 **L3 — Screenshot: separate "Save to file" and "Copy to clipboard" toggles** — **Done**
-(merged as `8ca7e24`, confirmed on the X1CG5 by はる)
+(merged as `8ca7e24`; implemented, not confirmed on the real machine)
 - Fullscreen and region now share one delivery step (`Screenshot.deliver()`): move
   into the save directory and/or copy, and a copy-only capture's temp file is
   removed. Checked under Xvfb in all three modes, with the greyed-out Off.
@@ -587,7 +588,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   `[SESSION]` for look.
 
 **L15 — dwm leaves its IPC socket file behind on exit (known minor bug)** — fixed
-with H8 change 2 (`6dbdf76`, confirmed on the X1CG5)
+with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
 - Fixed: `ipc_cleanup()` now unlinks and closes before resetting the statics. It
   unlinks only while the file is still the one this instance bound (dev/inode
   checked), so a later instance's socket at the same path survives. Checked in
@@ -603,7 +604,7 @@ with H8 change 2 (`6dbdf76`, confirmed on the X1CG5)
 - Found during H3 testing (2026-09-27) and deliberately left for a cleanup pass.
 - Verify: `[CLOUD]` with a test xidouwm on `$XIDOU_WM_SOCKET`.
 
-**L16 — Touchpad: disable-while-typing toggle (D26)** — **Done** (merged as `8ca7e24`, confirmed on the X1CG5 by はる)
+**L16 — Touchpad: disable-while-typing toggle (D26)** — **Done** (merged as `8ca7e24`; implemented, not confirmed on the real machine)
 - `services/InputSettings.qml` + System > Input. The xinput logic was checked
   against a fake `xinput` only (no real device touched): it sets the property
   on every device that has it, at shell start and on change.
@@ -840,7 +841,7 @@ with H8 change 2 (`6dbdf76`, confirmed on the X1CG5)
   0 disables), larger text, high-contrast toggle.
 - Depends on: F4. Verify: `[SESSION]`.
 
-**M22 — Sound effects (decided 2026-10-01, D14)** — **Done** (merged as `8ca7e24`, confirmed on the X1CG5 by はる)
+**M22 — Sound effects (decided 2026-10-01, D14)** — **Done** (merged as `8ca7e24`; loudness confirmed on the X1CG5 by はる, every individual sound and the session-end wait implemented, not confirmed on the real machine)
 - **How it was built, where it differs from the plan below:**
   - Off-by-default operations can be turned on per category with an `extra`
     list in `[sound.<id>]`, which is config only. The Sound page's "What plays
@@ -1894,7 +1895,9 @@ floating-drag, and glx-backend comparisons were not — see below.
     first, then はる checked it in the real session. Merged to `master` as
     `6dbdf76`.
     - The socket is `$XDG_RUNTIME_DIR/xidouwm.sock`, resolved at run time by
-      `xidouwm/sockpath.h` (shared by xidouwm and xidouwm-msg), and L15 is fixed.
+      `xidouwm/sockpath.h` (shared by xidouwm and xidouwm-msg). Confirmed on the
+      real machine.
+    - L15 (the socket file removed on exit) is fixed and passed in Xephyr; implemented, not confirmed on the real machine.
     - `ipcsockpath` is gone from `config.def.h`. The untracked `config.h` on the
       X1CG5 needs the same one-line removal, or else it builds with an
       unused-variable warning and nothing more.

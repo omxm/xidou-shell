@@ -469,6 +469,19 @@ Items below are the headline ones; the roadmap is the complete list.
   (TypeError from QML, checked on Quickshell 0.3.1 / Qt 6.11), `_backingWindow`
   is `undefined` on PanelWindow, and `PopupWindow.grabFocus` takes no X grab on
   this backend. Needs a small C++ QML plugin or an external locker.
+- **Implemented, not confirmed on the real machine.** はる doesn't check these
+  one by one; anything that misbehaves in daily use gets reported then.
+  Confirmed on the X1CG5 are only: sound loudness, the XidouWM rename, the
+  socket move, panels keeping/returning focus, the directional tag slide, and
+  `super+Return` not stealing input under the lock.
+  - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
+    battery and lock sounds) and the log out/restart/shut down sound wait.
+  - Screenshot's Save to File / Copy to Clipboard toggles (L3).
+  - Touchpad Disable While Typing on the real touchpad (L16).
+  - The socket file being removed when xidouwm exits (L15).
+  - Panels closing on outside actions, Print waiting for panels, the bar not
+    blinking on panel close.
+  - Panel keybinds opening nothing while locked.
 - **Lock screen: not yet verified on real hardware** (Xvfb with a stubbed
   PamContext only, since a wrong-password test against real PAM can trip
   faillock):
@@ -477,7 +490,7 @@ Items below are the headline ones; the roadmap is the complete list.
     window.
   - Unlocking through real PAM with the redesigned UI. The redesign changed
     how PAM messages are displayed. Real-PAM unlock was only confirmed on the
-    pre-redesign UI.
+    pre-redesign UI. (ROADMAP 1.2 used to say this was confirmed; corrected.)
   - picom's open/close fade+scale animation also applies to the lock window,
     so the desktop may show for ~0.15s as the lock appears. It can be
     excluded with a picom rule matching `xidou-lock` if it does.
