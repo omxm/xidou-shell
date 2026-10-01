@@ -399,6 +399,12 @@ Small things that unblock or de-risk everything else. Do these first.
   `lib/SoundMap.js`, `assets/sounds/zen/` with `LICENSE-AUDIO`, `NOTICE`, `cues.json`.
   Volume math measured end to end under Xvfb with a private PipeWire null sink
   (recorded peak / source peak = computed gain). See CLAUDE.md, "Sound effects".
+- **Loudness (2026-10-01, after はる found 100% too quiet):** the pack's files peak
+  around -11 dBFS and its default volumes are all at or below 0.26, so a typical cue
+  came out at about -26 dBFS peak. The WAVs now carry +9.5 dB (loudest peak -1.08
+  dBFS, no clipping) and every default volume is upstream's x 1.5: +13 dB in all,
+  with the balance between cues unchanged. Measured under Xvfb: the typical cue is
+  at -13 dBFS. `assets/sounds/zen/NOTICE` has the details.
 - **What:** a `SoundFx` singleton with `play(cueName, category)`, following the rules
   decided for D14 (M22):
   - gain = cue's uisfx default volume × category volume × master volume;

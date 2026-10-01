@@ -9,7 +9,15 @@ Changes made for Xidou Shell:
 - Only the 59 cues mapped in docs/ROADMAP.md section 7 are kept. The other
   19 are left out.
 - Each .ogg was converted once to 16-bit PCM WAV with the same sample rate
-  and channels (`ffmpeg -i <cue>.ogg -map_metadata -1 -fflags +bitexact
-  -c:a pcm_s16le <cue>.wav`), because Qt's SoundEffect plays WAV only.
-- cues.json holds each cue's default volume and loop flag, copied from the
-  pack's manifest.json (the same values as src/catalog.ts's CUES table).
+  and channels, because Qt's SoundEffect plays WAV only. The same +9.5 dB gain
+  was applied to every cue during the conversion: the pack's files peak around
+  -11 dBFS, and +9.5 dB puts the loudest one (drag-start) at -1.08 dBFS with
+  no clipped samples, without changing the balance between cues:
+  `ffmpeg -i <cue>.ogg -map_metadata -1 -fflags +bitexact
+  -af volume=9.5dB:precision=double -c:a pcm_s16le <cue>.wav`
+- cues.json holds each cue's loop flag and default volume. `upstream_volume`
+  is copied from the pack's manifest.json (the same values as
+  src/catalog.ts's CUES table). `volume`, the value Xidou uses, is
+  upstream_volume x 1.5 for every cue. Upstream's values all sit at or below
+  0.26, which left a 100% setting quiet with no way up. Scaling all of them by
+  one factor keeps their ratios.

@@ -1,238 +1,297 @@
 {
  "achievement": {
   "loop": false,
-  "volume": 0.26
+  "upstream_volume": 0.26,
+  "volume": 0.39
  },
  "back": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "blocked": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "cancel": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "check": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "checkpoint": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "close": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "collapse": {
   "loop": false,
-  "volume": 0.15
+  "upstream_volume": 0.15,
+  "volume": 0.225
  },
  "complete": {
   "loop": false,
-  "volume": 0.24
+  "upstream_volume": 0.24,
+  "volume": 0.36
  },
  "connect": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "connecting": {
   "loop": true,
-  "volume": 0.09
+  "upstream_volume": 0.09,
+  "volume": 0.135
  },
  "copy": {
   "loop": false,
-  "volume": 0.15
+  "upstream_volume": 0.15,
+  "volume": 0.225
  },
  "delete": {
   "loop": false,
-  "volume": 0.22
+  "upstream_volume": 0.22,
+  "volume": 0.33
  },
  "deselect": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "disconnect": {
   "loop": false,
-  "volume": 0.19
+  "upstream_volume": 0.19,
+  "volume": 0.285
  },
  "drag-start": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "drop": {
   "loop": false,
-  "volume": 0.22
+  "upstream_volume": 0.22,
+  "volume": 0.33
  },
  "error": {
   "loop": false,
-  "volume": 0.22
+  "upstream_volume": 0.22,
+  "volume": 0.33
  },
  "expand": {
   "loop": false,
-  "volume": 0.16
+  "upstream_volume": 0.16,
+  "volume": 0.24
  },
  "focus": {
   "loop": false,
-  "volume": 0.12
+  "upstream_volume": 0.12,
+  "volume": 0.18
  },
  "forward": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "hover": {
   "loop": false,
-  "volume": 0.12
+  "upstream_volume": 0.12,
+  "volume": 0.18
  },
  "info": {
   "loop": false,
-  "volume": 0.16
+  "upstream_volume": 0.16,
+  "volume": 0.24
  },
  "lock": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "long-press": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "notification": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "open": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "paste": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "pause": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "play": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "press": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "processing": {
   "loop": true,
-  "volume": 0.08
+  "upstream_volume": 0.08,
+  "volume": 0.12
  },
  "progress-step": {
   "loop": false,
-  "volume": 0.12
+  "upstream_volume": 0.12,
+  "volume": 0.18
  },
  "reaction": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "receive": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "redo": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "reorder": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "retry": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "scanning": {
   "loop": true,
-  "volume": 0.075
+  "upstream_volume": 0.075,
+  "volume": 0.1125
  },
  "seek": {
   "loop": false,
-  "volume": 0.13
+  "upstream_volume": 0.13,
+  "volume": 0.195
  },
  "select": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "send": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "skip-next": {
   "loop": false,
-  "volume": 0.16
+  "upstream_volume": 0.16,
+  "volume": 0.24
  },
  "skip-previous": {
   "loop": false,
-  "volume": 0.16
+  "upstream_volume": 0.16,
+  "volume": 0.24
  },
  "sleep": {
   "loop": false,
-  "volume": 0.15
+  "upstream_volume": 0.15,
+  "volume": 0.225
  },
  "snap": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "start": {
   "loop": false,
-  "volume": 0.19
+  "upstream_volume": 0.19,
+  "volume": 0.285
  },
  "stop": {
   "loop": false,
-  "volume": 0.19
+  "upstream_volume": 0.19,
+  "volume": 0.285
  },
  "success": {
   "loop": false,
-  "volume": 0.23
+  "upstream_volume": 0.23,
+  "volume": 0.345
  },
  "swipe": {
   "loop": false,
-  "volume": 0.14
+  "upstream_volume": 0.14,
+  "volume": 0.21
  },
  "toggle-off": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "toggle-on": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "typing": {
   "loop": false,
-  "volume": 0.065
+  "upstream_volume": 0.065,
+  "volume": 0.0975
  },
  "uncheck": {
   "loop": false,
-  "volume": 0.15
+  "upstream_volume": 0.15,
+  "volume": 0.225
  },
  "undo": {
   "loop": false,
-  "volume": 0.18
+  "upstream_volume": 0.18,
+  "volume": 0.27
  },
  "unlock": {
   "loop": false,
-  "volume": 0.2
+  "upstream_volume": 0.2,
+  "volume": 0.3
  },
  "volume-change": {
   "loop": false,
-  "volume": 0.11
+  "upstream_volume": 0.11,
+  "volume": 0.165
  },
  "wake": {
   "loop": false,
-  "volume": 0.17
+  "upstream_volume": 0.17,
+  "volume": 0.255
  },
  "warning": {
   "loop": false,
-  "volume": 0.22
+  "upstream_volume": 0.22,
+  "volume": 0.33
  }
 }

@@ -239,7 +239,10 @@ windows.
 - **Assets:** the uisfx "zen" pack (CC0), 59 cues converted once from .ogg to
   16-bit WAV, in `quickshell/assets/sounds/zen/` with `LICENSE-AUDIO`, a `NOTICE`
   and `cues.json` (per-cue default volume, loop flag). Qt's `SoundEffect` plays
-  WAV only. Never spawn a process per sound.
+  WAV only.
+  - Every WAV carries the same +9.5 dB gain over the pack (loudest peak -1.08
+    dBFS), and every volume is upstream's x 1.5. That is +13 dB in all, with the
+    balance between cues unchanged; `NOTICE` has the details. Never spawn a process per sound.
 - **`lib/SoundMap.js`** is ROADMAP section 7 in code: operation id -> cue,
   category, on/off by default, `incoming` (the only sounds DND silences). Callers
   name operations (`SoundFx.play("panel_open")`), never cues or files.
