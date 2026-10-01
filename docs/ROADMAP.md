@@ -259,7 +259,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 22 | Tray drawer (collapsible), open/closed default | Not started (Tray's gear panel has icon size only); right-click still has no menu | M7 |
 | 23 | Xidou icon and logo | Not started (Logo module is a placeholder wordmark) | M24 |
 | 24 | Launcher Switchboard (chip, many actions, ←→ sliders) | **Partial**: 4×3 grid mode exists, Tab cycles 3 modes | M12 |
-| 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Partial**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) done, confirmed on the X1CG5; change 2 (socket to `$XDG_RUNTIME_DIR`, with L15) on branch `claude/xidouwm-socket`, awaiting the real-session check | H8 |
+| 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Done**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) and change 2 (socket in `$XDG_RUNTIME_DIR`, with L15), both confirmed on the X1CG5. No picom fork (1.5) | H8 |
 | 26 | Make config easier to change | Mostly = Settings panel; concrete remainder | L10 |
 | 27 | Big list of bar widgets | 12 exist (logo, workspaces, media, clock, weather, tray, mem, cpu, bluetooth, volume, dnd, power); the rest are new | L8, M11, section 6 |
 | 28 | Left-click → CC page, right-click → configurable action | Not started | F2, M8 |
@@ -566,7 +566,7 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   `[SESSION]` for look.
 
 **L15 — dwm leaves its IPC socket file behind on exit (known minor bug)** — fixed
-with H8 change 2 (branch `claude/xidouwm-socket`)
+with H8 change 2 (`6dbdf76`, confirmed on the X1CG5)
 - Fixed: `ipc_cleanup()` now unlinks and closes before resetting the statics. It
   unlinks only while the file is still the one this instance bound (dev/inode
   checked), so a later instance's socket at the same path survives. Checked in
@@ -1840,15 +1840,16 @@ floating-drag, and glx-backend comparisons were not — see below.
   background `&`.
 - Verify: `[CLOUD]` for Undo; Safe Mode `[SESSION]`.
 
-**H8 — XidouWM rename (decided, D19)** — Light, but touches the live session
+**H8 — XidouWM rename (decided, D19)** — **Done** (2026-10-01, both changes confirmed on the X1CG5)
 - **Status (2026-10-01):**
   - **Change 1: done and confirmed on the real X1CG5.** It was checked in Xephyr
     first (start, tag switch + slide, Workspaces widget, logout, gaps). はる then
     ran it in the real session: xidouwm runs, `/tmp/xidouwm.sock` exists, and no
     old `dwm` process is left. Merged to `master` as `32f8fd1`. The leftover
     `dwm/` build directory and `/tmp/dwm.sock` were removed afterwards.
-  - **Change 2: done on branch `claude/xidouwm-socket`, checked in Xephyr.** It
-    merges to `master` only after はる's real-session check.
+  - **Change 2: done and confirmed on the real X1CG5.** It was checked in Xephyr
+    first, then はる checked it in the real session. Merged to `master` as
+    `6dbdf76`.
     - The socket is `$XDG_RUNTIME_DIR/xidouwm.sock`, resolved at run time by
       `xidouwm/sockpath.h` (shared by xidouwm and xidouwm-msg), and L15 is fixed.
     - `ipcsockpath` is gone from `config.def.h`. The untracked `config.h` on the
