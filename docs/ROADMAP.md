@@ -350,7 +350,25 @@ Small things that unblock or de-risk everything else. Do these first.
   better animations. Re-evaluate there.
 - **Blocks:** M3, M2 (dim path), M23, H5, M25, H3.
 
-### F1 dwm-ipc: expose per-client metadata — Light/Moderate `[CLOUD]`
+### F1 dwm-ipc: expose per-client metadata — Light/Moderate `[CLOUD]` — **Done** (branch `claude/f1-client-metadata`; checked under Xvfb, not confirmed on the real machine)
+- Built:
+  - Every client object (`get_dwm_client`, `get_clients`) now has `class`,
+    `instance` (WM_CLASS, "" if unset), `pid` (`_NET_WM_PID`, 0 if unset) and
+    `visible` (on a viewed tag).
+  - `geometry.current` already existed. It stays the client's own position
+    while hidden, so `visible` is what says whether it shows.
+  - New message type 7, `get_clients`: every managed client on every monitor
+    (`xidouwm-msg get_clients`).
+  - WM_CLASS is re-read when it changes.
+  - Workspaces' focus_hint icon reads `class` from IPC; xdotool is no longer
+    used anywhere in the shell.
+- Checked under Xvfb:
+  - class/instance/pid against the real kitty processes;
+  - a custom `--class`/`--name`;
+  - a bare Xlib client with neither property;
+  - a runtime WM_CLASS change;
+  - `visible` across a tag move;
+  - the bar icon appearing for kitty and not for an unknown class.
 - **What:** add `class`, `instance`, `pid`, and on-screen geometry to `get_dwm_client`
   (`xidouwm/yajl_dumps.c`), and a "client list" query (all clients with tags + monitor).
   Today `Workspaces.qml` shells out to `xdotool getwindowclassname` once per focus

@@ -738,6 +738,21 @@ ipc_get_dwm_client(IPCClient *ipc_client, const char *msg, const Monitor *mons)
 }
 
 /**
+ * Called when an IPC_TYPE_GET_CLIENTS message is received from a client. It
+ * replies with every managed client (Xidou, ROADMAP F1).
+ */
+static void
+ipc_get_clients(IPCClient *c, Monitor *mons)
+{
+  yajl_gen gen;
+  ipc_reply_init_message(&gen);
+
+  dump_clients(gen, mons);
+
+  ipc_reply_prepare_send_message(gen, c, IPC_TYPE_GET_CLIENTS);
+}
+
+/**
  * Called when an IPC_TYPE_SUBSCRIBE message is received from a client. It
  * subscribes/unsubscribes the client from the specified event and replies with
  * the result.
@@ -1221,6 +1236,8 @@ ipc_handle_client_epoll_event(struct epoll_event *ev, Monitor *mons,
       ipc_send_events(mons, lastselmon, selmon);
     } else if (msg_type == IPC_TYPE_GET_DWM_CLIENT) {
       if (ipc_get_dwm_client(c, msg, mons) < 0) return -1;
+    } else if (msg_type == IPC_TYPE_GET_CLIENTS) {
+      ipc_get_clients(c, mons);
     } else if (msg_type == IPC_TYPE_SUBSCRIBE) {
       if (ipc_subscribe(c, msg) < 0) return -1;
     } else {

@@ -105,6 +105,10 @@ typedef struct Monitor Monitor;
 typedef struct Client Client;
 struct Client {
 	char name[256];
+	/* WM_CLASS (res_class, res_name) and _NET_WM_PID, for IPC (ROADMAP F1);
+	 * "" / 0 when the client doesn't set them. */
+	char class[64], instance[64];
+	long pid;
 	float mina, maxa;
 	int x, y, w, h;
 	int oldx, oldy, oldw, oldh;
@@ -349,6 +353,8 @@ static int updategeom(void);
 static void updatenumlockmask(void);
 static void updatesizehints(Client *c);
 static void updatestatus(void);
+static void updateclass(Client *c);
+static long getwinpid(Window w);
 static void updatetitle(Client *c);
 static void updatewindowtype(Client *c);
 static void updatewmhints(Client *c);
@@ -386,6 +392,9 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[UnmapNotify] = unmapnotify
 };
 static Atom wmatom[WMLast], netatom[NetLast], xidouatom[XidouLast];
+/* _NET_WM_PID: read from clients only, so not in netatom (which is
+ * advertised as _NET_SUPPORTED). */
+static Atom netwmpid;
 static int motiondir = 0; /* set by view() for its own arrange(); see tagswitchdir() */
 static int epoll_fd;
 static int dpy_fd;
@@ -1565,6 +1574,8 @@ manage(Window w, XWindowAttributes *wa)
 	c->oldbw = wa->border_width;
 
 	updatetitle(c);
+	updateclass(c);
+	c->pid = getwinpid(w);
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
 		c->mon = t->mon;
 		c->tags = t->tags;
@@ -1811,6 +1822,9 @@ propertynotify(XEvent *e)
 		case XA_WM_HINTS:
 			updatewmhints(c);
 			drawbars();
+			break;
+		case XA_WM_CLASS:
+			updateclass(c);
 			break;
 		}
 		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
@@ -2282,6 +2296,7 @@ setup(void)
 	netatom[NetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
 	netatom[NetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
 	netatom[NetWMName] = XInternAtom(dpy, "_NET_WM_NAME", False);
+	netwmpid = XInternAtom(dpy, "_NET_WM_PID", False);
 	netatom[NetWMState] = XInternAtom(dpy, "_NET_WM_STATE", False);
 	netatom[NetWMCheck] = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
 	netatom[NetWMFullscreen] = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
@@ -3185,6 +3200,47 @@ updatestatus(void)
 	if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
 		strcpy(stext, "xidouwm-"VERSION);
 	drawbar(selmon);
+}
+
+/* WM_CLASS for IPC. applyrules() reads it on its own for rule matching,
+ * but only for non-transient clients; this runs for every client. */
+void
+updateclass(Client *c)
+{
+	XClassHint ch = { NULL, NULL };
+
+	c->class[0] = c->instance[0] = '\0';
+	if (!XGetClassHint(dpy, c->win, &ch))
+		return;
+	if (ch.res_class) {
+		strncpy(c->class, ch.res_class, sizeof c->class - 1);
+		c->class[sizeof c->class - 1] = '\0';
+		XFree(ch.res_class);
+	}
+	if (ch.res_name) {
+		strncpy(c->instance, ch.res_name, sizeof c->instance - 1);
+		c->instance[sizeof c->instance - 1] = '\0';
+		XFree(ch.res_name);
+	}
+}
+
+/* _NET_WM_PID, or 0 when the client doesn't set it. */
+long
+getwinpid(Window w)
+{
+	Atom real;
+	int format;
+	unsigned long n, extra;
+	unsigned char *p = NULL;
+	long pid = 0;
+
+	if (XGetWindowProperty(dpy, w, netwmpid, 0L, 1L, False, XA_CARDINAL,
+		&real, &format, &n, &extra, &p) == Success && p) {
+		if (n == 1 && format == 32)
+			pid = (long)*(unsigned long *)p;
+		XFree(p);
+	}
+	return pid;
 }
 
 void

@@ -57,7 +57,8 @@ typedef enum IPCMessageType {
   IPC_TYPE_GET_LAYOUTS = 3,
   IPC_TYPE_GET_DWM_CLIENT = 4,
   IPC_TYPE_SUBSCRIBE = 5,
-  IPC_TYPE_EVENT = 6
+  IPC_TYPE_EVENT = 6,
+  IPC_TYPE_GET_CLIENTS = 7
 } IPCMessageType;
 
 // Every IPC message must begin with this
@@ -386,6 +387,15 @@ get_layouts()
 }
 
 static int
+get_clients()
+{
+  send_message(IPC_TYPE_GET_CLIENTS, 1, (uint8_t *)"");
+  print_socket_reply();
+
+  return 0;
+}
+
+static int
 get_dwm_client(Window win)
 {
   const unsigned char *msg;
@@ -479,6 +489,8 @@ print_usage(const char *name)
   puts("");
   puts("  get_dwm_client <window_id>      Get dwm client proprties");
   puts("");
+  puts("  get_clients                     Get every managed client");
+  puts("");
   puts("  subscribe [events...]           Subscribe to specified events");
   puts("                                  Options: " IPC_EVENT_TAG_CHANGE ",");
   puts("                                  " IPC_EVENT_LAYOUT_CHANGE ",");
@@ -547,6 +559,8 @@ main(int argc, char *argv[])
     get_tags();
   } else if (strcmp(argv[i], "get_layouts") == 0) {
     get_layouts();
+  } else if (strcmp(argv[i], "get_clients") == 0) {
+    get_clients();
   } else if (strcmp(argv[i], "get_dwm_client") == 0) {
     if (++i < argc) {
       if (is_unsigned_int(argv[i])) {

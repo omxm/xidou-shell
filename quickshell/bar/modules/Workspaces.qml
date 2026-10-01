@@ -15,14 +15,11 @@ import "../../services"
 // Show Icons (only visible in practice under focus_hint, which is the only
 // style with an icon slot at all).
 //
-// focus_hint's icon needs the focused window's app icon, which dwm-ipc
-// itself cannot provide -- confirmed against its real source (xidouwm/ipc.c,
-// xidouwm/yajl_dumps.c): get_dwm_client exposes window title and a tags
-// bitmask, but no WM_CLASS or PID anywhere. The real fix, verified
-// empirically against a live window: shell out to `xdotool
-// getwindowclassname <id>` (same "shell out to a real tool" convention as
-// date/maim/xclip elsewhere), then match that against DesktopEntries the
-// same three ways real WM-integration tools do, most-specific first:
+// focus_hint's icon needs the focused window's app icon. Its WM_CLASS comes
+// from xidouwm's IPC (`get_dwm_client <id>`'s "class", ROADMAP F1; this
+// used to shell out to `xdotool getwindowclassname`). That class is then
+// matched against DesktopEntries the same three ways real WM-integration
+// tools do, most-specific first:
 // startupClass (StartupWMClass=, the dedicated field for exactly this),
 // then id (the .desktop file's own basename), then icon (Icon= happening
 // to equal the WM_CLASS, which is common but not guaranteed -- confirmed
@@ -58,7 +55,7 @@ Item {
             root.focusedWmClass = "";
             return;
         }
-        wmClassProc.command = ["xdotool", "getwindowclassname", String(root.focusedWinId)];
+        wmClassProc.command = [DwmIpc.dwmMsg, "get_dwm_client", String(root.focusedWinId)];
         wmClassProc.running = false;
         wmClassProc.running = true;
     }
@@ -69,7 +66,15 @@ Item {
     Process {
         id: wmClassProc
         stdout: StdioCollector {
-            onStreamFinished: root.focusedWmClass = text.trim()
+            // An xidouwm without F1 has no "class" field; that just means
+            // no icon, never an error.
+            onStreamFinished: {
+                try {
+                    root.focusedWmClass = JSON.parse(text).class || "";
+                } catch (e) {
+                    root.focusedWmClass = "";
+                }
+            }
         }
     }
 

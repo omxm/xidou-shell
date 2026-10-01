@@ -134,6 +134,10 @@ Read-only survey; nothing was changed to collect it.
 - **dwm-ipc** patch adds the Unix socket JSON-RPC bridge (`xidouwm/ipc.c`,
   `IPCClient.*`, `yajl_dumps.*`) — querying/controlling dwm and subscribing to tag/focus/layout-change
   events.
+  - Xidou additions (ROADMAP F1): client objects carry `class`, `instance`,
+    `pid` and `visible`, and `get_clients` (message type 7) lists every
+    client.
+  - Also `wm_action_event` (see "Sound effects").
   - **Socket path** (H8 change 2): resolved at run time by `xidouwm/sockpath.h`,
     which xidouwm and xidouwm-msg share. In order:
     1. `$XIDOU_WM_SOCKET` (test isolation);

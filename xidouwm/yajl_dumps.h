@@ -64,4 +64,6 @@ int dump_error_message(yajl_gen gen, const char *reason);
 
 int dump_wm_action_event(yajl_gen gen, const int mon_num, const char *action);
 
+int dump_clients(yajl_gen gen, Monitor *mons);
+
 #endif  // YAJL_DUMPS_H_

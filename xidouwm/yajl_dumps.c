@@ -37,6 +37,14 @@ dump_client(yajl_gen gen, Client *c)
     YSTR("tags"); YINT(c->tags);
     YSTR("window_id"); YINT(c->win);
     YSTR("monitor_number"); YINT(c->mon->num);
+    // Xidou (ROADMAP F1): WM_CLASS ("" if unset), _NET_WM_PID (0 if
+    // unset), and whether the client is on a viewed tag. geometry.current
+    // stays the client's own position while it is hidden (showhide() moves
+    // only the X window), so `visible` is what says whether it is shown.
+    YSTR("class"); YSTR(c->class);
+    YSTR("instance"); YSTR(c->instance);
+    YSTR("pid"); YINT(c->pid);
+    YSTR("visible"); YBOOL(ISVISIBLE(c));
 
     YSTR("geometry"); YMAP(
       YSTR("current"); YMAP (
@@ -359,6 +367,22 @@ dump_wm_action_event(yajl_gen gen, const int mon_num, const char *action)
       YSTR("monitor_number"); YINT(mon_num);
       YSTR("action"); YSTR(action);
     )
+  )
+  // clang-format on
+
+  return 0;
+}
+
+// Xidou (ROADMAP F1): every managed client, on every monitor, in each
+// monitor's client-list order.
+int
+dump_clients(yajl_gen gen, Monitor *mons)
+{
+  // clang-format off
+  YARR(
+    for (Monitor *m = mons; m; m = m->next)
+      for (Client *c = m->clients; c; c = c->next)
+        dump_client(gen, c);
   )
   // clang-format on
 

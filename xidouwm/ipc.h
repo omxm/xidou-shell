@@ -23,7 +23,10 @@ typedef enum IPCMessageType {
   IPC_TYPE_GET_LAYOUTS = 3,
   IPC_TYPE_GET_DWM_CLIENT = 4,
   IPC_TYPE_SUBSCRIBE = 5,
-  IPC_TYPE_EVENT = 6
+  IPC_TYPE_EVENT = 6,
+  // Xidou (ROADMAP F1): every managed client, as an array of get_dwm_client
+  // objects
+  IPC_TYPE_GET_CLIENTS = 7
 } IPCMessageType;
 
 typedef enum IPCEvent {
