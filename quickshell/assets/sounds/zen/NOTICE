@@ -1,0 +1,15 @@
+These sounds are the "zen" pack from uisfx by Romain Simon:
+https://github.com/romainsimon/uisfx, commit 9950fe6
+(packages/uisfx/sounds/zen/*.ogg).
+
+They are dedicated to the public domain under CC0 1.0 (see LICENSE-AUDIO,
+copied unchanged from packages/uisfx/LICENSE-AUDIO).
+
+Changes made for Xidou Shell:
+- Only the 59 cues mapped in docs/ROADMAP.md section 7 are kept. The other
+  19 are left out.
+- Each .ogg was converted once to 16-bit PCM WAV with the same sample rate
+  and channels (`ffmpeg -i <cue>.ogg -map_metadata -1 -fflags +bitexact
+  -c:a pcm_s16le <cue>.wav`), because Qt's SoundEffect plays WAV only.
+- cues.json holds each cue's default volume and loop flag, copied from the
+  pack's manifest.json (the same values as src/catalog.ts's CUES table).

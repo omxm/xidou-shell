@@ -1,0 +1,238 @@
+{
+ "achievement": {
+  "loop": false,
+  "volume": 0.26
+ },
+ "back": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "blocked": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "cancel": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "check": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "checkpoint": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "close": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "collapse": {
+  "loop": false,
+  "volume": 0.15
+ },
+ "complete": {
+  "loop": false,
+  "volume": 0.24
+ },
+ "connect": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "connecting": {
+  "loop": true,
+  "volume": 0.09
+ },
+ "copy": {
+  "loop": false,
+  "volume": 0.15
+ },
+ "delete": {
+  "loop": false,
+  "volume": 0.22
+ },
+ "deselect": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "disconnect": {
+  "loop": false,
+  "volume": 0.19
+ },
+ "drag-start": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "drop": {
+  "loop": false,
+  "volume": 0.22
+ },
+ "error": {
+  "loop": false,
+  "volume": 0.22
+ },
+ "expand": {
+  "loop": false,
+  "volume": 0.16
+ },
+ "focus": {
+  "loop": false,
+  "volume": 0.12
+ },
+ "forward": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "hover": {
+  "loop": false,
+  "volume": 0.12
+ },
+ "info": {
+  "loop": false,
+  "volume": 0.16
+ },
+ "lock": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "long-press": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "notification": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "open": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "paste": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "pause": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "play": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "press": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "processing": {
+  "loop": true,
+  "volume": 0.08
+ },
+ "progress-step": {
+  "loop": false,
+  "volume": 0.12
+ },
+ "reaction": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "receive": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "redo": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "reorder": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "retry": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "scanning": {
+  "loop": true,
+  "volume": 0.075
+ },
+ "seek": {
+  "loop": false,
+  "volume": 0.13
+ },
+ "select": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "send": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "skip-next": {
+  "loop": false,
+  "volume": 0.16
+ },
+ "skip-previous": {
+  "loop": false,
+  "volume": 0.16
+ },
+ "sleep": {
+  "loop": false,
+  "volume": 0.15
+ },
+ "snap": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "start": {
+  "loop": false,
+  "volume": 0.19
+ },
+ "stop": {
+  "loop": false,
+  "volume": 0.19
+ },
+ "success": {
+  "loop": false,
+  "volume": 0.23
+ },
+ "swipe": {
+  "loop": false,
+  "volume": 0.14
+ },
+ "toggle-off": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "toggle-on": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "typing": {
+  "loop": false,
+  "volume": 0.065
+ },
+ "uncheck": {
+  "loop": false,
+  "volume": 0.15
+ },
+ "undo": {
+  "loop": false,
+  "volume": 0.18
+ },
+ "unlock": {
+  "loop": false,
+  "volume": 0.2
+ },
+ "volume-change": {
+  "loop": false,
+  "volume": 0.11
+ },
+ "wake": {
+  "loop": false,
+  "volume": 0.17
+ },
+ "warning": {
+  "loop": false,
+  "volume": 0.22
+ }
+}

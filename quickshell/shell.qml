@@ -266,4 +266,23 @@ ShellRoot {
             WeatherRefresh.trigger();
         }
     }
+
+    // `xidou msg sound play <operation>` plays one operation from
+    // lib/SoundMap.js through the normal volume rules; `gain` prints the
+    // volume it would play at (0 = silent), `status` how many cues loaded.
+    IpcHandler {
+        target: "sound"
+
+        function play(op: string): string {
+            return SoundFx.play(op) ? "played" : "silent";
+        }
+
+        function gain(op: string): string {
+            return String(SoundFx.gainFor(op));
+        }
+
+        function status(): string {
+            return SoundFx.statusSummary();
+        }
+    }
 }

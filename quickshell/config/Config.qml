@@ -307,7 +307,37 @@ Singleton {
             confirm_selection: true,        // show the Save/Cancel preview dialog after a capture, rather than saving instantly
             remember_last_region: false,    // off by default: with no second keybind for "reselect", turning this on leaves no way back to a fresh selection short of restarting the shell
             include_cursor: false,          // include the mouse pointer in the captured image
-            save_directory: "~/Pictures/Screenshots"
+            save_directory: "~/Pictures/Screenshots",
+            // L3: what happens to a finished capture. At least one stays on;
+            // Settings greys out the Off that would leave neither, and
+            // Screenshot.qml saves the file anyway if both end up false.
+            save_to_file: true,
+            copy_to_clipboard: true
+        },
+        // Sound effects (ROADMAP F6/M22; operations and cues in
+        // lib/SoundMap.js). Volume = cue default x category volume x master
+        // volume. Each category's `extra` lists operations that are off by
+        // default (hover, typing, focus moves...) to turn on anyway.
+        sound: {
+            enabled: true,
+            volume: 1.0,
+            pack: "zen", // not in the UI yet; assets/sounds/<pack>/
+            panels: { enabled: true, volume: 1.0, extra: [] },
+            controls: { enabled: true, volume: 1.0, extra: [] },
+            windows: { enabled: true, volume: 1.0, extra: [] },
+            media: { enabled: true, volume: 1.0, extra: [] },
+            notifications: { enabled: true, volume: 1.0, extra: [] },
+            capture: { enabled: true, volume: 1.0, extra: [] },
+            devices: { enabled: true, volume: 1.0, extra: [] },
+            session: { enabled: true, volume: 1.0, extra: [] },
+            system: { enabled: true, volume: 1.0, extra: [] }
+        },
+        // L16. Applied with `xinput set-prop` to every device that has
+        // libinput's DWT property (services/InputSettings.qml).
+        input: {
+            touchpad: {
+                disable_while_typing: false
+            }
         },
         // keybind / dnd_keybind / lock_keybind are documentation only for
         // now: nothing reads them, and every key binding lives in xidouwm's
