@@ -113,6 +113,12 @@ ShellRoot {
                 PanelManager.toggle(name);
         }
 
+        // Opens a panel without toggling, optionally at a section
+        // (ROADMAP F2): `xidou msg panels open control-center Audio`.
+        function open(name: string, section: string): void {
+            PanelManager.open(name, section);
+        }
+
         // dwm runs this (panelclosecmd in xidouwm/config.h) when something is
         // done outside an open panel: a click on a client or the desktop, or
         // a keybinding not in its panelsafecmds list.
@@ -120,6 +126,17 @@ ShellRoot {
             PanelManager.closeAll();
             if (Screenshot.confirmVisible)
                 Screenshot.confirmCancel();
+        }
+    }
+
+    // `xidou msg control-center open <Section>` (ROADMAP F2): opens
+    // control-center at that section, case-insensitive ("audio" works).
+    // Already open: switches to it. `open ""` opens at Home, like super+e.
+    IpcHandler {
+        target: "control-center"
+
+        function open(section: string): void {
+            PanelManager.open("control-center", section);
         }
     }
 

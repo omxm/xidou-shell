@@ -378,7 +378,16 @@ Small things that unblock or de-risk everything else. Do these first.
   and removes the xdotool dependency.
 - **Verify:** testable with a test xidouwm on `$XIDOU_WM_SOCKET` under Xvfb.
 
-### F2 Open control-center at a given section — Light `[CLOUD]`
+### F2 Open control-center at a given section — Light `[CLOUD]` — **Done** (branch `claude/f2-cc-open-section`; checked under Xvfb, not confirmed on the real machine)
+- Built:
+  - `PanelManager.open(name, section)`: opens without toggling, refuses while
+    locked like `toggle()`, and records the section. Already open: the panel
+    switches in place (`sectionRequested`).
+  - ControlCenter opens at the requested section (case-insensitive; unknown
+    names fall back to Home with a warning) instead of Home.
+  - IPC: `xidou msg control-center open <Section>` and the generic
+    `xidou msg panels open <panel> <section>`.
+  - QML only; no xidouwm change.
 - **What:** `PanelManager` only has `toggle(name)`. Add an `open(name, section)` path and
   an IPC call such as `xidou msg control-center open Audio`. ControlCenter selects that
   section on open instead of resetting to Home.

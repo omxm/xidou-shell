@@ -181,6 +181,9 @@ Read-only survey; nothing was changed to collect it.
   settings, wallpaper, clipboard, session, screenshot, notifications, OSD) toggled via
   `PanelManager` (mutual-exclusion-with-every-other-dock-panel) and IPC (`xidou msg
   panel-toggle <name>` / dedicated `IpcHandler`s per panel in `shell.qml`).
+  - `PanelManager.open(name, section)` opens without toggling and can ask for a
+    section (ROADMAP F2): `xidou msg control-center open Audio`, or generically
+    `xidou msg panels open <panel> <section>`.
 - All panels import `quickshell/config/Theme.qml` and `quickshell/config/Config.qml` —
   no per-panel color/font literals.
 - X11-specific quirk: `PanelWindow.focusable` does nothing on this backend. dwm now

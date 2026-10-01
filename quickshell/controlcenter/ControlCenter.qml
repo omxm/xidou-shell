@@ -30,6 +30,30 @@ PanelWindow {
     ]
     property int selectedIndex: 0
 
+    // Section name -> index, case-insensitive, for PanelManager.open(name,
+    // section) (ROADMAP F2). Unknown names fall back to Home with a warning.
+    function sectionIndex(name) {
+        var wanted = String(name).toLowerCase();
+        for (var i = 0; i < root.sections.length; i++)
+            if (root.sections[i].toLowerCase() === wanted)
+                return i;
+        console.warn("[xidou] control-center: unknown section '" + name + "', showing Home");
+        return 0;
+    }
+
+    Connections {
+        target: PanelManager
+        function onSectionRequested(name, section) {
+            if (name !== "control-center" || !root.visible)
+                return;
+            PanelManager.takeRequestedSection("control-center");
+            var index = root.sectionIndex(section);
+            if (index !== root.selectedIndex)
+                SoundFx.play("tab_switch");
+            root.selectedIndex = index;
+        }
+    }
+
     visible: PanelManager.isOpen("control-center") && root.cfg.enabled
     implicitWidth: panelWidth
     implicitHeight: panelHeight
@@ -68,7 +92,8 @@ PanelWindow {
 
     onVisibleChanged: {
         if (visible) {
-            selectedIndex = 0;
+            var section = PanelManager.takeRequestedSection("control-center");
+            selectedIndex = section ? root.sectionIndex(section) : 0;
             keyHandler.forceActiveFocus();
             focusHelperTimer.start();
         }

@@ -59,6 +59,54 @@ Singleton {
 
     // `silent` skips the close sound, for a close that is part of an
     // action with its own sound (launching an app, picking an emoji).
+    // panel name -> section it should show, set by open(name, section) and
+    // read by that panel (ControlCenter.qml) when it opens. `sectionRequested`
+    // covers a panel that is already open, so it switches in place.
+    property var requestedSections: ({})
+    signal sectionRequested(string name, string section)
+
+    // Opens `name` (closing whatever else is open, like toggle()) without
+    // toggling: a panel that is already open stays open. `section` (optional)
+    // asks the panel to show that section instead of its default
+    // (ROADMAP F2, e.g. `xidou msg control-center open Audio`).
+    function open(name, section) {
+        if (SessionActions.locked) {
+            console.warn("[xidou] PanelManager.open: ignoring '" + name + "' while locked");
+            return;
+        }
+        if (!(name in root.openPanels)) {
+            console.warn("[xidou] PanelManager.open: unknown panel '" + name + "'");
+            return;
+        }
+        var wasOpen = root.openPanels[name];
+        var req = Object.assign({}, root.requestedSections);
+        req[name] = section || "";
+        root.requestedSections = req;
+        if (wasOpen) {
+            if (section)
+                root.sectionRequested(name, section);
+            return;
+        }
+        var next = {};
+        for (var key in root.openPanels)
+            next[key] = false;
+        next[name] = true;
+        root.openPanels = next;
+        SoundFx.play("panel_open");
+    }
+
+    // Returns the section requested for `name` and clears it, so a later
+    // plain toggle() opens the panel at its default again.
+    function takeRequestedSection(name) {
+        var section = root.requestedSections[name] || "";
+        if (section) {
+            var req = Object.assign({}, root.requestedSections);
+            delete req[name];
+            root.requestedSections = req;
+        }
+        return section;
+    }
+
     function close(name, silent) {
         if (!root.openPanels[name])
             return;
