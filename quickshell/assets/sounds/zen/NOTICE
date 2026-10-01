@@ -18,6 +18,8 @@ Changes made for Xidou Shell:
 - cues.json holds each cue's loop flag and default volume. `upstream_volume`
   is copied from the pack's manifest.json (the same values as
   src/catalog.ts's CUES table). `volume`, the value Xidou uses, is
-  upstream_volume x 1.5 for every cue. Upstream's values all sit at or below
-  0.26, which left a 100% setting quiet with no way up. Scaling all of them by
-  one factor keeps their ratios.
+  upstream_volume / 0.26 (x 3.846) for every cue, so the loudest cue
+  (achievement, 0.26 upstream) plays at SoundEffect's maximum of 1.0 at 100%
+  category and master volume. Upstream's values all sit at or below 0.26,
+  which left a 100% setting quiet with no way up. Scaling all of them by one
+  factor keeps their ratios.

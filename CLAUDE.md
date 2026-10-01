@@ -241,8 +241,12 @@ windows.
   and `cues.json` (per-cue default volume, loop flag). Qt's `SoundEffect` plays
   WAV only.
   - Every WAV carries the same +9.5 dB gain over the pack (loudest peak -1.08
-    dBFS), and every volume is upstream's x 1.5. That is +13 dB in all, with the
-    balance between cues unchanged; `NOTICE` has the details. Never spawn a process per sound.
+    dBFS). Every volume is upstream's / 0.26, so the loudest cue is at 1.0
+    (SoundEffect's maximum) when category and master are both 100%. That is
+    +21.2 dB over the pack in all, with the balance between cues unchanged;
+    `NOTICE` has the details.
+  - So 100% on the Sound page is the loudest the shell can play. Louder means
+    the system volume, or another gain on the WAVs. Never spawn a process per sound.
 - **`lib/SoundMap.js`** is ROADMAP section 7 in code: operation id -> cue,
   category, on/off by default, `incoming` (the only sounds DND silences). Callers
   name operations (`SoundFx.play("panel_open")`), never cues or files.

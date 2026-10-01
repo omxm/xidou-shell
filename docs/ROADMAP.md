@@ -405,6 +405,13 @@ Small things that unblock or de-risk everything else. Do these first.
   dBFS, no clipping) and every default volume is upstream's x 1.5: +13 dB in all,
   with the balance between cues unchanged. Measured under Xvfb: the typical cue is
   at -13 dBFS. `assets/sounds/zen/NOTICE` has the details.
+- **Loudness, second step (same day):** はる still found it quiet. On the real
+  machine the shell hadn't been restarted since switching to that commit, so it was
+  still playing the old files and volumes (`sound gain panel_open` returned 0.18,
+  not 0.27). The volumes were then raised anyway, to upstream / 0.26: the loudest
+  cue is at 1.0, SoundEffect's maximum. That is +21.2 dB over the pack in all, and
+  a typical cue peaks at about -4.8 dBFS. 100% is now the ceiling: going louder means
+  the system volume or more WAV gain.
 - **What:** a `SoundFx` singleton with `play(cueName, category)`, following the rules
   decided for D14 (M22):
   - gain = cue's uisfx default volume × category volume × master volume;
