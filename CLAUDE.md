@@ -490,7 +490,8 @@ Items below are the headline ones; the roadmap is the complete list.
   Confirmed on the X1CG5 are only: sound loudness, the XidouWM rename, the
   socket move, panels keeping/returning focus, the directional tag slide,
   `super+Return` not stealing input under the lock, F1 (client metadata over
-  IPC) and F2 (opening control-center at a section).
+  IPC), F2 (opening control-center at a section), and the Health tab (M16)
+  opening and showing its checks.
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).
@@ -499,6 +500,8 @@ Items below are the headline ones; the roadmap is the complete list.
   - Panels closing on outside actions, Print waiting for panels, the bar not
     blinking on panel close.
   - Panel keybinds opening nothing while locked.
+  - Health's Fix buttons (M16).
+  - With motion off, the OSD and launcher animations snapping (F4).
 - **Lock screen: not yet verified on real hardware** (Xvfb with a stubbed
   PamContext only, since a wrong-password test against real PAM can trip
   faillock):

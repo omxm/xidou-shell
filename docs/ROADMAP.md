@@ -403,7 +403,7 @@ Small things that unblock or de-risk everything else. Do these first.
   tests (a small `node` test script against fixture files works in the cloud).
 - **Unblocks:** H1, H4, M4 (if templates are listed in config).
 
-### F4 `Motion.qml` token singleton — Light `[CLOUD]` for code, `[SESSION]` for feel — **Done** (branch `claude/f4-motion-tokens`; checked under Xvfb, not confirmed on the real machine)
+### F4 `Motion.qml` token singleton — Light `[CLOUD]` for code, `[SESSION]` for feel — **Done** (merged as `4c3c922`). On the real X1CG5: the shell runs normally with it (はる). Not confirmed on the real machine: the OSD and launcher snapping with motion off.
 - Built:
   - `config/Motion.qml`: `fast` / `normal` / `slow` (ms; [motion].duration x
     0.8 / 1 / 2) and the easing roles `standard` / `enter` / `exit` /
@@ -834,7 +834,7 @@ with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
   manager, copy as plain text).
 - Depends on: L9. Verify: `[CLOUD]`.
 
-**M16 — Xidou Health** — **Done** (branch `claude/m16-health`, stacked on F4; checked under Xvfb, not confirmed on the real machine)
+**M16 — Xidou Health** — **Done** (merged as `c5f7a1e`). Confirmed on the X1CG5 by はる: the Health tab opens and shows every check. Not confirmed on the real machine: the Fix buttons.
 - Built:
   - It lives at Settings > System > Health (the first of this item's two
     suggested places).
