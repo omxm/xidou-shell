@@ -310,7 +310,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | Appearance > Accessibility / Motion / Effects placeholders | L1 (Motion), M21 (Accessibility), M25 (Effects) |
 | Per-widget panel for Logo and DND | L12 |
 | Startup / splash screen | M24 |
-| X1CG5 hardware inventory | T0-3 |
+| X1CG5 hardware inventory | T0-3 (**Done**, CLAUDE.md "X1CG5 inventory") |
 
 ---
 
@@ -332,7 +332,13 @@ Small things that unblock or de-risk everything else. Do these first.
   philosophy line saying keybinds are config-driven.
 - **Alternative:** delete the keys. Decision D1.
 
-### T0-3 X1CG5 hardware inventory — Light `[HW]`
+### T0-3 X1CG5 hardware inventory — **Done** (2026-10-01)
+- Recorded in CLAUDE.md, "X1CG5 inventory". Points for the items it blocks:
+  - charge thresholds exist (`charge_control_*`, read 75/80, not set by TLP's config);
+  - TLP 1.10.2 has its own performance/balanced/power-saver profiles, and there is no PPD;
+  - the touchpad is a Synaptics RMI4 clickpad;
+  - the user is not in `input` (M23);
+  - hardware GLX via iris is up, so picom `glx` very likely works. Not switched yet (M25).
 - **What:** on the real machine, record in CLAUDE.md: CPU/GPU (`lspci`, `glxinfo -B`),
   panel resolution/DPI (`xrandr`), battery (`ls /sys/class/power_supply/BAT*/` —
   check `charge_control_*_threshold`), backlight device, touchpad name and whether it is
@@ -2100,7 +2106,7 @@ Priority is: safety first, then foundations that many items share, then things u
 every day, then looks, then big bets. Within a milestone, order is flexible.
 
 **Milestone 0 — housekeeping (needs はる at the machine for T0-3)**
-~~T0-1~~ (done), ~~T0-2~~ (done), T0-3.
+~~T0-1~~ (done), ~~T0-2~~ (done), ~~T0-3~~ (done).
 
 **Milestone A — safety and foundations**
 ~~M1~~ (closed, 1.2), F1, F2, F4, M16 (Health — cheap, and it's the philosophy).

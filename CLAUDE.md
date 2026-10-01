@@ -46,9 +46,8 @@ because "if one piece breaks, you can't tell which piece broke." Rules that foll
 ## Hardware target
 
 Currently a **ThinkPad X1 Carbon (X1CG5)** — migrated from the original X230 target
-(see `e2e7233`, 2026-09-20). The X230-era hardware section (i7-3520M, 1366x768,
-9-cell battery, etc.) no longer applies; specifics of the X1CG5 config haven't been
-inventoried into this file yet.
+(see `e2e7233`, 2026-09-20). The X230-era hardware facts (i7-3520M, 1366x768,
+9-cell battery, etc.) no longer apply.
 
 - Runs Artix Linux (runit init, no systemd)
 - Currently dual-purposed: an existing Artix + MangoWM (Wayland) + Noctalia v5 session
@@ -60,6 +59,60 @@ inventoried into this file yet.
   `tag()` not following focus to the target view, and no Xidou-specific libinput
   touchpad config (natural scroll now pinned via an xorg.conf.d InputClass matching
   any touchpad, not a hardcoded device name).
+
+### X1CG5 inventory (ROADMAP T0-3, read on the machine 2026-10-01)
+
+Read-only survey; nothing was changed to collect it.
+
+- **Machine:** 20HR0005JP, BIOS N1MET77W (1.62), EC 1.22. Kernel 7.2.6-artix2-1.
+  Intel Core i5-7200U (2C/4T, max 3.1 GHz), 7.5 GiB RAM. Suspend modes:
+  `s2idle [deep]` (deep is the default).
+- **GPU:** Intel HD Graphics 620 (Kaby Lake GT2, `8086:5916`). Xorg uses the
+  `modesetting` driver with glamor on an OpenGL 4.6 context. DRI2 and DRI3 are
+  up, and AIGLX loaded Mesa's `iris` driver (Mesa 26.2.3). Quickshell is on
+  hardware GL (`libgallium` + `libGLX_mesa`). The `intel` DDX isn't installed;
+  Xorg logs a harmless "Failed to load module intel".
+  - **picom `glx`:** very likely fine. Every prerequisite is in the Xorg log
+    (hardware GLX via iris). Not tried: `glxinfo` (mesa-utils) isn't installed, and
+    `session/picom.conf` is still `backend = "xrender"` with a stale X230 comment.
+    Switching is a separate change (M25/D20).
+- **Display:** built-in `eDP-1`, 1920x1080 at 60.05 Hz, 309x174 mm, so about
+  158 DPI physically. No `Xft.dpi` in xrdb, so X/Qt use the default 96 DPI. The
+  other outputs are DP-1, DP-2 and HDMI-1 (an external monitor for H5 would use
+  one of these).
+- **Backlight:** `/sys/class/backlight/intel_backlight` (raw, max 1060).
+  `brightness` is `root:video` mode 664, and the user is in `video`.
+- **Battery:** `BAT0`, SANYO 01AV430 Li-ion, 54.15 Wh design / 45.85 Wh full
+  (about 85%), 87 cycles.
+  - Both threshold APIs exist: `charge_control_{start,end}_threshold` and the
+    legacy `charge_{start,stop}_threshold`, plus `charge_behaviour`
+    (`[auto] inhibit-charge force-discharge`). The files are `root:root` 644.
+  - They currently read 75/80. TLP isn't what set them: `START/STOP_CHARGE_THRESH_BAT0`
+    are commented out in `/etc/tlp.conf`, and `/etc/tlp.d/` holds only the template.
+    Probably the EC kept an earlier setting (a guess, not verified).
+- **Power management:** TLP 1.10.2 (runit service `tlp`, enabled; `tlp-stat` labels
+  the init "sysvinit"). TLP's own profiles work (`tlp performance | balanced |
+  power-saver`; currently `performance/AC`). `tlp-pd` (TLP's PPD-compatible daemon)
+  isn't installed, `power-profiles-daemon` isn't installed either, and there is no
+  ACPI `platform_profile`. An `undervolt` runit service also runs (-100 mV core,
+  cache and GPU, reapplied every 30 s).
+- **Touchpad:** "Synaptics TM3289-002", RMI4 over SMBus (`rmi4-00`, i2c-6),
+  `event12`. Input properties `0x5` = pointer + buttonpad, so it is a **clickpad**
+  (no physical buttons). Also a "TPPS/2 ALPS TrackPoint" on its pass-through
+  (`event13`). Driven by `xf86-input-libinput` 1.5.0 / libinput 1.32.0
+  (`xf86-input-synaptics` isn't installed), configured by
+  `/etc/X11/xorg.conf.d/90-xidou-touchpad.conf`.
+- **Input group:** the user is **not** in `input` (groups: haru, sys, video, lp,
+  wheel). `/dev/input/event*` is `root:input` 660, so gesture tools that read
+  evdev (libinput-gestures, `libinput debug-events`) can't run as the user yet.
+  This matters for M23/L16.
+- **Audio:** one card, HDA Intel PCH (`8086:9d71`), with a Conexant CX8200 codec
+  plus Kaby Lake HDMI. PipeWire 1.6.9 (pipewire-pulse). Default sink
+  `alsa_output.pci-0000_00_1f.3.analog-stereo`.
+- **Other:** Wi-Fi Intel AX200 (`8086:2723`), Bluetooth AX200 (USB `8087:0029`),
+  Ethernet I219-V, fingerprint reader Validity `138a:0097` (`open-fprintd` and
+  `python3-validity` services run), and ThinkPad LEDs under
+  `/sys/class/leds/tpacpi::*` (kbd_backlight, mute and micmute LEDs).
 
 ## Architecture
 
@@ -370,8 +423,6 @@ Items below are the headline ones; the roadmap is the complete list.
     blank under a software-GL compositor.
 - **Final phase — startup/splash screen**: logo + wordmark + dismissible "Start"
   button, same design language as every other panel. Not started.
-- No inventory yet of X1CG5-specific hardware details (the X230 section above was
-  removed as stale; nothing has replaced it beyond "it's an X1 Carbon Gen 5").
 
 ## Lessons from the previous X11/i3 attempt — still apply
 
