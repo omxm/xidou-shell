@@ -323,7 +323,10 @@ Small things that unblock or de-risk everything else. Do these first.
   remaining inaccuracy (Dead Zone described as done) was corrected in the same commit
   as this update. Nothing is blocked on this any more.
 
-### T0-2 Make `[panels.*].keybind` honest — Light `[CLOUD]`
+### T0-2 Make `[panels.*].keybind` honest — **Done** (2026-10-01)
+- Done as decided in D1: `config.example.toml` and `Config.qml` now say the keys are
+  documentation only and that xidouwm's `config.h` holds the real binds. CLAUDE.md's
+  philosophy line and its open-items entry say the same.
 - **What:** mark them in `config.example.toml` and `Config.qml` as "documentation only,
   dwm's config.h is the real source" until H4 makes them real. Also fix the CLAUDE.md
   philosophy line saying keybinds are config-driven.
@@ -2097,7 +2100,7 @@ Priority is: safety first, then foundations that many items share, then things u
 every day, then looks, then big bets. Within a milestone, order is flexible.
 
 **Milestone 0 — housekeeping (needs はる at the machine for T0-3)**
-~~T0-1~~ (done), T0-2, T0-3.
+~~T0-1~~ (done), ~~T0-2~~ (done), T0-3.
 
 **Milestone A — safety and foundations**
 ~~M1~~ (closed, 1.2), F1, F2, F4, M16 (Health — cheap, and it's the philosophy).

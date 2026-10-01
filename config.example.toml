@@ -194,6 +194,11 @@ remember_last_region = false    # off by default: with no second keybind for "re
 include_cursor = false          # include the mouse pointer in the captured image
 save_directory = "~/Pictures/Screenshots"
 
+# The keybind / dnd_keybind / lock_keybind keys in the [panels.*] tables
+# below are documentation only for now. Nothing reads them: every key
+# binding lives in xidouwm's config.h (xidouwm/config.def.h in the repo).
+# Changing a value here does not rebind anything. They will become real
+# with ROADMAP H4.
 [panels.control_center]
 enabled = true
 keybind = "super+e"

@@ -28,9 +28,10 @@ because "if one piece breaks, you can't tell which piece broke." Rules that foll
 
 - **One cohesive shell**, not a pile of glued-together standalone tools.
 - **Full customizability** via `~/.config/xidou/config.toml` — bar position, module
-  order, colors and fonts are config-driven. Keybinds are not yet: the
-  `[panels.*].keybind` keys aren't read by anything, and every bind is hardcoded in
-  XidouWM's `config.h` (see "What's still open").
+  order, colors and fonts are config-driven. Keybinds are not yet. The
+  `[panels.*].keybind` keys are documentation only, and say so in
+  `config.example.toml` and `Config.qml`. Nothing reads them: every bind is hardcoded
+  in XidouWM's `config.h` (see "What's still open").
 - **Unified theming**: every panel reads colors/fonts from `quickshell/config/Theme.qml`.
   Never hardcode a color or font literal in a panel's QML.
 - **All repo file/folder names, code comments, README text, and commit messages: English.**
@@ -332,8 +333,9 @@ Items below are the headline ones; the roadmap is the complete list.
 - **Window gaps have no Settings UI**: `[layout] gap_inner/gap_outer` + dwm's
   `setgappih`/`setgappoh` IPC exist (`a941b03`), but they're only pushed once at
   session start by an `awk` block in `session/xidou-xinitrc`.
-- **`[panels.*].keybind` config keys are not read by anything** — dwm's `config.h`
-  hardcodes every bind.
+- **`[panels.*].keybind` config keys are documentation only** (ROADMAP T0-2, D1).
+  They are marked that way in `config.example.toml` and `Config.qml`. XidouWM's
+  `config.h` hardcodes every bind, and H4 will make the keys real.
 - **Settings panel placeholders**: Appearance > Accessibility/Motion/Effects (Motion's
   backend, `services/MotionSync.qml`, already exists — only the tab is missing).
 - **Control-center placeholder**: Screen Time section.

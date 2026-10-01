@@ -309,6 +309,9 @@ Singleton {
             include_cursor: false,          // include the mouse pointer in the captured image
             save_directory: "~/Pictures/Screenshots"
         },
+        // keybind / dnd_keybind / lock_keybind are documentation only for
+        // now: nothing reads them, and every key binding lives in xidouwm's
+        // config.h (xidouwm/config.def.h). They become real with ROADMAP H4.
         panels: {
             control_center: { enabled: true, keybind: "super+e" },
             launcher: { enabled: true, keybind: "super+d" },
