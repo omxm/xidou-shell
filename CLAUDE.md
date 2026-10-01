@@ -133,13 +133,23 @@ Read-only survey; nothing was changed to collect it.
   `37c9415`).
 - **dwm-ipc** patch adds the Unix socket JSON-RPC bridge (`xidouwm/ipc.c`,
   `IPCClient.*`, `yajl_dumps.*`) — querying/controlling dwm and subscribing to tag/focus/layout-change
-  events. The socket is `/tmp/xidouwm.sock` (`ipcsockpath` in `config.def.h`,
-  `DEFAULT_SOCKET_PATH` in `dwm-msg.c`; moving it to `$XDG_RUNTIME_DIR` is H8
-  change 2). Overridable via `$XIDOU_WM_SOCKET` for test isolation. A path longer
-  than 107 bytes (`sun_path`) is an error, never a fallback: xidouwm keeps running
-  without IPC and xidouwm-msg exits 1. Neither ever touches the live socket; until
-  this was fixed, both silently fell back to it, and a test instance would take it
-  over.
+  events.
+  - **Socket path** (H8 change 2): resolved at run time by `xidouwm/sockpath.h`,
+    which xidouwm and xidouwm-msg share. In order:
+    1. `$XIDOU_WM_SOCKET` (test isolation);
+    2. `$XDG_RUNTIME_DIR/xidouwm.sock` (the session, `/run/user/1000/xidouwm.sock`);
+    3. `/tmp/xidouwm-<uid>.sock`, with a warning, when `XDG_RUNTIME_DIR` is unset.
+  - `xidouwm-msg --socket-path` prints the result. Nothing else hardcodes the path:
+    `config.h` has no `ipcsockpath` any more, and xinitrc's gap block polls
+    `xidouwm-msg get_tags`.
+  - A path longer than 107 bytes (`sun_path`) is an error, never a fallback to the
+    next rule: xidouwm keeps running without IPC and xidouwm-msg exits 1. So a test
+    never touches the live socket. Before this rule, both fell back to it silently,
+    and a test instance would take it over.
+  - **Socket lifecycle** (L15): xidouwm deletes its socket file on a clean exit
+    (quit/logout), but only if the file is still the one it bound (dev/inode). That
+    way it never deletes a socket a later instance bound at the same path. On a
+    crash the file stays behind, and the next start unlinks and rebinds it.
 - **dwm owns all keybindings.** Keypresses spawn `xidou msg <command>` (see `bin/xidou`),
   mirroring the MangoWM/Noctalia convention. Keybind migration from MangoWM/Noctalia
   muscle memory is done (`ec597a4`), including directional focus/swap

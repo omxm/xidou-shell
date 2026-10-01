@@ -19,6 +19,8 @@ options:
 
 ${OBJ}: config.h config.mk
 
+dwm.o dwm-msg.o: sockpath.h
+
 config.h:
 	cp config.def.h $@
 
@@ -34,7 +36,7 @@ clean:
 dist: clean
 	mkdir -p xidouwm-${VERSION}
 	cp -R LICENSE Makefile README config.def.h config.mk\
-		xidouwm.1 drw.h util.h ${SRC} dwm.png transient.c xidouwm-${VERSION}
+		xidouwm.1 drw.h util.h sockpath.h ${SRC} dwm.png transient.c xidouwm-${VERSION}
 	tar -cf xidouwm-${VERSION}.tar xidouwm-${VERSION}
 	gzip xidouwm-${VERSION}.tar
 	rm -rf xidouwm-${VERSION}

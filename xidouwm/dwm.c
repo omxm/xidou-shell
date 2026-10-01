@@ -401,6 +401,7 @@ static Window root, wmcheckwin;
 
 /* configuration, allows nested code to access above variables */
 #include "config.h"
+#include "sockpath.h"
 
 #ifdef VERSION
 #include "IPCClient.c"
@@ -2348,37 +2349,18 @@ setupepoll(void)
 		exit(1);
 	}
 
-	/* Overridable via $XIDOU_WM_SOCKET so a test instance can run
-	 * alongside a live one without stealing its socket path — see
-	 * dwm-msg.c's connect_to_socket() for the matching client-side
-	 * lookup. Falls back to ipcsockpath (config.h) when unset. Bounds
-	 * this against sun_path's real size before it reaches ipc_init(),
-	 * since that ends up in an unbounded strcpy(); previously
-	 * unreachable from outside the process (ipcsockpath is a fixed
-	 * config.h literal), an env var makes the length externally
-	 * controlled for the first time.
-	 *
-	 * A path that is too long disables IPC; it must never fall back to
-	 * ipcsockpath. That default is the live session's socket, and
-	 * ipc_create_socket() unlink()s whatever is at its path before
-	 * binding, so a fallback would silently take over the live dwm's IPC
-	 * from a test instance. dwm keeps running without IPC, as it already
-	 * does when ipc_init() fails. */
+	/* The socket path is resolved at run time; see sockpath.h for the
+	 * rules, shared with xidouwm-msg. If it can't be resolved (an over-long
+	 * $XIDOU_WM_SOCKET or $XDG_RUNTIME_DIR), xidouwm keeps running without
+	 * IPC, as it already does when ipc_init() fails. It never falls back
+	 * to another path. */
 	{
-		const char *sockpath = getenv("XIDOU_WM_SOCKET");
-		const size_t maxlen = sizeof(((struct sockaddr_un *)0)->sun_path) - 1;
+		char sockpath[sizeof(((struct sockaddr_un *)0)->sun_path)];
 
-		if (!sockpath || !*sockpath)
-			sockpath = ipcsockpath;
-		else if (strlen(sockpath) > maxlen) {
-			fprintf(stderr, "xidouwm: XIDOU_WM_SOCKET too long (%zu bytes, max %zu); "
-				"IPC disabled, not falling back to %s\n",
-				strlen(sockpath), maxlen, ipcsockpath);
-			sockpath = NULL;
-		}
-		if (sockpath && ipc_init(sockpath, epoll_fd, ipccommands, LENGTH(ipccommands)) < 0) {
+		if (xidouwm_sockpath(sockpath, sizeof(sockpath), "xidouwm", 1) < 0)
+			fputs("xidouwm: IPC disabled\n", stderr);
+		else if (ipc_init(sockpath, epoll_fd, ipccommands, LENGTH(ipccommands)) < 0)
 			fputs("Failed to initialize IPC\n", stderr);
-		}
 	}
 }
 

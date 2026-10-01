@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <yajl/yajl_gen.h>
 
+#include "sockpath.h"
+
 #define IPC_MAGIC "DWM-IPC"
 // clang-format off
 #define IPC_MAGIC_ARR { 'D', 'W', 'M', '-', 'I', 'P', 'C' }
@@ -44,7 +46,6 @@
 
 typedef unsigned long Window;
 
-const char *DEFAULT_SOCKET_PATH = "/tmp/xidouwm.sock";
 static int sock_fd = -1;
 static unsigned int ignore_reply = 0;
 
@@ -185,20 +186,12 @@ static void
 connect_to_socket()
 {
   struct sockaddr_un addr;
-  const char *socket_path = getenv("XIDOU_WM_SOCKET");
+  char socket_path[sizeof(addr.sun_path)];
 
-  // A path that is too long is an error, never a fallback: the default is
-  // the live session's socket, so falling back would send a test's
-  // commands to the real dwm. Same rule as dwm.c's setup().
-  if (!socket_path || !*socket_path)
-    socket_path = DEFAULT_SOCKET_PATH;
-  else if (strlen(socket_path) >= sizeof(addr.sun_path)) {
-    fprintf(stderr,
-            "xidouwm-msg: XIDOU_WM_SOCKET too long (%zu bytes, max %zu); "
-            "not falling back to %s\n",
-            strlen(socket_path), sizeof(addr.sun_path) - 1, DEFAULT_SOCKET_PATH);
+  // Same rules as xidouwm itself (sockpath.h). A path that can't be
+  // resolved is an error, never a fallback to the session socket.
+  if (xidouwm_sockpath(socket_path, sizeof(socket_path), "xidouwm-msg", 0) < 0)
     exit(1);
-  }
 
   int sock = socket(AF_UNIX, SOCK_STREAM, 0);
 
@@ -499,12 +492,27 @@ print_usage(const char *name)
   puts("  --ignore-reply                  Don't print reply messages from");
   puts("                                  run_command and subscribe.");
   puts("");
+  puts("  --socket-path                   Print the socket path xidouwm uses in");
+  puts("                                  this environment and exit, without");
+  puts("                                  connecting.");
+  puts("");
 }
 
 int
 main(int argc, char *argv[])
 {
   const char *prog_name = argv[0];
+
+  // Lets session/xidou-xinitrc wait for the socket without its own copy of
+  // the path rules.
+  if (argc == 2 && strcmp(argv[1], "--socket-path") == 0) {
+    char path[sizeof(((struct sockaddr_un *)0)->sun_path)];
+
+    if (xidouwm_sockpath(path, sizeof(path), "xidouwm-msg", 0) < 0)
+      return 1;
+    puts(path);
+    return 0;
+  }
 
   connect_to_socket();
   if (sock_fd == -1) {

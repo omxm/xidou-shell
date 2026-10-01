@@ -272,7 +272,8 @@ static const Button buttons[] = {
 	{ ClkRootWin,           MODKEY|ShiftMask, Button5,      cycletag,       {.i = +1 } },
 };
 
-static const char *ipcsockpath = "/tmp/xidouwm.sock";
+/* The IPC socket path is not set here: it is resolved at run time
+ * ($XDG_RUNTIME_DIR/xidouwm.sock), see sockpath.h. */
 static IPCCommand ipccommands[] = {
   IPCCOMMAND(  view,                1,      {ARG_TYPE_UINT}   ),
   IPCCOMMAND(  toggleview,          1,      {ARG_TYPE_UINT}   ),

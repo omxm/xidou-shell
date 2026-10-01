@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <yajl/yajl_gen.h>
@@ -22,6 +23,12 @@ static struct epoll_event sock_epoll_event;
 static IPCClientList ipc_clients = NULL;
 static int epoll_fd = -1;
 static int sock_fd = -1;
+// Identity of the socket file this instance bound, so ipc_cleanup() only
+// removes its own file and never one a later instance has bound at the same
+// path since.
+static dev_t sock_dev;
+static ino_t sock_ino;
+static int sock_bound = 0;
 static IPCCommand *ipc_commands;
 static unsigned int ipc_commands_len;
 // Max size is 1 MB
@@ -72,6 +79,13 @@ ipc_create_socket(const char *filename)
   }
 
   DEBUG("Socket binded\n");
+
+  struct stat st;
+  if (stat(sockaddr.sun_path, &st) == 0) {
+    sock_dev = st.st_dev;
+    sock_ino = st.st_ino;
+    sock_bound = 1;
+  }
 
   if (listen(sock_fd, IPC_SOCKET_BACKLOG) < 0) {
     fputs("Failed to listen for connections on socket\n", stderr);
@@ -795,19 +809,28 @@ ipc_cleanup()
   // Stop waking up for socket events
   epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_fd, &sock_epoll_event);
 
+  // Delete the socket file and close the socket before the statics below
+  // are reset. Upstream reset them first, so this unlink()ed "" and closed
+  // fd -1, and the socket file outlived every exit (ROADMAP L15). The file
+  // is only removed while it is still the one this instance bound.
+  struct stat st;
+  if (sock_bound && lstat(sockaddr.sun_path, &st) == 0 &&
+      st.st_dev == sock_dev && st.st_ino == sock_ino)
+    unlink(sockaddr.sun_path);
+
+  if (sock_fd != -1) {
+    shutdown(sock_fd, SHUT_RDWR);
+    close(sock_fd);
+  }
+
   // Uninitialize all static variables
   epoll_fd = -1;
   sock_fd = -1;
+  sock_bound = 0;
   ipc_commands = NULL;
   ipc_commands_len = 0;
   memset(&sock_epoll_event, 0, sizeof(struct epoll_event));
   memset(&sockaddr, 0, sizeof(struct sockaddr_un));
-
-  // Delete socket
-  unlink(sockaddr.sun_path);
-
-  shutdown(sock_fd, SHUT_RDWR);
-  close(sock_fd);
 }
 
 int

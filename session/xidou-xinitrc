@@ -140,17 +140,22 @@ quickshell -p "$REPO_DIR/quickshell" &
 # xidouwm/fibonacci.c), so it can only be applied by talking to dwm's own IPC
 # socket, not by anything Quickshell-side. Backgrounded (not exec'd) so it
 # doesn't disturb dwm remaining the foreground/session-owning process below
-# -- it just waits for the socket dwm creates on startup, pushes the config
+# -- it just waits until dwm answers on its IPC socket, pushes the config
 # values in once, and exits. Falls back to config.h's own gappih/gappoh
-# defaults (5/5) if config.toml has no [layout] table yet or the socket
-# never shows up.
+# defaults (5/5) if config.toml has no [layout] table yet or dwm never
+# answers.
+#
+# It waits on a real query rather than on the socket file existing, so it
+# needs no copy of the socket path rules (xidouwm/sockpath.h; the path is
+# `xidouwm-msg --socket-path`), and a stale socket file left by a crashed
+# session can't make it push too early.
 (
     i=0
-    while [ "$i" -lt 25 ] && [ ! -S /tmp/xidouwm.sock ]; do
-        sleep 0.2
+    until xidouwm-msg get_tags >/dev/null 2>&1; do
         i=$((i + 1))
+        [ "$i" -lt 25 ] || exit 0
+        sleep 0.2
     done
-    [ -S /tmp/xidouwm.sock ] || exit 0
 
     config_toml="$HOME/.config/xidou/config.toml"
     [ -f "$config_toml" ] || exit 0
