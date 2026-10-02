@@ -328,6 +328,77 @@ Singleton {
                 left_click: "control_center.notifications",
                 right_click: "dnd.toggle",
                 middle_click: ""
+            },
+            // Action buttons (ROADMAP L8): bar/modules/ActionButton.qml. Off
+            // the bar by default; add them in Settings > Bar > Modules.
+            launcher: {
+                show_label: false,
+                left_click: "launcher.toggle",
+                right_click: "",
+                middle_click: ""
+            },
+            settings: {
+                show_label: false,
+                left_click: "settings.toggle",
+                right_click: "",
+                middle_click: ""
+            },
+            session: {
+                show_label: false,
+                left_click: "session.toggle",
+                right_click: "",
+                middle_click: ""
+            },
+            screenshot: {
+                show_label: false,
+                left_click: "screenshot.fullscreen",
+                right_click: "",
+                middle_click: ""
+            },
+            wallpaper: {
+                show_label: false,
+                left_click: "wallpaper.open",
+                right_click: "",
+                middle_click: ""
+            },
+            control_center: {
+                show_label: false,
+                left_click: "control_center.toggle",
+                right_click: "",
+                middle_click: ""
+            },
+            caffeine: {
+                show_label: false,
+                left_click: "caffeine.toggle",
+                right_click: "",
+                middle_click: ""
+            },
+            night_light: {
+                show_label: false,
+                left_click: "night_light.toggle",
+                right_click: "",
+                middle_click: ""
+            },
+            theme_mode: {
+                show_label: false,
+                left_click: "theme.cycle_mode",
+                right_click: "",
+                middle_click: ""
+            },
+            notifications: {
+                show_label: false,
+                left_click: "control_center.notifications",
+                right_click: "",
+                middle_click: ""
+            },
+            spacer: {
+                width: 16 // px
+            },
+            text: {
+                text: "", // "" hides the widget
+                left_click: "",
+                right_click: "",
+                middle_click: ""
             }
         },
         osd: {

@@ -263,7 +263,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 24 | Launcher Switchboard (chip, many actions, ←→ sliders) | **Partial**: 4×3 grid mode exists, Tab cycles 3 modes | M12 |
 | 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Done**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) and change 2 (socket in `$XDG_RUNTIME_DIR`), both confirmed on the X1CG5. L15 (socket removed on exit): implemented, not confirmed on the real machine. No picom fork (1.5) | H8 |
 | 26 | Make config easier to change | Mostly = Settings panel; concrete remainder | L10 |
-| 27 | Big list of bar widgets | 12 exist (logo, workspaces, media, clock, weather, tray, mem, cpu, bluetooth, volume, dnd, power); the rest are new | L8, M11, section 6 |
+| 27 | Big list of bar widgets | 24 exist: the original 12 plus L8's 10 action buttons, spacer and text; M11's data widgets are new | L8, M11, section 6 |
 | 28 | Left-click → CC page, right-click → configurable action | **Done** except scroll: D6's defaults (left → CC section, right → the quick action), and each module's left/right/middle click picks an action in the gear panel | F2, M8 |
 | 29 | Choose which CC sections are shown | Not started | L6 |
 | 30 | Theme export/import | Not started | M17 |
@@ -599,7 +599,27 @@ Each entry: **what**, **current state / files**, **depends on**, **decisions**,
   notifications" card; clicking it opens CC > Notifications. N is configurable.
 - Depends on: F2. Verify: `[CLOUD]` (`notify-send` works under Xvfb with a dbus session).
 
-**L8 — Simple action-button widgets**
+**L8 — Simple action-button widgets** — **Done** (2026-10-02, on master; checked under Xvfb, not confirmed on the real machine)
+- Built: `bar/modules/ActionButton.qml`, one generic module for launcher,
+  settings, session, screenshot, wallpaper, control_center, caffeine,
+  night_light, theme_mode and notifications. Each shows its registry action's
+  icon (accent when the action is on), an optional label (`show_label`), and
+  its click comes from M8's `left_click` etc., whose default runs that action.
+  New action `session.toggle`; registry icons filled in for the panel
+  toggles, media and tag actions.
+- notifications: the bell with an unread badge. `Notifications.unread` counts
+  arrivals since control-center's Notifications section was last on screen
+  (the section marks them read).
+- spacer (`width`, no capsule or hover: a `bare` module) and text (`text`,
+  empty hides it).
+- All off the bar by default; they're in Settings > Bar > Modules' "+"
+  picker. A row for one reads Overridden while it's on the bar, and reset (row
+  or gear Position) takes it off.
+- Checked under Xvfb: every widget renders, launcher/settings/session/
+  control-center/wallpaper/notifications open their panels, theme_mode
+  cycles and its label follows, the badge counts two notify-sends and clears
+  after viewing, Show Label, reset. Not run: caffeine, night light (real X
+  settings).
 - What: launcher, settings, session, screenshot, wallpaper, control-center, caffeine,
   nightlight, theme_mode, notifications (with unread badge), spacer, text. Each is an
   icon (and optional label) whose click calls something that already exists.
@@ -2374,7 +2394,7 @@ every day, then looks, then big bets. Within a milestone, order is flexible.
 
 **Milestone B — the bar, finished properly**
 ~~F5~~ (shared components first), ~~M12's action registry~~ (the list, before its UI), ~~M8~~ (scroll left),
-~~M9~~, ~~M10~~, M7, L8, L12, L14, M3. The styling layer is done; this milestone is about
+~~M9~~, ~~M10~~, ~~M7~~, ~~L8~~, L12, L14, M3. The styling layer is done; this milestone is about
 behavior and adding widgets.
 
 **Milestone C — daily comfort**

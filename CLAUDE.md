@@ -197,6 +197,9 @@ Read-only survey; nothing was changed to collect it.
     / `middleClicked()` / `scrolled(steps)` functions. Bar.qml's wrapper
     calls them, and undeclared buttons fall through to the dead zone.
   - A `tooltip` property gets the bar's shared popup.
+  - Simple buttons (ROADMAP L8) are one module, `bar/modules/ActionButton.qml`,
+    named after the registry action they stand for; a module with
+    `bare: true` (the spacer) gets no capsule or hover.
   - Clicks (ROADMAP M8, D6) come from `[bar_widgets.<module>]`
     `left_click`/`right_click`/`middle_click`, each an action registry id,
     set in Settings > Bar > Modules > gear. Defaults: left opens the module's
@@ -541,6 +544,9 @@ Items below are the headline ones; the roadmap is the complete list.
     actions were checked on the machine).
   - M7's tray drawer and gear-panel states; the tray menu was checked on the
     machine only with a test AppIndicator item, not real apps.
+  - L8's action-button widgets (launcher, settings, session, screenshot,
+    wallpaper, control-center, caffeine, night light, theme mode,
+    notifications with an unread badge), spacer and text.
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).

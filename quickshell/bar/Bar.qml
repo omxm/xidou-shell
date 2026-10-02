@@ -144,7 +144,19 @@ PanelWindow {
         bluetooth: bluetoothComponent,
         volume: volumeComponent,
         dnd: dndComponent,
-        power: powerComponent
+        power: powerComponent,
+        launcher: launcherButtonComponent,
+        settings: settingsButtonComponent,
+        session: sessionButtonComponent,
+        screenshot: screenshotButtonComponent,
+        wallpaper: wallpaperButtonComponent,
+        control_center: control_centerButtonComponent,
+        caffeine: caffeineButtonComponent,
+        night_light: night_lightButtonComponent,
+        theme_mode: themeModeButtonComponent,
+        notifications: notificationsButtonComponent,
+        spacer: spacerComponent,
+        text: textComponent
     })
 
     function resolveModules(names) {
@@ -220,6 +232,76 @@ PanelWindow {
         Modules.Power {}
     }
 
+    // Action buttons (ROADMAP L8): one generic module, named after the
+    // registry action it stands for.
+    Component {
+        id: launcherButtonComponent
+        Modules.ActionButton { widgetName: "launcher"; actionId: "launcher.toggle"; label: "Launcher" }
+    }
+
+    Component {
+        id: settingsButtonComponent
+        Modules.ActionButton { widgetName: "settings"; actionId: "settings.toggle"; label: "Settings" }
+    }
+
+    Component {
+        id: sessionButtonComponent
+        Modules.ActionButton { widgetName: "session"; actionId: "session.toggle"; label: "Session" }
+    }
+
+    Component {
+        id: screenshotButtonComponent
+        Modules.ActionButton { widgetName: "screenshot"; actionId: "screenshot.fullscreen"; label: "Screenshot" }
+    }
+
+    Component {
+        id: wallpaperButtonComponent
+        Modules.ActionButton { widgetName: "wallpaper"; actionId: "wallpaper.open"; label: "Wallpaper" }
+    }
+
+    Component {
+        id: control_centerButtonComponent
+        Modules.ActionButton { widgetName: "control_center"; actionId: "control_center.toggle"; label: "Control Center" }
+    }
+
+    Component {
+        id: caffeineButtonComponent
+        Modules.ActionButton { widgetName: "caffeine"; actionId: "caffeine.toggle"; label: "Caffeine" }
+    }
+
+    Component {
+        id: night_lightButtonComponent
+        Modules.ActionButton { widgetName: "night_light"; actionId: "night_light.toggle"; label: "Night Light" }
+    }
+
+    Component {
+        id: themeModeButtonComponent
+        Modules.ActionButton { widgetName: "theme_mode"; actionId: "theme.cycle_mode"; label: Actions.labelOf("theme.cycle_mode") }
+    }
+
+    // Notifications: the bell, with the unread count since control-center's
+    // Notifications section was last shown.
+    Component {
+        id: notificationsButtonComponent
+        Modules.ActionButton {
+            widgetName: "notifications"
+            actionId: "control_center.notifications"
+            label: "Notifications"
+            iconOverride: "" // notifications (verified via fontTools, same codepoint as Dnd.qml)
+            badge: Notifications.unread
+        }
+    }
+
+    Component {
+        id: spacerComponent
+        Modules.Spacer {}
+    }
+
+    Component {
+        id: textComponent
+        Modules.TextWidget {}
+    }
+
     // Shared by all three lane Repeaters below -- wraps a module's Loader in
     // a capsule background Rectangle when bar.capsules.enabled, otherwise
     // renders identically to the plain Loader this replaced (innerHeight
@@ -263,8 +345,12 @@ PanelWindow {
             readonly property real highlightPadding: bar.capsuleCfg.enabled ? bar.capsuleCfg.padding : Theme.fontSize * 0.4
             readonly property real highlightHeight: bar.capsuleCfg.enabled ? wrapper.innerHeight : parent.height * 0.8
 
+            // A module with `bare: true` (the spacer) gets no capsule, hover
+            // highlight or hover sound.
+            readonly property bool bare: !!loader.item && loader.item.bare === true
+
             height: parent.height
-            width: wrapper.hasContent ? (wrapper.scaledContentWidth + (bar.capsuleCfg.enabled ? bar.capsuleCfg.padding * 2 : 0)) : 0
+            width: wrapper.hasContent ? (wrapper.scaledContentWidth + (bar.capsuleCfg.enabled && !wrapper.bare ? bar.capsuleCfg.padding * 2 : 0)) : 0
 
             // Hover Highlight: the shell's first hover feedback anywhere on
             // the bar -- confirmed zero hoverEnabled/containsMouse/onEntered
@@ -274,7 +360,7 @@ PanelWindow {
             HoverHandler {
                 id: widgetHover
                 onHoveredChanged: {
-                    if (hovered && wrapper.hasContent)
+                    if (hovered && wrapper.hasContent && !wrapper.bare)
                         SoundFx.play("bar_hover");
                 }
             }
@@ -291,7 +377,7 @@ PanelWindow {
             }
 
             Rectangle {
-                visible: bar.widgetsCfg.hover_highlight && widgetHover.hovered && wrapper.hasContent
+                visible: bar.widgetsCfg.hover_highlight && widgetHover.hovered && wrapper.hasContent && !wrapper.bare
                 anchors.centerIn: parent
                 width: wrapper.scaledContentWidth + wrapper.highlightPadding * 2
                 height: wrapper.highlightHeight
@@ -302,7 +388,7 @@ PanelWindow {
 
             Rectangle {
                 id: capsuleBg
-                visible: bar.capsuleCfg.enabled && wrapper.hasContent
+                visible: bar.capsuleCfg.enabled && wrapper.hasContent && !wrapper.bare
                 anchors.centerIn: parent
                 width: wrapper.scaledContentWidth + bar.capsuleCfg.padding * 2
                 height: wrapper.innerHeight

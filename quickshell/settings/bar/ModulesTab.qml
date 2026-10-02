@@ -18,8 +18,9 @@ import ".." as Settings
 // - The gear opens the per-widget panel: Start/Center/End moves a module
 //   between lanes (appended at the end), plus its clicks (M8) and its own
 //   settings where they have backing.
-// - A row reads Overridden when its module sits outside its default lane;
-//   reset moves it back. Reset Page restores all three arrays exactly.
+// - A row reads Overridden when its module sits outside its default lane
+//   (or is on the bar at all, for a module that's off by default); reset
+//   moves it back or takes it off. Reset Page restores all three arrays.
 Item {
     id: root
 
@@ -37,7 +38,19 @@ Item {
         { name: "bluetooth", label: "Bluetooth" },
         { name: "volume", label: "Volume" },
         { name: "dnd", label: "Do Not Disturb" },
-        { name: "power", label: "Power" }
+        { name: "power", label: "Power" },
+        { name: "launcher", label: "Launcher Button" },
+        { name: "settings", label: "Settings Button" },
+        { name: "session", label: "Session Button" },
+        { name: "screenshot", label: "Screenshot Button" },
+        { name: "wallpaper", label: "Wallpaper Button" },
+        { name: "control_center", label: "Control Center Button" },
+        { name: "caffeine", label: "Caffeine Button" },
+        { name: "night_light", label: "Night Light Button" },
+        { name: "theme_mode", label: "Theme Mode Button" },
+        { name: "notifications", label: "Notifications Button" },
+        { name: "spacer", label: "Spacer" },
+        { name: "text", label: "Text" }
     ]
 
     readonly property var sectionKeys: ["modules_left", "modules_center", "modules_right"]
@@ -91,6 +104,19 @@ Item {
                 Config.setValue("bar", key, arr.filter(function (n) { return n !== name; }));
         });
         Config.setValue("bar", targetKey, Config.data.bar[targetKey].concat([name]));
+    }
+
+    // Back to the module's default lane, or off the bar for a module that
+    // has none (the L8 buttons, spacer, text).
+    function resetModulePosition(name) {
+        var section = root.defaultSectionOf[name];
+        if (section) {
+            root.moveModuleToSection(name, section);
+            return;
+        }
+        var lane = root.currentSectionOf(name);
+        if (lane)
+            Config.setValue("bar", lane, Config.data.bar[lane].filter(function (n) { return n !== name; }));
     }
 
     // Reordering WITHIN a lane, distinct from moveModuleToSection above
@@ -300,9 +326,7 @@ Item {
                 showOverriddenOnly: root.showOverriddenOnly
                 customOverridden: root.currentSectionOf(moduleRowWrapper.modelData) !== root.defaultSectionOf[moduleRowWrapper.modelData]
                 customReset: function () {
-                    var section = root.defaultSectionOf[moduleRowWrapper.modelData];
-                    if (section)
-                        root.moveModuleToSection(moduleRowWrapper.modelData, section);
+                    root.resetModulePosition(moduleRowWrapper.modelData);
                 }
             }
 
@@ -638,9 +662,7 @@ Item {
             label: "Position"
             customOverridden: root.currentSectionOf(parent.moduleEntry.name) !== root.defaultSectionOf[parent.moduleEntry.name]
             customReset: function () {
-                var section = root.defaultSectionOf[parent.moduleEntry.name];
-                if (section)
-                    root.moveModuleToSection(parent.moduleEntry.name, section);
+                root.resetModulePosition(parent.moduleEntry.name);
             }
 
             Row {
@@ -753,13 +775,100 @@ Item {
             "tray": trayWidgetComponent,
             "mem": memWidgetComponent,
             "cpu": cpuWidgetComponent,
-            "power": powerWidgetComponent
+            "power": powerWidgetComponent,
+            "launcher": buttonWidgetComponent,
+            "settings": buttonWidgetComponent,
+            "session": buttonWidgetComponent,
+            "screenshot": buttonWidgetComponent,
+            "wallpaper": buttonWidgetComponent,
+            "control_center": buttonWidgetComponent,
+            "caffeine": buttonWidgetComponent,
+            "night_light": buttonWidgetComponent,
+            "theme_mode": buttonWidgetComponent,
+            "notifications": buttonWidgetComponent,
+            "spacer": spacerWidgetComponent,
+            "text": textWidgetComponent
         })
 
         Loader {
             width: parent.width
             height: parent.height - (Theme.fontSize * 1.8) - (Theme.fontSize * 2.6) - clicksBlock.height - (parent.spacing * 3)
             sourceComponent: parent.widgetComponentsByName[root.editingModule] || placeholderWidgetComponent
+        }
+
+        // Action buttons (ROADMAP L8): one shared section, for whichever
+        // button is being edited.
+        Component {
+            id: buttonWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Show Label"
+                    tableHeader: "bar_widgets." + root.editingModule
+                    settingKey: "show_label"
+                    defaultValue: false
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: true, label: "On" },
+                            { value: false, label: "Off" }
+                        ]
+                        currentValue: !!(Config.data.bar_widgets[root.editingModule] || {}).show_label
+                        onOptionSelected: (value) => Config.setValue("bar_widgets." + root.editingModule, "show_label", value)
+                    }
+                }
+            }
+        }
+
+        Component {
+            id: spacerWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Width"
+                    tableHeader: "bar_widgets.spacer"
+                    settingKey: "width"
+                    defaultValue: Config.defaults.bar_widgets.spacer.width
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.NumberStepper {
+                        value: Config.data.bar_widgets.spacer.width
+                        minValue: 0
+                        maxValue: 400
+                        suffix: "px"
+                        onStepped: (newValue) => Config.setValue("bar_widgets.spacer", "width", newValue)
+                    }
+                }
+            }
+        }
+
+        Component {
+            id: textWidgetComponent
+            Column {
+                spacing: Theme.fontSize / 2
+
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Text"
+                    tableHeader: "bar_widgets.text"
+                    settingKey: "text"
+                    defaultValue: Config.defaults.bar_widgets.text.text
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.TextCommitField {
+                        width: parent.width
+                        value: Config.data.bar_widgets.text.text
+                        placeholder: "Empty hides the widget"
+                        onCommitted: (text) => Config.setValue("bar_widgets.text", "text", text)
+                    }
+                }
+            }
         }
 
         Component {

@@ -21,7 +21,8 @@ import "../config"
 // when they depend on state; read them through labelOf()/iconOf()/
 // activeOf() inside a binding and it updates like any other binding.
 // Only actions something actually uses belong here (CLAUDE.md: don't
-// scaffold ahead of need).
+// scaffold ahead of need). Icons are Material Symbols codepoints, verified
+// via fontTools.
 Singleton {
     id: root
 
@@ -174,7 +175,7 @@ Singleton {
         {
             id: "media.play_pause",
             label: "Play/Pause",
-            icon: "",
+            icon: "" /* play_pause */,
             keywords: ["media", "mpris", "music"],
             run: function () {
                 var p = root.player;
@@ -187,7 +188,7 @@ Singleton {
         {
             id: "media.next",
             label: "Next Track",
-            icon: "",
+            icon: "" /* skip_next */,
             keywords: ["media", "mpris", "music"],
             run: function () {
                 var p = root.player;
@@ -200,7 +201,7 @@ Singleton {
         {
             id: "media.previous",
             label: "Previous Track",
-            icon: "",
+            icon: "" /* skip_previous */,
             keywords: ["media", "mpris", "music"],
             run: function () {
                 var p = root.player;
@@ -215,7 +216,7 @@ Singleton {
         {
             id: "control_center.toggle",
             label: "Control Center (toggle)",
-            icon: "",
+            icon: "" /* dashboard */,
             keywords: ["control center", "home", "panel"],
             run: function () { PanelManager.toggle("control-center"); }
         },
@@ -224,14 +225,21 @@ Singleton {
             // requestToggle()), it doesn't step back to App Search first.
             id: "launcher.toggle",
             label: "Launcher (toggle)",
-            icon: "",
+            icon: "" /* apps */,
             keywords: ["apps", "search", "panel"],
             run: function () { PanelManager.toggle("launcher"); }
         },
         {
+            id: "session.toggle",
+            label: "Session Menu (toggle)",
+            icon: "" /* power_settings_new */,
+            keywords: ["logout", "reboot", "shutdown", "panel"],
+            run: function () { PanelManager.toggle("session"); }
+        },
+        {
             id: "settings.toggle",
             label: "Settings (toggle)",
-            icon: "",
+            icon: "" /* settings */,
             keywords: ["preferences", "panel"],
             run: function () { PanelManager.toggle("settings"); }
         },
@@ -242,14 +250,14 @@ Singleton {
         {
             id: "tag.previous",
             label: "Previous Tag",
-            icon: "",
+            icon: "" /* keyboard_arrow_left */,
             keywords: ["workspace", "tag"],
             run: function () { root.viewAdjacentTag(-1); }
         },
         {
             id: "tag.next",
             label: "Next Tag",
-            icon: "",
+            icon: "" /* keyboard_arrow_right */,
             keywords: ["workspace", "tag"],
             run: function () { root.viewAdjacentTag(1); }
         }

@@ -203,6 +203,78 @@ left_click = "control_center.power"
 right_click = ""
 middle_click = ""
 
+# Action buttons (ROADMAP L8), off the bar by default (add them in Settings >
+# Bar > Modules): one icon each, show_label adds its name. Their default
+# left_click runs the action they're named after.
+[bar_widgets.launcher]
+show_label = false
+left_click = "launcher.toggle"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.settings]
+show_label = false
+left_click = "settings.toggle"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.session]
+show_label = false
+left_click = "session.toggle"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.screenshot]
+show_label = false
+left_click = "screenshot.fullscreen"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.wallpaper]
+show_label = false
+left_click = "wallpaper.open"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.control_center]
+show_label = false
+left_click = "control_center.toggle"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.caffeine]
+show_label = false
+left_click = "caffeine.toggle"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.night_light]
+show_label = false
+left_click = "night_light.toggle"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.theme_mode]
+show_label = false
+left_click = "theme.cycle_mode"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.notifications]
+show_label = false
+left_click = "control_center.notifications"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.spacer]
+width = 16 # px
+
+[bar_widgets.text]
+text = "" # "" hides the widget
+left_click = ""
+right_click = ""
+middle_click = ""
+
 [layout]
 # Window gaps for the tiling layout -- a real dwm feature (xidouwm/fibonacci.c),
 # not a Quickshell-side cosmetic effect. Applied once at session start

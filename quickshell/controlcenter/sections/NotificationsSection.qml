@@ -9,6 +9,26 @@ import ".." as ControlCenter
 Item {
     id: root
 
+    // On screen means read: clears the bar's notifications badge (ROADMAP
+    // L8), now and for anything that arrives while it's showing. The
+    // section only exists while it's the selected one.
+    readonly property bool shown: Window.window ? Window.window.visible : false
+    onShownChanged: {
+        if (root.shown)
+            Notifications.markRead();
+    }
+    Component.onCompleted: {
+        if (root.shown)
+            Notifications.markRead();
+    }
+    Connections {
+        target: Notifications
+        function onUnreadChanged() {
+            if (root.shown && Notifications.unread > 0)
+                Notifications.markRead();
+        }
+    }
+
     // Re-evaluates relative "time ago" text periodically rather than only
     // when history changes, so an entry doesn't freeze at "1m ago" forever.
     property int tick: 0

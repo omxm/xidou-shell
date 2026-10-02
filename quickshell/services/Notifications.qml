@@ -31,6 +31,15 @@ Singleton {
     readonly property int historyLimit: 50
     property var history: []
 
+    // Notifications that arrived since control-center's Notifications
+    // section was last shown (the bar's notifications button badge,
+    // ROADMAP L8). NotificationsSection.qml calls markRead().
+    property int unread: 0
+
+    function markRead() {
+        root.unread = 0;
+    }
+
     function toggleDnd() {
         root.dnd = !root.dnd;
     }
@@ -39,6 +48,7 @@ Singleton {
         if (root.history.length > 0)
             SoundFx.play("notify_clear");
         root.history = [];
+        root.unread = 0;
     }
 
     // Section 7: critical -> warning, a message (`category` hint
@@ -77,6 +87,7 @@ Singleton {
                 time: Date.now()
             };
             root.history = [entry].concat(root.history).slice(0, root.historyLimit);
+            root.unread = Math.min(root.unread + 1, root.historyLimit);
 
             // SoundFx silences these incoming sounds under DND itself
             // (SoundMap's `incoming`), so no DND check here.
