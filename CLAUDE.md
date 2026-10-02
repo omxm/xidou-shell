@@ -196,6 +196,9 @@ Read-only survey; nothing was changed to collect it.
     / `middleClicked()` / `scrolled(steps)` functions. Bar.qml's wrapper
     calls them, and undeclared buttons fall through to the dead zone.
   - A `tooltip` property gets the bar's shared popup.
+  - Default clicks (ROADMAP M8, D6): left opens control-center at the module's
+    section via `PanelManager.open()`; a module's quick action (mute, DND,
+    play/pause) is on right click.
 - Animation durations and easing come from `quickshell/config/Motion.qml`
   (ROADMAP F4: `Motion.fast/normal/slow`, `Motion.standard/enter/exit/emphasized`,
   all derived from `[motion]`, 0 ms when motion is off). Never write a duration
@@ -468,11 +471,13 @@ Items below are the headline ones; the roadmap is the complete list.
   is not built.
 - **Bar Dead Zone settings**: click actions on empty bar space are hardcoded (right
   click → control-center); no config key or tab yet.
-- **Bar widget click model (M8)**: F5's wrapper dispatches clicks, but no
-  module's left click opens its control-center section yet (backlog #28). A
-  right click that a module doesn't declare falls through to the dead zone,
-  which opens control-center at Home. That is most likely what はる reported
-  on 2026-10-02 ("control-center opens, but not the module's section"). Which
+- **Bar widget click model (M8)**: D6's defaults are built (left → the module's
+  control-center section, right → its quick action), but hardcoded; the
+  per-widget configuration D6 adopted (gear panel + M12's action registry) isn't
+  built. A right click that a module doesn't declare still falls through to the
+  dead zone, which opens control-center at Home. Before M8 that was the only way
+  a bar click reached control-center, and most likely what はる reported on
+  2026-10-02 ("control-center opens, but not the module's section"). Which
   button actually reached the bar wasn't checked on the machine.
 - **Window gaps have no Settings UI**: `[layout] gap_inner/gap_outer` + dwm's
   `setgappih`/`setgappoh` IPC exist (`a941b03`), but they're only pushed once at
@@ -507,6 +512,8 @@ Items below are the headline ones; the roadmap is the complete list.
   - F5's bar widget wrapper (shared label/icon components, click slots,
     tooltips). Under Xvfb the bar is pixel-identical to master and every
     module click does the same as on master.
+  - M8's default bar clicks (left → control-center section, right → quick
+    action).
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).

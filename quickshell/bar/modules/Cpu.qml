@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Io
 import "../../config"
 import "../widgets"
+import "../../services"
 
 // CPU usage from /proc/stat's aggregate "cpu" line, as a percentage over the
 // interval since the last poll (a single snapshot of /proc/stat's counters
@@ -66,5 +67,12 @@ Item {
             text: root.usagePercent + "%"
             stateColor: root.warning ? Theme.warning : Theme.textMuted
         }
+    }
+
+    // Click slot for Bar.qml's widget wrapper (ROADMAP F5): left opens
+    // control-center at System (M8, D6). Right click isn't declared, so it
+    // falls through to the bar's dead zone.
+    function leftClicked() {
+        PanelManager.open("control-center", "System");
     }
 }

@@ -8,7 +8,8 @@ import "sections"
 
 // Control-center ("Home") panel: toggled by `xidou msg panel-toggle
 // control-center` (dwm's super+e bind, xidouwm/config.h) or a right-click on the
-// bar's dead zone (Bar.qml), via PanelManager.isOpen() — which also ensures
+// bar's dead zone (Bar.qml), and opened at a section by a bar module's left
+// click (ROADMAP M8), via PanelManager.isOpen() — which also ensures
 // opening this closes any other dock panel (Launcher, etc.) instead of
 // leaving both stacked.
 //

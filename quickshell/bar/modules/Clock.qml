@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import "../../config"
 import "../widgets"
+import "../../services"
 
 // Time display + [bar_widgets.clock] overrides (time_format, timezone) --
 // distinct from any shared [clock]-style table since nothing else in the
@@ -90,5 +91,12 @@ Item {
         anchors.centerIn: parent
         text: root.useSystemTz ? clock.date.toLocaleTimeString(Qt.locale(), root.localFormatString) : root.tzLabel
         anchors.verticalCenter: undefined
+    }
+
+    // Click slot for Bar.qml's widget wrapper (ROADMAP F5): left opens
+    // control-center at Calendar (M8, D6). Right click isn't declared, so it
+    // falls through to the bar's dead zone.
+    function leftClicked() {
+        PanelManager.open("control-center", "Calendar");
     }
 }

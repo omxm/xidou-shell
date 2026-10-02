@@ -255,7 +255,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 16 | GTK settings (nwg-look) inside Settings | Not started | M6 |
 | 17 | Screen Time in control-center | Placeholder only | M20 |
 | 18 | System monitor in control-center | **Partial**: CPU/mem/disk exist | M13 |
-| 19 | Widget overhaul | **Partial**: bar-wide styling layer, capsules, hover, per-widget sections done (`a941b03`); shared widget components, click/scroll slots and tooltips done (F5, `4dd15e4`); the M8 click model not | F5, M8, M9 |
+| 19 | Widget overhaul | **Partial**: bar-wide styling layer, capsules, hover, per-widget sections done (`a941b03`); shared widget components, click/scroll slots and tooltips done (F5, `4dd15e4`); M8's default click actions on a branch, its configuration not | F5, M8, M9 |
 | 20 | Overview / window switcher (`super+Tab`) | Not started (dwm bind reserved; no IpcHandler listens) | M14, H2 |
 | 21 | Workspaces: only occupied/focused, styles, numbers vs dots | **Done** (hide_when_empty, regular/minimal/focus_hint, icons) | — |
 | 22 | Tray drawer (collapsible), open/closed default | Not started (Tray's gear panel has icon size only); right-click still has no menu | M7 |
@@ -264,7 +264,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Done**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) and change 2 (socket in `$XDG_RUNTIME_DIR`), both confirmed on the X1CG5. L15 (socket removed on exit): implemented, not confirmed on the real machine. No picom fork (1.5) | H8 |
 | 26 | Make config easier to change | Mostly = Settings panel; concrete remainder | L10 |
 | 27 | Big list of bar widgets | 12 exist (logo, workspaces, media, clock, weather, tray, mem, cpu, bluetooth, volume, dnd, power); the rest are new | L8, M11, section 6 |
-| 28 | Left-click → CC page, right-click → configurable action | Not started | F2, M8 |
+| 28 | Left-click → CC page, right-click → configurable action | **Partial** (branch `claude/m8-click-model`): fixed defaults per D6 (left → CC section, right → today's quick action). Not configurable yet | F2, M8 |
 | 29 | Choose which CC sections are shown | Not started | L6 |
 | 30 | Theme export/import | Not started | M17 |
 | 31 | Unlimited bars, bar export/import/duplicate | Not started | H1 |
@@ -768,7 +768,27 @@ with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
 - Verify: `[SESSION]` (tray items and menus need real apps; menus as popups on X11 are
   exactly the kind of thing that behaves differently under Xvfb).
 
-**M8 — Widget click model**
+**M8 — Widget click model** — **Partial** (branch `claude/m8-click-model`; checked under Xvfb, not confirmed on the real machine)
+- Built: D6's defaults, hardcoded in each module's F5 click slots.
+  - Left click opens control-center at the module's section with
+    `PanelManager.open()` (F2): Volume → Audio, Media → Media, Clock → Calendar,
+    Weather → Weather, Bluetooth → Bluetooth, Power → Power, Mem/CPU → System,
+    DND → Notifications.
+  - The old left-click actions moved to right click: Volume mute, DND toggle,
+    Media play/pause. Right click on the other modules still falls through to
+    the dead zone (control-center at Home, or closes it if open).
+  - Logo, Workspaces and Tray are unchanged (no section; tags and tray icons keep
+    their own clicks).
+  - Choices D6 left open, made the simplest way: all modules in one change; a
+    second left click on the same module leaves control-center open (nothing new
+    in PanelManager, `open()` doesn't toggle); a left click on another module
+    while it's open switches section in place.
+- Checked under Xvfb, with master as the baseline: the bar is pixel-identical;
+  every module × left/right/middle click (section read from the sidebar
+  highlight); switching section while open; right click while open; Escape
+  closes; tag clicks still work.
+- What's left: the per-widget configuration D6 adopted (gear panel, each slot
+  picking from M12's action registry), and middle/scroll defaults.
 - What: every widget gets left/right/middle/scroll slots. Default per D6: left → its CC
   section, right → its quick action (e.g. Volume: right = mute, which is today's left).
   Each slot picks from an action registry (shared with Switchboard, M12).
