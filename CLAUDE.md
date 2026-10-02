@@ -102,6 +102,9 @@ Read-only survey; nothing was changed to collect it.
   (`event13`). Driven by `xf86-input-libinput` 1.5.0 / libinput 1.32.0
   (`xf86-input-synaptics` isn't installed), configured by
   `/etc/X11/xorg.conf.d/90-xidou-touchpad.conf`.
+  - Click method is libinput's default **button areas** (`libinput Click Method
+    Enabled` = `1, 0`, read 2026-10-02), so pressing in the pad's lower-right
+    area is a right click. Tapping is off. Nothing in the repo sets either.
 - **Input group:** the user is **not** in `input` (groups: haru, sys, video, lp,
   wheel). `/dev/input/event*` is `root:input` 660, so gesture tools that read
   evdev (libinput-gestures, `libinput debug-events`) can't run as the user yet.
@@ -465,10 +468,12 @@ Items below are the headline ones; the roadmap is the complete list.
   is not built.
 - **Bar Dead Zone settings**: click actions on empty bar space are hardcoded (right
   click → control-center); no config key or tab yet.
-- **Bar widget click model**: there's no shared left/right/middle/scroll dispatch in
-  `capsuleModuleComponent` (it only has a `HoverHandler`). The five modules that
-  react to clicks each carry their own `MouseArea`. The bar-wide widget styling
-  expressions are repeated in 11 of the 12 module files (all but Dnd).
+- **Bar widget click model (M8)**: F5's wrapper dispatches clicks, but no
+  module's left click opens its control-center section yet (backlog #28). A
+  right click that a module doesn't declare falls through to the dead zone,
+  which opens control-center at Home. That is most likely what はる reported
+  on 2026-10-02 ("control-center opens, but not the module's section"). Which
+  button actually reached the bar wasn't checked on the machine.
 - **Window gaps have no Settings UI**: `[layout] gap_inner/gap_outer` + dwm's
   `setgappih`/`setgappoh` IPC exist (`a941b03`), but they're only pushed once at
   session start by an `awk` block in `session/xidou-xinitrc`.
@@ -499,6 +504,9 @@ Items below are the headline ones; the roadmap is the complete list.
   `super+Return` not stealing input under the lock, F1 (client metadata over
   IPC), F2 (opening control-center at a section), and the Health tab (M16)
   opening and showing its checks.
+  - F5's bar widget wrapper (shared label/icon components, click slots,
+    tooltips). Under Xvfb the bar is pixel-identical to master and every
+    module click does the same as on master.
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).

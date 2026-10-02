@@ -71,6 +71,7 @@ it. What the code now actually has:
 - **`capsuleModuleComponent`** in `Bar.qml` now wraps every module (capsule background,
   content scale, hover highlight via `HoverHandler`). It does *not* dispatch clicks:
   each module still owns its own `MouseArea`. That makes F5 smaller than planned.
+  *(Changed by F5: the wrapper now dispatches clicks to module-declared slots.)*
 - **New, not mentioned in CLAUDE.md:** window gaps. `[layout] gap_inner/gap_outer` in
   config, `setgappih`/`setgappoh` dwm IPC commands, and an `awk` block in
   `session/xidou-xinitrc` that pushes them once at session start. No Settings UI yet —
@@ -254,7 +255,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 16 | GTK settings (nwg-look) inside Settings | Not started | M6 |
 | 17 | Screen Time in control-center | Placeholder only | M20 |
 | 18 | System monitor in control-center | **Partial**: CPU/mem/disk exist | M13 |
-| 19 | Widget overhaul | **Partial**: bar-wide styling layer, capsules, hover, per-widget sections done (`a941b03`); click model and shared widget components not | F5, M8, M9 |
+| 19 | Widget overhaul | **Partial**: bar-wide styling layer, capsules, hover, per-widget sections done (`a941b03`); shared widget components, click/scroll slots and tooltips done (F5, `4dd15e4`); the M8 click model not | F5, M8, M9 |
 | 20 | Overview / window switcher (`super+Tab`) | Not started (dwm bind reserved; no IpcHandler listens) | M14, H2 |
 | 21 | Workspaces: only occupied/focused, styles, numbers vs dots | **Done** (hide_when_empty, regular/minimal/focus_hint, icons) | — |
 | 22 | Tray drawer (collapsible), open/closed default | Not started (Tray's gear panel has icon size only); right-click still has no menu | M7 |
@@ -422,7 +423,7 @@ Small things that unblock or de-risk everything else. Do these first.
 - **Why before M21:** same reasoning as "never hardcode a color" — otherwise the
   Motion System ends up being a search-and-replace later.
 
-### F5 Common bar widget wrapper — Moderate `[CLOUD]` — **Done** (branch `claude/f5-bar-widgets`; checked under Xvfb, not confirmed on the real machine)
+### F5 Common bar widget wrapper — Moderate `[CLOUD]` — **Done** (merged as `4dd15e4`; implemented, not confirmed on the real machine. Under Xvfb the bar is pixel-identical to master.)
 - Built, all three parts:
   - **Shared components.** `bar/widgets/BarLabel.qml` and `BarIcon.qml` own the
     font family/weight/scale and color fallbacks. All 20 module texts use them;
