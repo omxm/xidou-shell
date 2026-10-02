@@ -247,7 +247,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 8 | Screenshot settings | **Done** (L3 merged as `8ca7e24`; implemented, not confirmed on the real machine) | L3 |
 | 9 | Lock screen | **Done**, closed by はる's call with four accepted limitations (1.2). Shipped via #3 (`1fb3a33`): per-screen coverage, always on top, panel/IPC refusal while locked, dwm lock mode, and the redesign. Not addressed: X grab, fail-open if Quickshell dies, lock on suspend, VT switching. | M1 |
 | 10 | Settings panel separate from control-center | **Done** | — |
-| 11 | Bar customization (general … dead zone) | **Done** for General/Layout/Shape/Effects/Widgets/Capsules (`a941b03`). **Partial** for Widget List (on/off, lane moves, up/down reorder — no lane tabs, add-picker, multi-select, drag). Dead Zone UI **not started** (1.1). | M9, M10, section 6 |
+| 11 | Bar customization (general … dead zone) | **Done** for General/Layout/Shape/Effects/Widgets/Capsules (`a941b03`). Widget List **done** per D25 (M9: lane tabs, "+" add-picker, multi-select remove, up/down; no drag). Dead Zone UI **not started** (1.1). | M9, M10, section 6 |
 | 12 | Battery widget (health, AC, profile, time, thresholds, laptop/desktop detect) | **Partial**: CC Power shows %, status, time, health; bar shows % + icon; `hasBattery` check exists | M3 |
 | 13 | `super+Esc` session menu with 1–5 keys | **Done** except slot 3 | L2 |
 | 14 | Idle settings with gradual dimming | Not started | M2 |
@@ -810,7 +810,20 @@ with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
   Each slot picks from an action registry (shared with Switchboard, M12).
 - Depends on: F2, F5. Verify: `[CLOUD]`.
 
-**M9 — Widget List UX (the backlog's "widget list" tab)**
+**M9 — Widget List UX (the backlog's "widget list" tab)** — **Done** per D25 (2026-10-02, on master; checked under Xvfb, not confirmed on the real machine)
+- Built: Settings > Bar > Modules shows one lane at a time behind Start /
+  Center / End tabs, in bar order, each row with a checkbox, up/down and the
+  gear. "Remove (n)" takes the ticked modules off the bar in one write. "+"
+  lists the modules that are off the bar, most often added first
+  (UsageStats' new `widgets` namespace, then catalog order), and appends
+  the pick to the current lane. The old On/Off toggles and the Disabled box
+  are gone; a line under each lane names what's off the bar.
+- A row reads Overridden when its module sits outside its default lane
+  (reset moves it back); Reset Page restores all three arrays.
+- No drag-and-drop (D25). Moving between lanes stays in the gear panel.
+- Checked under Xvfb: lane tabs, ticking two and removing them (one write;
+  the bar updates), "+" adding into the current lane, the picker's order
+  after repeated adds, an empty picker, Reset Page.
 - What: Start / Center / End sub-tabs; each lists its modules in order with drag handle,
   checkbox (multi-select delete), and gear. "+" at the top right of each tab opens an
   add-picker sorted by previously-added / frequency (reuse `UsageStats.qml`, as the
@@ -2320,8 +2333,8 @@ every day, then looks, then big bets. Within a milestone, order is flexible.
 ~~M1~~ (closed, 1.2), ~~F1~~, ~~F2~~, ~~F4~~, ~~M16~~ (Health — cheap, and it's the philosophy).
 
 **Milestone B — the bar, finished properly**
-~~F5~~ (shared components first), ~~M12's action registry~~ (the list, before its UI), M8,
-M9, M10, M7, L8, L12, L14, M3. The styling layer is done; this milestone is about
+~~F5~~ (shared components first), ~~M12's action registry~~ (the list, before its UI), ~~M8~~ (scroll left),
+~~M9~~, M10, M7, L8, L12, L14, M3. The styling layer is done; this milestone is about
 behavior and adding widgets.
 
 **Milestone C — daily comfort**

@@ -3,34 +3,22 @@ import "../../config"
 import "../../services"
 import ".." as Settings
 
-// Bar > Modules: on/off per module, per はる's explicit scope call --
-// membership in modules_left/modules_center/modules_right, nothing about
-// order. Bar.qml has no per-module "enabled" flag; a module's visibility
-// is purely "does its name string appear in one of the three arrays," so
-// toggling isn't a plain Config.setValue(tableHeader, key, value) the way
-// every other control so far has been -- SettingRow's customOverridden/
-// customReset exist specifically for this.
+// Bar > Modules (ROADMAP M9, D25). Bar.qml has no per-module "enabled"
+// flag: a module shows when its name is in modules_left/center/right, so
+// every control here is array surgery on those three keys (SettingRow's
+// customOverridden/customReset exist for exactly this).
 //
-// Off: remove the name from wherever it currently sits, whichever array
-// that is, leaving everything else in that array (order included)
-// untouched. On: append to the end of its *default* section's array -- this
-// never tries to restore an exact prior position, there being no memory of
-// what that was once a module's been toggled off.
-//
-// Each row also gets a gear icon opening a per-widget detail panel, whose
-// Start/Center/End buttons move a module BETWEEN lanes (modules_left/
-// center/right array surgery, same as enableModule/disableModule). Real
-// per-widget content (Weather's max length/show-condition, etc.) lives here
-// too, gated per-widget on whether the underlying value has real backing.
-//
-// In-lane reordering (moveWithinLane/canMoveWithinLane below) is a separate
-// axis from that Start/Center/End move: up/down arrow buttons per row, not
-// drag-and-drop -- QML's Drag/DropArea combo is real work (drop-target
-// hit-testing, autoscroll, a ghost/placeholder row) for a benefit this list
-// doesn't need, since the flat catalog above isn't even displayed grouped by
-// lane. A swap-with-neighbor button pair is a two-line Config.setValue and
-// reuses the exact same array-surgery pattern moveModuleToSection already
-// established.
+// - Start / Center / End tabs show one lane at a time, in bar order. Up/down
+//   swap a module with its neighbor in that lane; no drag-and-drop (D25:
+//   buttons first, add drag only if it still feels missing).
+// - Checkboxes + "Remove (n)" take modules off the bar in one write.
+// - "+" lists the modules that are off the bar, most often added first
+//   (UsageStats' "widgets" namespace), and appends the pick to this lane.
+// - The gear opens the per-widget panel: Start/Center/End moves a module
+//   between lanes (appended at the end), plus its clicks (M8) and its own
+//   settings where they have backing.
+// - A row reads Overridden when its module sits outside its default lane;
+//   reset moves it back. Reset Page restores all three arrays exactly.
 Item {
     id: root
 
@@ -88,23 +76,6 @@ Item {
         return null;
     }
 
-    function disableModule(name) {
-        root.sectionKeys.forEach(function (key) {
-            var arr = Config.data.bar[key];
-            if (arr.indexOf(name) !== -1)
-                Config.setValue("bar", key, arr.filter(function (n) { return n !== name; }));
-        });
-    }
-
-    function enableModule(name) {
-        if (root.isEnabled(name))
-            return;
-        var section = root.defaultSectionOf[name];
-        if (!section)
-            return;
-        Config.setValue("bar", section, Config.data.bar[section].concat([name]));
-    }
-
     // Moves (and, as a side effect, enables) a module straight into
     // targetKey's array, appended at the end -- removing it from wherever
     // it currently sits first. "Put this widget at Start" is a reasonable
@@ -121,14 +92,10 @@ Item {
         Config.setValue("bar", targetKey, Config.data.bar[targetKey].concat([name]));
     }
 
-    // Reordering WITHIN a lane -- distinct from moveModuleToSection above
-    // (which moves a module BETWEEN lanes, always appending at the target
-    // lane's end). This swaps a module with its immediate neighbor inside
-    // its own current lane's array, which is the only thing that actually
-    // controls render order (moduleList above is a fixed catalog, not
-    // display order -- the flat list UI doesn't visually group by lane, so
-    // these buttons operate on the underlying array directly rather than on
-    // list-adjacent rows, which may belong to a different lane entirely).
+    // Reordering WITHIN a lane, distinct from moveModuleToSection above
+    // (which moves a module BETWEEN lanes, appending at the end): swaps a
+    // module with its neighbor in its own lane's array, which is what sets
+    // render order.
     function canMoveWithinLane(name, delta) {
         var section = root.currentSectionOf(name);
         if (!section)
@@ -180,17 +147,70 @@ Item {
     }
 
     // Names not in any of the three lane arrays, in moduleList's fixed
-    // catalog order -- shown in their own "Disabled" section below the
-    // three lanes so a toggled-off widget doesn't just disappear with no
-    // way back short of remembering its name.
+    // catalog order. They're off the bar; the "+" picker adds them back.
     readonly property var disabledModules: root.moduleList
         .map(function (m) { return m.name; })
         .filter(function (name) { return !root.isEnabled(name); })
 
-    // One row's markup, reused by both the three lane Repeaters and the
-    // Disabled section's Repeater below -- modelData is the module's name
-    // string either way (a lane's own Config.data.bar[key] array, or
-    // root.disabledModules).
+    // Lane tabs (ROADMAP M9, D25): the list shows one lane at a time, in
+    // its real order, so the up/down buttons move rows the user can see
+    // next to each other.
+    property int laneIndex: 0
+    readonly property string laneKey: root.sectionKeys[root.laneIndex]
+
+    // Rows ticked for removal (names, current lane only), and whether the
+    // "+" picker is showing instead of the lane's rows. Both reset on a
+    // lane switch.
+    property var selected: []
+    property bool picking: false
+
+    onLaneIndexChanged: {
+        root.selected = [];
+        root.picking = false;
+    }
+
+    function isSelected(name) {
+        return root.selected.indexOf(name) !== -1;
+    }
+
+    function toggleSelected(name) {
+        SoundFx.play("option_select");
+        root.selected = root.isSelected(name)
+            ? root.selected.filter(function (n) { return n !== name; })
+            : root.selected.concat([name]);
+    }
+
+    // One write for the whole selection.
+    function removeSelected() {
+        var names = root.selected;
+        var arr = Config.data.bar[root.laneKey].filter(function (n) {
+            return names.indexOf(n) === -1;
+        });
+        SoundFx.play("item_remove");
+        root.selected = [];
+        Config.setValue("bar", root.laneKey, arr);
+    }
+
+    // Appends a module that's off the bar to the current lane's end, and
+    // counts the add so the picker lists often-added widgets first.
+    function addToLane(name) {
+        if (root.isEnabled(name))
+            return;
+        SoundFx.play("item_add");
+        UsageStats.recordUse("widgets", name);
+        root.picking = false;
+        Config.setValue("bar", root.laneKey, Config.data.bar[root.laneKey].concat([name]));
+    }
+
+    // The "+" picker's list: off-the-bar modules, most often added first,
+    // catalog order otherwise.
+    readonly property var pickerModules: root.disabledModules.slice().sort(function (x, y) {
+        var byCount = UsageStats.getCount("widgets", y) - UsageStats.getCount("widgets", x);
+        return byCount !== 0 ? byCount : root.disabledModules.indexOf(x) - root.disabledModules.indexOf(y);
+    })
+
+    // One lane row: checkbox, name (Overridden when the module sits in a
+    // lane other than its default one; reset moves it back), up/down, gear.
     Component {
         id: moduleRowComponent
 
@@ -202,31 +222,44 @@ Item {
             height: moduleRow.height
             spacing: Theme.fontSize / 2
 
-            Settings.SettingRow {
-                id: moduleRow
-                width: parent.width - reorderButtons.width - gearButton.width - parent.spacing * 2
-                label: root.labelFor(moduleRowWrapper.modelData)
-                showOverriddenOnly: root.showOverriddenOnly
-                customOverridden: !root.isEnabled(moduleRowWrapper.modelData)
-                customReset: function () {
-                    root.enableModule(moduleRowWrapper.modelData);
+            Rectangle {
+                id: checkBox
+                anchors.verticalCenter: moduleRow.verticalCenter
+                visible: moduleRow.visible
+                width: Theme.fontSize * 1.3
+                height: width
+                radius: Theme.radius / 3
+                readonly property bool checked: root.isSelected(moduleRowWrapper.modelData)
+                color: checked ? Theme.accent : Theme.surfaceAlt
+                border.width: 1
+                border.color: checked ? Theme.accent : Theme.border
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: checkBox.checked
+                    text: "" // check (verified via fontTools, same codepoint as ScreenshotConfirm.qml)
+                    color: Theme.background
+                    font.family: Theme.iconFontFamily
+                    font.pixelSize: Theme.fontSize * 0.9
                 }
 
-                Settings.OptionRow {
-                    width: parent.width
-                    options: [
-                        { value: true, label: "On" },
-                        { value: false, label: "Off" }
-                    ]
-                    currentValue: root.isEnabled(moduleRowWrapper.modelData)
-                    onSound: "item_add"
-                    offSound: "item_remove"
-                    onOptionSelected: (value) => {
-                        if (value)
-                            root.enableModule(moduleRowWrapper.modelData);
-                        else
-                            root.disableModule(moduleRowWrapper.modelData);
-                    }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.toggleSelected(moduleRowWrapper.modelData)
+                }
+            }
+
+            Settings.SettingRow {
+                id: moduleRow
+                width: parent.width - checkBox.width - reorderButtons.width - gearButton.width - parent.spacing * 3
+                label: root.labelFor(moduleRowWrapper.modelData)
+                showOverriddenOnly: root.showOverriddenOnly
+                customOverridden: root.currentSectionOf(moduleRowWrapper.modelData) !== root.defaultSectionOf[moduleRowWrapper.modelData]
+                customReset: function () {
+                    var section = root.defaultSectionOf[moduleRowWrapper.modelData];
+                    if (section)
+                        root.moveModuleToSection(moduleRowWrapper.modelData, section);
                 }
             }
 
@@ -318,124 +351,184 @@ Item {
         }
     }
 
-    // One boxed header + its Repeater, reused per lane -- a separate
-    // Rectangle per section (not one shared header row) so each lane reads
-    // as its own visually distinct group, matching the boxed-per-lane shape
-    // of the Noctalia reference screenshots はる pointed to, rather than the
-    // single flat list this replaced (which gave no visual indication at
-    // all of which lane a module was actually in).
-    Component {
-        id: laneSectionComponent
+    // A small header button ("+", "Remove (n)").
+    component HeaderButton: Rectangle {
+        id: headerButton
+        property string text: ""
+        property string iconText: ""
+        property bool highlighted: false
+        signal clicked()
 
-        Column {
-            id: laneSection
-            required property string modelData
+        width: Math.max(height, buttonRow.implicitWidth + Theme.fontSize)
+        height: Theme.fontSize * 1.8
+        radius: Theme.radius / 2
+        color: highlighted ? Theme.accent : Theme.surfaceAlt
+        border.width: 1
+        border.color: highlighted ? Theme.accent : Theme.border
 
-            width: parent.width
-            spacing: Theme.fontSize / 2
+        Row {
+            id: buttonRow
+            anchors.centerIn: parent
+            spacing: Theme.fontSize / 4
 
-            Rectangle {
-                width: parent.width
-                height: Theme.fontSize * 1.8
-                radius: Theme.radius / 2
-                color: Theme.surface
-                border.width: 1
-                border.color: Theme.border
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: Theme.fontSize / 2
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.sectionLabels[laneSection.modelData]
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSize * 0.95
-                    font.bold: true
-                }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: headerButton.iconText !== ""
+                text: headerButton.iconText
+                color: headerButton.highlighted ? Theme.background : Theme.text
+                font.family: Theme.iconFontFamily
+                font.pixelSize: Theme.fontSize
             }
 
-            Column {
-                // Column.leftPadding shifts children's x without shrinking
-                // the width they measure themselves against -- each row
-                // below still computes its own width from *this* Column's
-                // width, so padding alone pushed every row's right edge
-                // (arrows + gear) past the lane box's border by leftPadding
-                // pixels. An explicit x/width inset keeps rows' actual
-                // available width in sync with where they're drawn.
-                x: Theme.fontSize / 2
-                width: parent.width - Theme.fontSize / 2
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: headerButton.text !== ""
+                text: headerButton.text
+                color: headerButton.highlighted ? Theme.background : Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSize * 0.85
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: headerButton.clicked()
+        }
+    }
+
+    Column {
+        anchors.fill: parent
+        spacing: Theme.fontSize / 2
+        visible: root.editingModule === ""
+
+        Item {
+            id: laneHeader
+            width: parent.width
+            height: Theme.fontSize * 2.2
+
+            Settings.SubTabBar {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                tabs: root.sectionKeys.map(function (key) { return root.sectionLabels[key]; })
+                selectedIndex: root.laneIndex
+                onTabClicked: (index) => root.laneIndex = index
+            }
+
+            Row {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.fontSize / 2
 
+                HeaderButton {
+                    visible: root.selected.length > 0 && !root.picking
+                    text: "Remove (" + root.selected.length + ")"
+                    onClicked: root.removeSelected()
+                }
+
+                HeaderButton {
+                    iconText: "" // add (verified via fontTools, same codepoint as StringListEditor.qml)
+                    highlighted: root.picking
+                    onClicked: {
+                        SoundFx.play(root.picking ? "gear_close" : "gear_open");
+                        root.selected = [];
+                        root.picking = !root.picking;
+                    }
+                }
+            }
+        }
+
+        Flickable {
+            width: parent.width
+            height: parent.height - laneHeader.height - parent.spacing
+            contentWidth: width
+            contentHeight: listColumn.height
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            Column {
+                id: listColumn
+                width: parent.width
+                spacing: Theme.fontSize / 2
+
+                // The lane's modules, in bar order.
                 Repeater {
-                    model: Config.data.bar[laneSection.modelData]
+                    model: root.picking ? [] : Config.data.bar[root.laneKey]
                     delegate: moduleRowComponent
                 }
 
                 Text {
-                    visible: Config.data.bar[laneSection.modelData].length === 0
-                    text: "No widgets in this lane"
+                    visible: !root.picking && Config.data.bar[root.laneKey].length === 0
+                    text: "No widgets in this lane. Add one with +."
                     color: Theme.textMuted
                     font.family: Theme.fontFamily
                     font.italic: true
                     font.pixelSize: Theme.fontSize * 0.9
                 }
-            }
-        }
-    }
 
-    Flickable {
-        anchors.fill: parent
-        contentWidth: width
-        contentHeight: outerColumn.height
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        visible: root.editingModule === ""
-
-        Column {
-            id: outerColumn
-            width: parent.width
-            spacing: Theme.fontSize
-
-            Repeater {
-                model: root.sectionKeys
-                delegate: laneSectionComponent
-            }
-
-            Column {
-                width: outerColumn.width
-                spacing: Theme.fontSize / 2
-                visible: root.disabledModules.length > 0
-
-                Rectangle {
+                Text {
+                    visible: !root.picking && root.disabledModules.length > 0
                     width: parent.width
-                    height: Theme.fontSize * 1.8
-                    radius: Theme.radius / 2
-                    color: Theme.surface
-                    border.width: 1
-                    border.color: Theme.border
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: Theme.fontSize / 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Disabled"
-                        color: Theme.textMuted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSize * 0.95
-                        font.bold: true
-                    }
+                    wrapMode: Text.WordWrap
+                    text: root.disabledModules.length + (root.disabledModules.length === 1 ? " widget is" : " widgets are") + " off the bar: " + root.disabledModules.map(root.labelFor).join(", ") + ". + adds one to this lane."
+                    color: Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSize * 0.8
                 }
 
-                Column {
-                    // Same x/width inset as the lane sections above, same
-                    // reason -- leftPadding alone overflows the box.
-                    x: Theme.fontSize / 2
-                    width: parent.width - Theme.fontSize / 2
-                    spacing: Theme.fontSize / 2
+                // "+" picker: widgets that are off the bar.
+                Text {
+                    visible: root.picking
+                    text: root.pickerModules.length > 0 ? "Add to " + root.sectionLabels[root.laneKey] : "Every widget is already on the bar."
+                    color: root.pickerModules.length > 0 ? Theme.text : Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSize * 0.95
+                    font.bold: root.pickerModules.length > 0
+                }
 
-                    Repeater {
-                        model: root.disabledModules
-                        delegate: moduleRowComponent
+                Repeater {
+                    model: root.picking ? root.pickerModules : []
+
+                    delegate: Rectangle {
+                        id: pickerRow
+                        required property string modelData
+
+                        width: listColumn.width
+                        height: Theme.fontSize * 2.2
+                        radius: Theme.radius / 2
+                        color: pickerHover.hovered ? Theme.surfaceAlt : "transparent"
+                        border.width: 1
+                        border.color: Theme.border
+
+                        HoverHandler {
+                            id: pickerHover
+                        }
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: Theme.fontSize / 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: root.labelFor(pickerRow.modelData)
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSize
+                        }
+
+                        Text {
+                            anchors.right: parent.right
+                            anchors.rightMargin: Theme.fontSize / 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: ""
+                            color: Theme.textMuted
+                            font.family: Theme.iconFontFamily
+                            font.pixelSize: Theme.fontSize
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.addToLane(pickerRow.modelData)
+                        }
                     }
                 }
             }

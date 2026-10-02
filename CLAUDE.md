@@ -432,17 +432,18 @@ panel that wasn't in the original plan:
     anywhere on the bar — a `HoverHandler` + highlight `Rectangle` added to the same
     `capsuleModuleComponent` wrapper Capsules already introduced, working whether
     Capsules are on or off). This completes all 8 of the original Bar tabs: General,
-    Layout, Shape, Effects, Widgets, Capsules. Widget List is on/off + lane moves +
-    up/down reorder (see Modules below); Dead Zone is NOT done — only a hardcoded
+    Layout, Shape, Effects, Widgets, Capsules. Widget List is lane tabs + add-picker +
+    multi-select remove + up/down (ROADMAP M9, see Modules below); Dead Zone is NOT done — only a hardcoded
     right-click → control-center handler, `Bar.qml`'s `handleDeadZoneClick()`, with no
     config key or Settings UI.), and Modules (per-module list with a gear icon opening a
     per-widget detail panel — Workspaces, Clock, Weather, Media, Volume, Bluetooth,
     Tray, Mem, CPU, and Power all have real Widget sections built out; Logo and DND
     are the two modules still falling back to `PlaceholderTab` inside that per-widget
-    panel). The Modules list also supports in-lane reordering (up/down arrow buttons
-    per row, swapping with the adjacent module in the same lane's array) — distinct
-    from the gear panel's Start/Center/End buttons, which move a module *between*
-    lanes. Capsules (`[bar.capsules]`, bar-wide): Widget Capsules on/off, Thickness,
+    panel). The Modules list (ROADMAP M9) shows one lane per Start/Center/End tab:
+    checkboxes + "Remove (n)", a "+" picker of the modules that are off the bar
+    (most often added first, UsageStats' `widgets` namespace), and up/down to
+    reorder within the lane. The gear panel's Start/Center/End buttons move a
+    module *between* lanes. Capsules (`[bar.capsules]`, bar-wide): Widget Capsules on/off, Thickness,
     Radius, Fill (Theme role), Padding, Border, Opacity — wraps every module's
     background in a pill shape via `Bar.qml`'s shared `capsuleModuleComponent`. Bar-wide
     only; a per-widget Presentation override layer (letting one module opt out of or
@@ -529,6 +530,7 @@ Items below are the headline ones; the roadmap is the complete list.
     module click does the same as on master.
   - M12's other Switchboard tiles (Wi-Fi, Bluetooth, Caffeine, Night Light,
     Lock) and region screenshot, now run through the registry.
+  - M9's widget list (lane tabs, "+" picker, multi-select remove).
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).
