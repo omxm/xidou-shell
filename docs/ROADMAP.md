@@ -827,7 +827,7 @@ with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
 - Verify: mostly `[CLOUD]`; tailscale needs an account `[HW]`; privacy needs real mic
   `[SESSION]`.
 
-**M12 — Action registry (Switchboard keeps its grid — D5)** — **Registry done** (branch `claude/m12-action-registry`; checked under Xvfb, not confirmed on the real machine)
+**M12 — Action registry (Switchboard keeps its grid — D5)** — **Registry done** (merged as `8bdae2c`). On the X1CG5 (2026-10-02), はる ran the three checks (Switchboard DND/Mute, the ctrl+<arrow> media keys, Volume left/right click) and said "完璧です。確認/テスト済み". Not confirmed: the Wi-Fi, Bluetooth, Caffeine, Night Light and Lock tiles and region screenshot through the registry.
 - Built: `services/Actions.qml`, the list before any UI.
   - An entry is id, label, icon, keywords, `run()`, and optionally `active()`.
     `labelOf()`/`iconOf()`/`activeOf()` read a state-dependent label/icon/state
@@ -2304,7 +2304,7 @@ every day, then looks, then big bets. Within a milestone, order is flexible.
 ~~M1~~ (closed, 1.2), ~~F1~~, ~~F2~~, ~~F4~~, ~~M16~~ (Health — cheap, and it's the philosophy).
 
 **Milestone B — the bar, finished properly**
-~~F5~~ (shared components first), M12's action registry (the list, before its UI; on a branch), M8,
+~~F5~~ (shared components first), ~~M12's action registry~~ (the list, before its UI), M8,
 M9, M10, M7, L8, L12, L14, M3. The styling layer is done; this milestone is about
 behavior and adding widgets.
 

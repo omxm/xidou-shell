@@ -512,13 +512,15 @@ Items below are the headline ones; the roadmap is the complete list.
   socket move, panels keeping/returning focus, the directional tag slide,
   `super+Return` not stealing input under the lock, F1 (client metadata over
   IPC), F2 (opening control-center at a section), the Health tab (M16)
-  opening and showing its checks, and M8's default bar clicks (はる tried them
-  and said "いい感じで完璧" on 2026-10-02, with no per-item results).
+  opening and showing its checks, M8's default bar clicks (はる tried them
+  and said "いい感じで完璧" on 2026-10-02, with no per-item results), and M12's
+  action registry through Switchboard DND/Mute, the ctrl+<arrow> media keys
+  and Volume's clicks (はる: "完璧です。確認/テスト済み", 2026-10-02).
   - F5's bar widget wrapper (shared label/icon components, click slots,
     tooltips). Under Xvfb the bar is pixel-identical to master and every
     module click does the same as on master.
-  - M12's action registry, and the ctrl+<arrow> media keys reaching the player
-    (they never did before M12: the `mpris` IPC used `Mpris.players.length`).
+  - M12's other Switchboard tiles (Wi-Fi, Bluetooth, Caffeine, Night Light,
+    Lock) and region screenshot, now run through the registry.
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).
@@ -575,6 +577,24 @@ See also `/home/haru/.claude/projects/-home-haru-projects-xidou-shell/memory/MEM
 file is for project-level state, that one is for recurring implementation traps.
 
 ## Workflow / environment
+
+### Working agreement (since 2026-10-02)
+
+- **No feature branches.** Commit straight to `master` and push. If something
+  breaks, `git revert` it.
+- **Claude runs every command**: all git operations and anything typed on the
+  machine, including switching the working tree. はる never types commands.
+  - `/home/haru/projects/xidou-shell` is the tree the live session runs:
+    xinitrc execs `xidouwm/xidouwm` from it, and Quickshell runs
+    `quickshell -p` on its `quickshell/`. A commit there is what はる gets,
+    at the latest after the next logout/login.
+- **Ask はる only for**: checking something on screen, `sudo`, and logging
+  out/in.
+- **Reports are short**, with what はる has to decide or do at the top.
+- **Testing on the real machine is fine.** Use Xvfb/Xephyr only for anything
+  that restarts xidouwm, touches the lock screen or PAM, reboot/shutdown, or
+  the audio daemons. Put anything a real-machine test changes (mute, DND,
+  config values, and so on) back the way it was.
 
 - Primary development happens via SSH from the main desktop (Ryzen 7 5700X + RTX 4060,
   Artix + MangoWM + Noctalia v5) into the shell's own machine.
