@@ -507,13 +507,12 @@ Items below are the headline ones; the roadmap is the complete list.
   Confirmed on the X1CG5 are only: sound loudness, the XidouWM rename, the
   socket move, panels keeping/returning focus, the directional tag slide,
   `super+Return` not stealing input under the lock, F1 (client metadata over
-  IPC), F2 (opening control-center at a section), and the Health tab (M16)
-  opening and showing its checks.
+  IPC), F2 (opening control-center at a section), the Health tab (M16)
+  opening and showing its checks, and M8's default bar clicks (はる tried them
+  and said "いい感じで完璧" on 2026-10-02, with no per-item results).
   - F5's bar widget wrapper (shared label/icon components, click slots,
     tooltips). Under Xvfb the bar is pixel-identical to master and every
     module click does the same as on master.
-  - M8's default bar clicks (left → control-center section, right → quick
-    action).
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).
