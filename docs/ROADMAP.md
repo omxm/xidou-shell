@@ -79,7 +79,7 @@ it. What the code now actually has:
 
 Two things from the first pass still hold after the re-check:
 
-- **Dead Zone is not done.** CLAUDE.md says "Widget List and Dead Zone were already done
+- **Dead Zone is not done.** *(Resolved by M10.)* CLAUDE.md says "Widget List and Dead Zone were already done
   beforehand", but Dead Zone is still one hardcoded right-click → control-center handler
   (`Bar.qml` `handleDeadZoneClick`) with no config key and no Settings UI. M10 stands,
   and CLAUDE.md has been corrected.
@@ -247,7 +247,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 8 | Screenshot settings | **Done** (L3 merged as `8ca7e24`; implemented, not confirmed on the real machine) | L3 |
 | 9 | Lock screen | **Done**, closed by はる's call with four accepted limitations (1.2). Shipped via #3 (`1fb3a33`): per-screen coverage, always on top, panel/IPC refusal while locked, dwm lock mode, and the redesign. Not addressed: X grab, fail-open if Quickshell dies, lock on suspend, VT switching. | M1 |
 | 10 | Settings panel separate from control-center | **Done** | — |
-| 11 | Bar customization (general … dead zone) | **Done** for General/Layout/Shape/Effects/Widgets/Capsules (`a941b03`). Widget List **done** per D25 (M9: lane tabs, "+" add-picker, multi-select remove, up/down; no drag). Dead Zone UI **not started** (1.1). | M9, M10, section 6 |
+| 11 | Bar customization (general … dead zone) | **Done** for General/Layout/Shape/Effects/Widgets/Capsules (`a941b03`). Widget List **done** per D25 (M9: lane tabs, "+" add-picker, multi-select remove, up/down; no drag). Dead Zone **done** (M10). | M9, M10, section 6 |
 | 12 | Battery widget (health, AC, profile, time, thresholds, laptop/desktop detect) | **Partial**: CC Power shows %, status, time, health; bar shows % + icon; `hasBattery` check exists | M3 |
 | 13 | `super+Esc` session menu with 1–5 keys | **Done** except slot 3 | L2 |
 | 14 | Idle settings with gradual dimming | Not started | M2 |
@@ -837,7 +837,24 @@ with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
   dropped (decision D25).
 - Depends on: nothing now. Verify: `[CLOUD]` for logic; drag feel `[SESSION]`.
 
-**M10 — Dead Zone tab**
+**M10 — Dead Zone tab** — **Done** (2026-10-02, on master)
+- Built: `[bar.dead_zone]` `left_click` / `right_click` / `middle_click` /
+  `scroll_up` / `scroll_down`, each an action registry id ("" = nothing);
+  default right click = `control_center.toggle`, the old hardcoded behavior.
+  Bar.qml's dead-zone MouseArea accepts only buttons with an action, and a
+  WheelHandler with the widgets' notch accumulation does the scroll keys. A
+  widget button or wheel with no action of its own falls through to it.
+- New registry actions: `control_center.toggle`, `launcher.toggle`,
+  `settings.toggle`, `tag.previous` / `tag.next` (explicit tag bitmask from
+  DwmIpc's state, same lowest-selected ±1 wrap as dwm's `cycleview()`).
+- Settings > Bar > Dead Zone: five rows with M8's action picker. The sub-tab
+  strip, now 8 tabs wide and scrollable already, fades its right edge while
+  tabs are out of view.
+- Checked on the X1CG5 (by Claude, not はる): default right click toggles
+  control-center, left/middle/scroll do nothing by default, `tag.next` /
+  `tag.previous` incl. wrap 1 ↔ 9. Under Xvfb: the tab, picker writes,
+  left click → a section, scroll ↔ tags, scroll and right click falling
+  through from a widget, Reset Page. Not confirmed by はる.
 - What: Bar > Dead Zone: left / right / middle click and scroll up/down on empty bar
   space each pick an action from the registry ("not set", toggle settings, toggle CC,
   launcher, next/prev tag *by explicit number*, …). `handleDeadZoneClick()` was already
@@ -2334,7 +2351,7 @@ every day, then looks, then big bets. Within a milestone, order is flexible.
 
 **Milestone B — the bar, finished properly**
 ~~F5~~ (shared components first), ~~M12's action registry~~ (the list, before its UI), ~~M8~~ (scroll left),
-~~M9~~, M10, M7, L8, L12, L14, M3. The styling layer is done; this milestone is about
+~~M9~~, ~~M10~~, M7, L8, L12, L14, M3. The styling layer is done; this milestone is about
 behavior and adding widgets.
 
 **Milestone C — daily comfort**

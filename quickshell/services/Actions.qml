@@ -11,9 +11,9 @@ import "../config"
 
 // The action registry (ROADMAP M12): every quick action the shell can run
 // from more than one place, defined once and addressed by id. Switchboard,
-// Home's toggle grid, the bar's click slots and the IPC targets dwm's
-// keybinds call all go through run(id), so an action can't drift between
-// them. `xidou msg actions list` prints every id, `xidou msg actions run
+// Home's toggle grid, the bar's widget clicks and dead zone, and the IPC
+// targets dwm's keybinds call all go through run(id), so an action can't
+// drift between them. `xidou msg actions list` prints every id, `xidou msg actions run
 // <id>` runs one.
 //
 // An entry: id, label, icon, keywords (for a future search), run(), and
@@ -209,6 +209,49 @@ Singleton {
                     SoundFx.play("media_previous");
                 }
             }
+        },
+        // Panel toggles, for the bar's dead zone (M10) and widget clicks.
+        // Same as their keybinds: a second trigger closes the panel.
+        {
+            id: "control_center.toggle",
+            label: "Control Center (toggle)",
+            icon: "",
+            keywords: ["control center", "home", "panel"],
+            run: function () { PanelManager.toggle("control-center"); }
+        },
+        {
+            // Plain toggle: unlike super+d (shell.qml's launcherPanel.
+            // requestToggle()), it doesn't step back to App Search first.
+            id: "launcher.toggle",
+            label: "Launcher (toggle)",
+            icon: "",
+            keywords: ["apps", "search", "panel"],
+            run: function () { PanelManager.toggle("launcher"); }
+        },
+        {
+            id: "settings.toggle",
+            label: "Settings (toggle)",
+            icon: "",
+            keywords: ["preferences", "panel"],
+            run: function () { PanelManager.toggle("settings"); }
+        },
+        // The tag before/after the focused monitor's current one, by
+        // explicit tag number (CLAUDE.md lesson 6), wrapping at the ends.
+        // Same rule as dwm's cycleview(): with several tags selected the
+        // lowest counts as current.
+        {
+            id: "tag.previous",
+            label: "Previous Tag",
+            icon: "",
+            keywords: ["workspace", "tag"],
+            run: function () { root.viewAdjacentTag(-1); }
+        },
+        {
+            id: "tag.next",
+            label: "Next Tag",
+            icon: "",
+            keywords: ["workspace", "tag"],
+            run: function () { root.viewAdjacentTag(1); }
         }
     ].concat(root.controlCenterActions)
 
@@ -264,6 +307,18 @@ Singleton {
     function activeOf(id) {
         var action = root.get(id);
         return !!(action && action.active && action.active());
+    }
+
+    function viewAdjacentTag(delta) {
+        var tags = DwmIpc.tags;
+        var state = DwmIpc.tagStateFor(DwmIpc.focusedMonitor);
+        if (!tags.length || !state)
+            return;
+        var current = 0;
+        while (current < tags.length - 1 && !(state.selected & tags[current].bitMask))
+            current++;
+        var target = ((current + delta) % tags.length + tags.length) % tags.length;
+        DwmIpc.viewTag(tags[target].bitMask);
     }
 
     // bin/xidou-brightness writes sysfs and nudges the OSD, same as dwm's

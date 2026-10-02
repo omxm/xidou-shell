@@ -433,9 +433,11 @@ panel that wasn't in the original plan:
     `capsuleModuleComponent` wrapper Capsules already introduced, working whether
     Capsules are on or off). This completes all 8 of the original Bar tabs: General,
     Layout, Shape, Effects, Widgets, Capsules. Widget List is lane tabs + add-picker +
-    multi-select remove + up/down (ROADMAP M9, see Modules below); Dead Zone is NOT done — only a hardcoded
-    right-click → control-center handler, `Bar.qml`'s `handleDeadZoneClick()`, with no
-    config key or Settings UI.), and Modules (per-module list with a gear icon opening a
+    multi-select remove + up/down (ROADMAP M9, see Modules below); Dead Zone is its
+    own tab (ROADMAP M10): `[bar.dead_zone]` left/right/middle click and scroll
+    up/down, each an action registry id, default right click =
+    `control_center.toggle`; a widget's click or scroll with no action of its own
+    lands there too.), and Modules (per-module list with a gear icon opening a
     per-widget detail panel — Workspaces, Clock, Weather, Media, Volume, Bluetooth,
     Tray, Mem, CPU, and Power all have real Widget sections built out; Logo and DND
     are the two modules still falling back to `PlaceholderTab` inside that per-widget
@@ -476,11 +478,10 @@ Items below are the headline ones; the roadmap is the complete list.
   per-widget gear panel now has real Widget-specific sections for every module
   except Logo and DND; a generic Presentation/Behavior override layer for those two
   is not built.
-- **Bar Dead Zone settings**: click actions on empty bar space are hardcoded (right
-  click → control-center); no config key or tab yet.
-- **Bar widget scroll actions (M8)**: clicks are configurable, scroll isn't.
-  A right click with no action set still falls through to the dead zone,
-  which opens control-center at Home. Before M8 that was the only way a bar
+- **Bar widget scroll actions (M8)**: clicks are configurable, scroll isn't
+  (it falls through to Bar > Dead Zone's scroll actions). A right click with no
+  action set falls through to the dead zone too, which by default toggles
+  control-center at Home. Before M8 that was the only way a bar
   click reached control-center, and most likely what はる reported on
   2026-10-02 ("control-center opens, but not the module's section").
 - **Quickshell log flood, cause unknown.** On 2026-10-02 one live instance
@@ -531,6 +532,8 @@ Items below are the headline ones; the roadmap is the complete list.
   - M12's other Switchboard tiles (Wi-Fi, Bluetooth, Caffeine, Night Light,
     Lock) and region screenshot, now run through the registry.
   - M9's widget list (lane tabs, "+" picker, multi-select remove).
+  - M10's Dead Zone tab settings (the default right click and the tag
+    actions were checked on the machine).
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).

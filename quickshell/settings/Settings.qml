@@ -57,7 +57,7 @@ PanelWindow {
         "Appearance": ["Theme", "Interface", "Accessibility", "Motion", "Borders", "Effects"],
         "OSD": ["General"],
         "Notifications": ["General"],
-        "Bar": ["General", "Layout", "Shape", "Effects", "Widgets", "Modules", "Capsules"],
+        "Bar": ["General", "Layout", "Shape", "Effects", "Widgets", "Modules", "Capsules", "Dead Zone"],
         // System-wide settings (ROADMAP M22's layout): Sound, Screenshot
         // (moved here from its own top-level category), Input (L16),
         // Weather, and Health (M16, diagnostics rather than settings). Weather lives here, not as its own category -- its
@@ -245,6 +245,23 @@ PanelWindow {
                                 selectedIndex: root.selectedSubTabIndex
                                 onTabClicked: (index) => root.selectedSubTabIndex = index
                             }
+
+                            // Fades the right edge while sub-tabs are scrolled
+                            // out of view there, so they don't look absent.
+                            // Parented to the Flickable itself (not its
+                            // contentItem), so it stays put while scrolling.
+                            Rectangle {
+                                parent: subTabScroll
+                                anchors.right: parent.right
+                                width: Theme.fontSize * 2.5
+                                height: parent.height
+                                visible: subTabScroll.contentX < subTabScroll.contentWidth - subTabScroll.width - 1
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0.0; color: "transparent" }
+                                    GradientStop { position: 1.0; color: Theme.surface }
+                                }
+                            }
                         }
 
                         Rectangle {
@@ -351,7 +368,8 @@ PanelWindow {
                                 "Effects": barEffectsTabComponent,
                                 "Widgets": barWidgetsTabComponent,
                                 "Modules": barModulesTabComponent,
-                                "Capsules": barCapsulesTabComponent
+                                "Capsules": barCapsulesTabComponent,
+                                "Dead Zone": barDeadZoneTabComponent
                             },
                             "System": {
                                 "Sound": soundTabComponent,
@@ -481,6 +499,13 @@ PanelWindow {
                         Component {
                             id: barCapsulesTabComponent
                             BarTabs.CapsulesTab {
+                                showOverriddenOnly: root.showOverriddenOnly
+                            }
+                        }
+
+                        Component {
+                            id: barDeadZoneTabComponent
+                            BarTabs.DeadZoneTab {
                                 showOverriddenOnly: root.showOverriddenOnly
                             }
                         }

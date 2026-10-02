@@ -326,7 +326,7 @@ PanelWindow {
             // rightClicked(), middleClicked() and scrolled(steps) (steps > 0
             // = wheel up) itself. This MouseArea only accepts buttons that
             // have one or the other, so anything else falls through to the
-            // bar's dead-zone handler underneath (right-click opens Home). It
+            // bar's dead zone underneath (Bar > Dead Zone). It
             // sits under the module, so a module's own per-item MouseAreas
             // (Workspaces' tags, Tray's icons) still come first.
             readonly property var module: loader.item
@@ -459,12 +459,16 @@ PanelWindow {
         }
     }
 
-    // Right-click on empty bar space opens Home — deliberately isolated into
-    // its own named function (not inlined in onClicked) so a future settings
-    // panel's dead-zone tab can reassign what any click here does without
-    // touching this MouseArea's own logic.
-    function handleDeadZoneClick() {
-        PanelManager.toggle("control-center");
+    // Bar > Dead Zone (ROADMAP M10): what a click or scroll on empty bar
+    // space runs, an action registry id per [bar.dead_zone] key ("" =
+    // nothing). By default only right click does something
+    // (control_center.toggle).
+    readonly property var deadZoneCfg: barConfig.dead_zone
+
+    function handleDeadZone(key) {
+        var action = bar.deadZoneCfg[key] || "";
+        if (action !== "")
+            Actions.run(action);
     }
 
     // Shadow lives on this wrapper, one level up from `background` itself --
@@ -671,13 +675,37 @@ PanelWindow {
         // Placed before the module Rows below so their own per-module
         // MouseAreas still take precedence: Rows are only as wide as their
         // content, not anchors.fill, so genuinely empty space (including the
-        // gaps between modules) falls through to this one.
+        // gaps between modules) falls through to this one, and so does any
+        // button or wheel a widget has no action for. Only buttons with an
+        // action are accepted.
         MouseArea {
             anchors.fill: parent
-            acceptedButtons: Qt.RightButton
+            acceptedButtons: (bar.deadZoneCfg.left_click ? Qt.LeftButton : 0)
+                | (bar.deadZoneCfg.right_click ? Qt.RightButton : 0)
+                | (bar.deadZoneCfg.middle_click ? Qt.MiddleButton : 0)
             onClicked: (mouse) => {
-                if (mouse.button === Qt.RightButton)
-                    bar.handleDeadZoneClick();
+                if (mouse.button === Qt.LeftButton)
+                    bar.handleDeadZone("left_click");
+                else if (mouse.button === Qt.RightButton)
+                    bar.handleDeadZone("right_click");
+                else if (mouse.button === Qt.MiddleButton)
+                    bar.handleDeadZone("middle_click");
+            }
+
+            // Same notch accumulation as the widget wrapper's wheel slot.
+            property real wheelAccum: 0
+            WheelHandler {
+                enabled: !!(bar.deadZoneCfg.scroll_up || bar.deadZoneCfg.scroll_down)
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: (event) => {
+                    var area = parent;
+                    area.wheelAccum += event.angleDelta.y;
+                    while (Math.abs(area.wheelAccum) >= 120) {
+                        var up = area.wheelAccum > 0;
+                        area.wheelAccum -= (up ? 1 : -1) * 120;
+                        bar.handleDeadZone(up ? "scroll_up" : "scroll_down");
+                    }
+                }
             }
         }
 

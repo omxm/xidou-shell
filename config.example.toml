@@ -76,6 +76,16 @@ padding = 10            # horizontal inset each side, px
 border_width = 0        # 0 = no border; color is always theme.border
 opacity = 1.0
 
+# Bar > Dead Zone: clicks and scrolling on empty bar space, each an action id
+# from `xidou msg actions list`; "" = nothing. A widget's click or scroll with
+# no action of its own lands here too.
+[bar.dead_zone]
+left_click = ""
+right_click = "control_center.toggle"
+middle_click = ""
+scroll_up = ""
+scroll_down = ""
+
 # Bar > Shape. Before this existed, the bar had zero rounding capability at
 # all -- *_radius default to -1 ("inherit corner_radius"), not a real pixel
 # value, since 0 is a real, different, selectable state (explicitly square).

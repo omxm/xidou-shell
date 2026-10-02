@@ -136,6 +136,17 @@ Singleton {
                 border_width: 0,    // 0 = no border; color is always Theme.border, not independently configurable
                 opacity: 1.0
             },
+            // Bar > Dead Zone (ROADMAP M10): clicks and scrolling on empty
+            // bar space, each an action registry id (services/Actions.qml);
+            // "" = nothing. A widget's click or scroll with no action of its
+            // own lands here too.
+            dead_zone: {
+                left_click: "",
+                right_click: "control_center.toggle",
+                middle_click: "",
+                scroll_up: "",
+                scroll_down: ""
+            },
             // Bar > Shape: the bar's own outer silhouette. Bar.qml itself
             // has zero rounding capability before this -- its PanelWindow
             // painted `color: Theme.background` directly (a Window property,
