@@ -768,7 +768,7 @@ with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
 - Verify: `[SESSION]` (tray items and menus need real apps; menus as popups on X11 are
   exactly the kind of thing that behaves differently under Xvfb).
 
-**M8 — Widget click model** — **Done except scroll.** Defaults merged as `475be78`; on the X1CG5 はる tried them and said "いい感じで完璧" (2026-10-02), no per-item results. Configuration (2026-10-02, on master): implemented, not confirmed on the real machine.
+**M8 — Widget click model** — **Done except scroll.** Defaults merged as `475be78`; on the X1CG5 はる tried them and said "いい感じで完璧" (2026-10-02), no per-item results. Configuration (`1a14948`): confirmed on the X1CG5 by はる (2026-10-02): the gear panel's pickers switch, and a Right Click set there to Notifications opened Notifications from the clock. (A first try opened Home because the click landed on Weather, which has no right-click action; a button recorder showed button 3 at Weather's position.)
 - Configuration (D6, on M12's registry):
   - `[bar_widgets.<module>]` `left_click` / `right_click` / `middle_click` hold an
     action id ("" = nothing; a right click then falls through to the dead

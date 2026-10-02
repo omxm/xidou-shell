@@ -523,13 +523,12 @@ Items below are the headline ones; the roadmap is the complete list.
   and said "いい感じで完璧" on 2026-10-02, with no per-item results), and M12's
   action registry through Switchboard DND/Mute, the ctrl+<arrow> media keys
   and Volume's clicks (はる: "完璧です。確認/テスト済み", 2026-10-02).
+  M8's click settings in the gear panel are confirmed too (2026-10-02).
   - F5's bar widget wrapper (shared label/icon components, click slots,
     tooltips). Under Xvfb the bar is pixel-identical to master and every
     module click does the same as on master.
   - M12's other Switchboard tiles (Wi-Fi, Bluetooth, Caffeine, Night Light,
     Lock) and region screenshot, now run through the registry.
-  - M8's click settings in the gear panel (the default clicks themselves
-    were re-checked on the machine).
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).
