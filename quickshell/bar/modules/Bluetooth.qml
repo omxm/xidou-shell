@@ -50,6 +50,6 @@ Item {
     // control-center at Bluetooth (M8, D6). Right click isn't declared, so it
     // falls through to the bar's dead zone.
     function leftClicked() {
-        PanelManager.open("control-center", "Bluetooth");
+        Actions.run("control_center.bluetooth");
     }
 }

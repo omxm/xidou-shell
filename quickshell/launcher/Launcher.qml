@@ -3,9 +3,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
-import Quickshell.Bluetooth
-import Quickshell.Networking
-import Quickshell.Services.Pipewire
 import "../config"
 import "../services"
 import "../lib"
@@ -281,93 +278,17 @@ PanelWindow {
         PanelManager.close("launcher", true);
     }
 
-    // Switchboard: a fixed 4x3 grid of quick actions, every one of them
-    // reusing a service that already has real backing elsewhere (Home tab's
-    // toggle grid, the bar's Volume module, Screenshot/SessionActions) --
-    // no new backend logic except brightness (Brightness.qml is read-only
-    // telemetry, so up/down here shells out to bin/xidou-brightness
-    // directly, same as dwm's own brightness keybinds do).
-    readonly property var sink: Pipewire.defaultAudioSink
-
-    PwObjectTracker {
-        objects: root.sink ? [root.sink] : []
-    }
+    // Switchboard: a fixed 4x3 grid of quick actions, in this order. Each
+    // is an action registry id (services/Actions.qml, ROADMAP M12), the same
+    // ones Home's toggle grid, the bar and dwm's keybinds run.
+    readonly property var switchboardIds: ["wifi.toggle", "bluetooth.toggle", "caffeine.toggle", "night_light.toggle", "dnd.toggle", "audio.mute_toggle", "brightness.down", "brightness.up", "theme.cycle_mode", "wallpaper.open", "screenshot.fullscreen", "session.lock"]
 
     property int switchboardSelectedIndex: 0
     readonly property int switchboardColumns: 4
 
-    function toggleWifi() {
-        Networking.wifiEnabled = !Networking.wifiEnabled;
-    }
-
-    function toggleBluetooth() {
-        if (Bluetooth.defaultAdapter)
-            Bluetooth.defaultAdapter.enabled = !Bluetooth.defaultAdapter.enabled;
-    }
-
-    function toggleMute() {
-        if (root.sink && root.sink.audio)
-            root.sink.audio.muted = !root.sink.audio.muted;
-    }
-
-    function adjustBrightness(direction) {
-        brightnessProc.command = ["xidou-brightness", direction];
-        brightnessProc.running = false;
-        brightnessProc.running = true;
-    }
-
-    // Cycles the same three values ThemeTab.qml's OptionRow offers, through
-    // the same Config.setValue() call -- Theme.qml already reacts to
-    // Config.data.theme.mode live, so there's nothing else to trigger.
-    readonly property var themeModeOrder: ["dark", "light", "auto"]
-
-    function cycleThemeMode() {
-        var idx = root.themeModeOrder.indexOf(Config.data.theme.mode);
-        var next = root.themeModeOrder[(idx + 1) % root.themeModeOrder.length];
-        Config.setValue("theme", "mode", next);
-    }
-
-    function openWallpaperPanel() {
-        PanelManager.toggle("wallpaper");
-    }
-
-    // Closes the launcher first and waits for picom's real "disappear"
-    // animation (session/picom.conf's motion block; Motion.normal is the
-    // same [motion] duration, 0 when motion is off) to actually finish before
-    // capturing -- confirmed empirically (a fixed 100ms guess landed a
-    // half-faded launcher in the capture, since that preset's default
-    // duration alone is already 150ms). Reacts to the same config the
-    // Settings > Appearance > Motion tab writes, so this stays correct if
-    // that duration changes instead of drifting from a hardcoded guess.
-    function takeScreenshot() {
-        PanelManager.close("launcher");
-        screenshotDelayTimer.start();
-    }
-
-    Timer {
-        id: screenshotDelayTimer
-        interval: Motion.normal + 60
-        onTriggered: Screenshot.fullscreen()
-    }
-
-    // SessionActions.lock() already closes every panel itself.
-    function lockSession() {
-        SessionActions.lock();
-    }
-
-    readonly property var switchboardActions: [toggleWifi, toggleBluetooth, CaffeineService.toggle, NightLightService.toggle, Notifications.toggleDnd, toggleMute, function () {
-            adjustBrightness("down");
-        }, function () {
-            adjustBrightness("up");
-        }, cycleThemeMode, openWallpaperPanel, takeScreenshot, lockSession]
-
     function triggerSwitchboardTile(index) {
-        if (index >= 0 && index < root.switchboardActions.length)
-            root.switchboardActions[index]();
-    }
-
-    Process {
-        id: brightnessProc
+        if (index >= 0 && index < root.switchboardIds.length)
+            Actions.run(root.switchboardIds[index]);
     }
 
     Rectangle {
@@ -556,8 +477,8 @@ PanelWindow {
                 // behaves identically rather than being a second,
                 // differently-styled toggle widget. Keyboard nav mirrors
                 // the emoji grid below (index math by column count), with
-                // Return/click both routed through triggerSwitchboardTile()
-                // so there's exactly one place each action actually runs.
+                // Return/click both routed through triggerSwitchboardTile(),
+                // which runs the tile's action from the registry.
                 Item {
                     id: switchboardContent
                     anchors.fill: parent
@@ -573,7 +494,7 @@ PanelWindow {
                             { root.switchboardSelectedIndex--; SoundFx.play("launcher_move"); }
                     }
                     Keys.onRightPressed: {
-                        if (root.switchboardSelectedIndex < switchboardGrid.children.length - 1)
+                        if (root.switchboardSelectedIndex < root.switchboardIds.length - 1)
                             { root.switchboardSelectedIndex++; SoundFx.play("launcher_move"); }
                     }
                     Keys.onUpPressed: {
@@ -583,7 +504,7 @@ PanelWindow {
                     }
                     Keys.onDownPressed: {
                         var next = root.switchboardSelectedIndex + root.switchboardColumns;
-                        if (next < switchboardGrid.children.length)
+                        if (next < root.switchboardIds.length)
                             { root.switchboardSelectedIndex = next; SoundFx.play("launcher_move"); }
                     }
 
@@ -594,122 +515,21 @@ PanelWindow {
                         rowSpacing: Theme.fontSize / 2
                         columnSpacing: Theme.fontSize / 2
 
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: ""
-                            label: "Wi-Fi"
-                            active: Networking.wifiEnabled
-                            keyboardFocused: root.switchboardSelectedIndex === 0
-                            onTriggered: root.triggerSwitchboardTile(0)
-                        }
+                        Repeater {
+                            model: root.switchboardIds
 
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: Bluetooth.defaultAdapter && Bluetooth.defaultAdapter.enabled ? "" : ""
-                            label: "Bluetooth"
-                            active: Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false
-                            keyboardFocused: root.switchboardSelectedIndex === 1
-                            onTriggered: root.triggerSwitchboardTile(1)
-                        }
+                            ControlCenter.ToggleTile {
+                                required property string modelData
+                                required property int index
 
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: ""
-                            label: "Caffeine"
-                            active: CaffeineService.active
-                            keyboardFocused: root.switchboardSelectedIndex === 2
-                            onTriggered: root.triggerSwitchboardTile(2)
-                        }
-
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: ""
-                            label: "Night Light"
-                            active: NightLightService.active
-                            keyboardFocused: root.switchboardSelectedIndex === 3
-                            onTriggered: root.triggerSwitchboardTile(3)
-                        }
-
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: Notifications.dnd ? "" : ""
-                            label: "DND"
-                            active: Notifications.dnd
-                            keyboardFocused: root.switchboardSelectedIndex === 4
-                            onTriggered: root.triggerSwitchboardTile(4)
-                        }
-
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: (root.sink && root.sink.audio && root.sink.audio.muted) ? "" : ""
-                            label: "Mute"
-                            active: root.sink && root.sink.audio ? root.sink.audio.muted : false
-                            keyboardFocused: root.switchboardSelectedIndex === 5
-                            onTriggered: root.triggerSwitchboardTile(5)
-                        }
-
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: ""
-                            label: "Dimmer"
-                            keyboardFocused: root.switchboardSelectedIndex === 6
-                            onTriggered: root.triggerSwitchboardTile(6)
-                        }
-
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: ""
-                            label: "Brighter"
-                            keyboardFocused: root.switchboardSelectedIndex === 7
-                            onTriggered: root.triggerSwitchboardTile(7)
-                        }
-
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: ({
-                                "dark": "",
-                                "light": "",
-                                "auto": ""
-                            })[Config.data.theme.mode] || ""
-                            label: "Theme: " + Config.data.theme.mode.charAt(0).toUpperCase() + Config.data.theme.mode.slice(1)
-                            keyboardFocused: root.switchboardSelectedIndex === 8
-                            onTriggered: root.triggerSwitchboardTile(8)
-                        }
-
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: ""
-                            label: "Wallpaper"
-                            keyboardFocused: root.switchboardSelectedIndex === 9
-                            onTriggered: root.triggerSwitchboardTile(9)
-                        }
-
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: ""
-                            label: "Screenshot"
-                            keyboardFocused: root.switchboardSelectedIndex === 10
-                            onTriggered: root.triggerSwitchboardTile(10)
-                        }
-
-                        ControlCenter.ToggleTile {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            icon: ""
-                            label: "Lock"
-                            keyboardFocused: root.switchboardSelectedIndex === 11
-                            onTriggered: root.triggerSwitchboardTile(11)
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                icon: Actions.iconOf(modelData)
+                                label: Actions.labelOf(modelData)
+                                active: Actions.activeOf(modelData)
+                                keyboardFocused: root.switchboardSelectedIndex === index
+                                onTriggered: root.triggerSwitchboardTile(index)
+                            }
                         }
                     }
                 }

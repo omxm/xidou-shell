@@ -1,8 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.Mpris
-import Quickshell.Networking
 import "config"
 import "services"
 import "bar"
@@ -140,34 +138,39 @@ ShellRoot {
         }
     }
 
+    // The action registry (services/Actions.qml, ROADMAP M12):
+    // `xidou msg actions list` prints "id<TAB>label" per action,
+    // `xidou msg actions run <id>` runs one.
+    IpcHandler {
+        target: "actions"
+
+        function list(): string {
+            return Actions.actions.map(function (action) {
+                return action.id + "\t" + Actions.labelOf(action.id);
+            }).join("\n");
+        }
+
+        function run(id: string): string {
+            return Actions.run(id) ? "ok" : "unknown action: " + id;
+        }
+    }
+
     // ctrl+<arrow> media keys (xidouwm/config.h) go here rather than a
-    // playerctl-style external CLI — the bar's Media module already holds
-    // a live MprisPlayer, this just drives the same one.
+    // playerctl-style external CLI. The media actions drive the same first
+    // MPRIS player the bar's Media module shows.
     IpcHandler {
         target: "mpris"
 
         function next(): void {
-            var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
-            if (p && p.canGoNext) {
-                p.next();
-                SoundFx.play("media_next");
-            }
+            Actions.run("media.next");
         }
 
         function previous(): void {
-            var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
-            if (p && p.canGoPrevious) {
-                p.previous();
-                SoundFx.play("media_previous");
-            }
+            Actions.run("media.previous");
         }
 
         function playPause(): void {
-            var p = Mpris.players.length > 0 ? Mpris.players[0] : null;
-            if (p && p.canTogglePlaying) {
-                SoundFx.play(p.isPlaying ? "media_pause" : "media_play");
-                p.togglePlaying();
-            }
+            Actions.run("media.play_pause");
         }
     }
 
@@ -189,7 +192,7 @@ ShellRoot {
         target: "notifications"
 
         function toggleDnd(): void {
-            Notifications.toggleDnd();
+            Actions.run("dnd.toggle");
         }
     }
 
@@ -202,7 +205,7 @@ ShellRoot {
         target: "wifi"
 
         function toggle(): void {
-            Networking.wifiEnabled = !Networking.wifiEnabled;
+            Actions.run("wifi.toggle");
         }
     }
 
@@ -210,7 +213,7 @@ ShellRoot {
         target: "nightlight"
 
         function toggle(): void {
-            NightLightService.toggle();
+            Actions.run("night_light.toggle");
         }
     }
 
@@ -218,7 +221,7 @@ ShellRoot {
         target: "caffeine"
 
         function toggle(): void {
-            CaffeineService.toggle();
+            Actions.run("caffeine.toggle");
         }
     }
 
@@ -228,7 +231,7 @@ ShellRoot {
         target: "session"
 
         function lock(): void {
-            SessionActions.lock();
+            Actions.run("session.lock");
         }
     }
 
@@ -250,24 +253,14 @@ ShellRoot {
     IpcHandler {
         target: "screenshot"
 
-        // Refused while locked: region select maps its own full-screen
-        // backdrop and a pointer-grabbing slop, and either capture would
-        // just land a picture of the lock screen on the clipboard.
-        // Any open panel is closed first and the capture waits until it's
-        // off the screen (PanelManager.closeAllThen()), so it isn't in the
-        // picture.
+        // Refused while locked, and any open panel is closed first; see
+        // the screenshot actions in services/Actions.qml.
         function fullscreen(): void {
-            if (!SessionActions.locked)
-                PanelManager.closeAllThen(function () {
-                    Screenshot.fullscreen();
-                });
+            Actions.run("screenshot.fullscreen");
         }
 
         function region(): void {
-            if (!SessionActions.locked)
-                PanelManager.closeAllThen(function () {
-                    Screenshot.region();
-                });
+            Actions.run("screenshot.region");
         }
     }
 

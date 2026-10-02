@@ -197,8 +197,12 @@ Read-only survey; nothing was changed to collect it.
     calls them, and undeclared buttons fall through to the dead zone.
   - A `tooltip` property gets the bar's shared popup.
   - Default clicks (ROADMAP M8, D6): left opens control-center at the module's
-    section via `PanelManager.open()`; a module's quick action (mute, DND,
-    play/pause) is on right click.
+    section; a module's quick action (mute, DND, play/pause) is on right click.
+    Both are action registry ids.
+- **Quick actions live in `services/Actions.qml`** (ROADMAP M12). Switchboard,
+  Home's toggle grid, the bar and the IPC targets dwm's keybinds call all run
+  `Actions.run(id)`; never re-implement an action at a call site. Add an entry
+  only when something uses it. `xidou msg actions list` / `actions run <id>`.
 - Animation durations and easing come from `quickshell/config/Motion.qml`
   (ROADMAP F4: `Motion.fast/normal/slow`, `Motion.standard/enter/exit/emphasized`,
   all derived from `[motion]`, 0 ms when motion is off). Never write a duration
@@ -513,6 +517,8 @@ Items below are the headline ones; the roadmap is the complete list.
   - F5's bar widget wrapper (shared label/icon components, click slots,
     tooltips). Under Xvfb the bar is pixel-identical to master and every
     module click does the same as on master.
+  - M12's action registry, and the ctrl+<arrow> media keys reaching the player
+    (they never did before M12: the `mpris` IPC used `Mpris.players.length`).
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).

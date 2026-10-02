@@ -64,7 +64,7 @@ Item {
                         icon: "" // wifi
                         label: "Wi-Fi"
                         active: Networking.wifiEnabled
-                        onTriggered: Networking.wifiEnabled = !Networking.wifiEnabled
+                        onTriggered: Actions.run("wifi.toggle")
                     }
 
                     ControlCenter.ToggleTile {
@@ -73,10 +73,7 @@ Item {
                         icon: Bluetooth.defaultAdapter && Bluetooth.defaultAdapter.enabled ? "" : ""
                         label: "Bluetooth"
                         active: Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false
-                        onTriggered: {
-                            if (Bluetooth.defaultAdapter)
-                                Bluetooth.defaultAdapter.enabled = !Bluetooth.defaultAdapter.enabled;
-                        }
+                        onTriggered: Actions.run("bluetooth.toggle")
                     }
 
                     ControlCenter.ToggleTile {
@@ -85,7 +82,7 @@ Item {
                         icon: "" // coffee (caffeine / inhibit sleep)
                         label: "Caffeine"
                         active: CaffeineService.active
-                        onTriggered: CaffeineService.toggle()
+                        onTriggered: Actions.run("caffeine.toggle")
                     }
 
                     ControlCenter.ToggleTile {
@@ -94,7 +91,7 @@ Item {
                         icon: "" // dark_mode (night light)
                         label: "Night Light"
                         active: NightLightService.active
-                        onTriggered: NightLightService.toggle()
+                        onTriggered: Actions.run("night_light.toggle")
                     }
 
                     ControlCenter.ToggleTile {
@@ -103,7 +100,7 @@ Item {
                         icon: Notifications.dnd ? "" : ""
                         label: "DND"
                         active: Notifications.dnd
-                        onTriggered: Notifications.toggleDnd()
+                        onTriggered: Actions.run("dnd.toggle")
                     }
 
                     ControlCenter.ToggleTile {

@@ -106,13 +106,10 @@ Item {
     // Click slots for Bar.qml's widget wrapper (ROADMAP F5). Left opens
     // control-center at Media, right plays/pauses (M8, D6).
     function leftClicked() {
-        PanelManager.open("control-center", "Media");
+        Actions.run("control_center.media");
     }
 
     function rightClicked() {
-        if (root.player && root.player.canTogglePlaying) {
-            SoundFx.play(root.player.isPlaying ? "media_pause" : "media_play");
-            root.player.togglePlaying();
-        }
+        Actions.run("media.play_pause");
     }
 }

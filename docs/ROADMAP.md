@@ -827,7 +827,35 @@ with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
 - Verify: mostly `[CLOUD]`; tailscale needs an account `[HW]`; privacy needs real mic
   `[SESSION]`.
 
-**M12 — Action registry (Switchboard keeps its grid — D5)**
+**M12 — Action registry (Switchboard keeps its grid — D5)** — **Registry done** (branch `claude/m12-action-registry`; checked under Xvfb, not confirmed on the real machine)
+- Built: `services/Actions.qml`, the list before any UI.
+  - An entry is id, label, icon, keywords, `run()`, and optionally `active()`.
+    `labelOf()`/`iconOf()`/`activeOf()` read a state-dependent label/icon/state
+    inside a binding.
+  - 24 actions, only the ones something uses: the 12 Switchboard tiles,
+    screenshot region, media play/pause/next/previous, and control-center at
+    each section a bar module opens.
+  - Consumers: Switchboard (a Repeater over 12 ids, pixel-identical to master),
+    Home's toggle grid, the bar's click slots (M8), and the IPC targets dwm's
+    keybinds call (`mpris`, `notifications`, `wifi`, `nightlight`, `caffeine`,
+    `session lock`, `screenshot`). New IPC: `xidou msg actions list` /
+    `actions run <id>`.
+  - Fixed on the way: the `mpris` IPC behind ctrl+<arrow> looked the player up
+    with `Mpris.players.length`/`[0]` (the Phase 1 bug Media.qml's comment
+    describes), so the media keys never reached a player. They now use the
+    same first player as the bar.
+  - Behavior change: Switchboard's Screenshot now goes through
+    `PanelManager.closeAllThen()` like Print does (waits `[motion]` + 150 ms
+    instead of + 60 ms).
+- Checked under Xvfb against master: the 7 tiles that are safe to run (DND,
+  Mute, Dimmer/Brighter with a stub `xidou-brightness`, Theme, Wallpaper,
+  Screenshot) do the same; Home's DND tile; every bar click; the `mpris` IPC
+  (nothing reached the player on master; play/pause, next, previous do now).
+  Not run in tests: Wi-Fi, Bluetooth, Caffeine, Night Light, Lock, region
+  screenshot (real NetworkManager/BlueZ/X settings/PAM/slop).
+- What's left: the other backlog actions (mic mute, output/input switching,
+  power profile, VPN, reload…) get added when something uses them; M8's gear
+  panel, M10 and M23 are the next consumers.
 - **Revised 2026-10-01 per D5:** the Switchboard UI stays the current grid; the
   searchable-list UI below is dropped. The action registry is still worth building,
   because M8, M10, M23 and D7 use it. New Switchboard tiles come from the registry, and
@@ -2276,7 +2304,7 @@ every day, then looks, then big bets. Within a milestone, order is flexible.
 ~~M1~~ (closed, 1.2), ~~F1~~, ~~F2~~, ~~F4~~, ~~M16~~ (Health — cheap, and it's the philosophy).
 
 **Milestone B — the bar, finished properly**
-~~F5~~ (shared components first), M12's action registry (the list, before its UI), M8,
+~~F5~~ (shared components first), M12's action registry (the list, before its UI; on a branch), M8,
 M9, M10, M7, L8, L12, L14, M3. The styling layer is done; this milestone is about
 behavior and adding widgets.
 

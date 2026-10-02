@@ -30,10 +30,10 @@ Item {
     // Click slots for Bar.qml's widget wrapper (ROADMAP F5). Left opens
     // control-center at Notifications, right toggles DND (M8, D6).
     function leftClicked() {
-        PanelManager.open("control-center", "Notifications");
+        Actions.run("control_center.notifications");
     }
 
     function rightClicked() {
-        Notifications.toggleDnd();
+        Actions.run("dnd.toggle");
     }
 }
