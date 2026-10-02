@@ -87,6 +87,8 @@ ShellRoot {
 
     Settings {}
 
+    TrayMenu {}
+
     Osd {}
 
     NotificationPopups {}

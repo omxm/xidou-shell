@@ -181,7 +181,8 @@ Read-only survey; nothing was changed to collect it.
 ### Shell: Quickshell (Qt/QML) on X11
 
 - Panels are independent top-level `PanelWindow`s (bar, launcher, control-center,
-  settings, wallpaper, clipboard, session, screenshot, notifications, OSD) toggled via
+  settings, wallpaper, clipboard, session, screenshot, notifications, OSD, and
+  the tray item menu `bar/TrayMenu.qml`) toggled via
   `PanelManager` (mutual-exclusion-with-every-other-dock-panel) and IPC (`xidou msg
   panel-toggle <name>` / dedicated `IpcHandler`s per panel in `shell.qml`).
   - `PanelManager.open(name, section)` opens without toggling and can ask for a
@@ -484,6 +485,10 @@ Items below are the headline ones; the roadmap is the complete list.
   control-center at Home. Before M8 that was the only way a bar
   click reached control-center, and most likely what はる reported on
   2026-10-02 ("control-center opens, but not the module's section").
+- **Tray icons named from an icon theme can draw as a checkerboard.**
+  Quickshell has no icon theme set, so only hicolor names resolve.
+  `//@ pragma IconTheme breeze-dark` in shell.qml would fix it, but also
+  swaps some launcher app icons for breeze ones. Waiting on はる (ROADMAP M7).
 - **Quickshell log flood, cause unknown.** On 2026-10-02 one live instance
   (10:13–10:14:54) wrote `QSocketNotifier: Socket notifiers cannot be enabled
   or disabled from another thread`, then `Invalid socket 78 and type 'Read',
@@ -534,6 +539,8 @@ Items below are the headline ones; the roadmap is the complete list.
   - M9's widget list (lane tabs, "+" picker, multi-select remove).
   - M10's Dead Zone tab settings (the default right click and the tag
     actions were checked on the machine).
+  - M7's tray drawer and gear-panel states; the tray menu was checked on the
+    machine only with a test AppIndicator item, not real apps.
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).

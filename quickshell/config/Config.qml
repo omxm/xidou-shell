@@ -295,7 +295,10 @@ Singleton {
                 middle_click: ""
             },
             tray: {
-                icon_size: 0 // 0 = default (Theme.fontSize + 4); otherwise an explicit pixel size
+                icon_size: 0, // 0 = default (Theme.fontSize + 4); otherwise an explicit pixel size
+                drawer: [],   // tray item ids shown only while the drawer (chevron) is open
+                hidden: [],   // tray item ids never shown
+                drawer_open: false // whether the drawer starts open
             },
             mem: {
                 warning_threshold: 90, // usedPercent at/above this recolors the widget to Theme.warning; 100 = never

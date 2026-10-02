@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell.Services.SystemTray
 import "../../config"
 import "../../services"
 import ".." as Settings
@@ -140,6 +141,48 @@ Item {
     // list is showing. Deliberately not wired to resetAll(): Reset Page
     // has no reason to also back out of an open detail panel.
     property string editingModule: ""
+
+    // Tray drawer (ROADMAP M7): running tray items plus ids already in
+    // [bar_widgets.tray] drawer/hidden, each "shown" | "drawer" | "hidden".
+    readonly property var trayItemIds: {
+        var ids = [];
+        SystemTray.items.values.forEach(function (item) {
+            if (item.id && ids.indexOf(item.id) === -1)
+                ids.push(item.id);
+        });
+        Config.data.bar_widgets.tray.drawer.concat(Config.data.bar_widgets.tray.hidden).forEach(function (id) {
+            if (ids.indexOf(id) === -1)
+                ids.push(id);
+        });
+        return ids;
+    }
+
+    function trayItemLabel(id) {
+        var item = SystemTray.items.values.find(function (i) { return i.id === id; });
+        var title = item ? (item.tooltipTitle || item.title || "") : "";
+        return title && title !== id ? title + " (" + id + ")" : id;
+    }
+
+    function trayItemState(id) {
+        var cfg = Config.data.bar_widgets.tray;
+        return cfg.hidden.indexOf(id) !== -1 ? "hidden" : (cfg.drawer.indexOf(id) !== -1 ? "drawer" : "shown");
+    }
+
+    // Writes only the arrays that change.
+    function setTrayItemState(id, state) {
+        var cfg = Config.data.bar_widgets.tray;
+        var without = function (arr) { return arr.filter(function (x) { return x !== id; }); };
+        var drawer = without(cfg.drawer);
+        var hidden = without(cfg.hidden);
+        if (state === "drawer")
+            drawer.push(id);
+        else if (state === "hidden")
+            hidden.push(id);
+        if (JSON.stringify(drawer) !== JSON.stringify(cfg.drawer))
+            Config.setValue("bar_widgets.tray", "drawer", drawer);
+        if (JSON.stringify(hidden) !== JSON.stringify(cfg.hidden))
+            Config.setValue("bar_widgets.tray", "hidden", hidden);
+    }
 
     function labelFor(name) {
         var entry = root.moduleList.find(function (m) { return m.name === name; });
@@ -1092,6 +1135,66 @@ Item {
                         maxValue: 48
                         onStepped: (newValue) => Config.setValue("bar_widgets.tray", "icon_size", newValue)
                     }
+                }
+
+                // Drawer (ROADMAP M7): whether the chevron's drawer starts
+                // open, and per tray item Shown / Drawer / Hidden. Items
+                // listed are the ones running now plus any id already in
+                // drawer or hidden, so a hidden item can be brought back.
+                Settings.SettingRow {
+                    width: parent.width
+                    label: "Drawer Starts"
+                    tableHeader: "bar_widgets.tray"
+                    settingKey: "drawer_open"
+                    defaultValue: Config.defaults.bar_widgets.tray.drawer_open
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.OptionRow {
+                        width: parent.width
+                        options: [
+                            { value: false, label: "Closed" },
+                            { value: true, label: "Open" }
+                        ]
+                        currentValue: Config.data.bar_widgets.tray.drawer_open
+                        onOptionSelected: (value) => Config.setValue("bar_widgets.tray", "drawer_open", value)
+                    }
+                }
+
+                Repeater {
+                    model: root.trayItemIds
+
+                    delegate: Settings.SettingRow {
+                        id: trayItemRow
+                        required property string modelData
+
+                        width: parent.width
+                        label: root.trayItemLabel(modelData)
+                        showOverriddenOnly: root.showOverriddenOnly
+                        customOverridden: root.trayItemState(modelData) !== "shown"
+                        customReset: function () {
+                            root.setTrayItemState(trayItemRow.modelData, "shown");
+                        }
+
+                        Settings.OptionRow {
+                            width: parent.width
+                            options: [
+                                { value: "shown", label: "Shown" },
+                                { value: "drawer", label: "Drawer" },
+                                { value: "hidden", label: "Hidden" }
+                            ]
+                            currentValue: root.trayItemState(trayItemRow.modelData)
+                            onOptionSelected: (value) => root.setTrayItemState(trayItemRow.modelData, value)
+                        }
+                    }
+                }
+
+                Text {
+                    visible: root.trayItemIds.length === 0
+                    text: "No tray items running."
+                    color: Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.italic: true
+                    font.pixelSize: Theme.fontSize * 0.9
                 }
             }
         }

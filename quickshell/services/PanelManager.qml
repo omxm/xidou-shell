@@ -24,7 +24,8 @@ Singleton {
         "wallpaper": false,
         "session": false,
         "clipboard": false,
-        "settings": false
+        "settings": false,
+        "tray-menu": false
     })
 
     function isOpen(name) {

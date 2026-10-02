@@ -258,7 +258,7 @@ Sorted in backlog order. "Plan ID" points into sections 3–5.
 | 19 | Widget overhaul | **Partial**: bar-wide styling layer, capsules, hover, per-widget sections done (`a941b03`); shared widget components, click/scroll slots and tooltips done (F5, `4dd15e4`); M8's click model done except scroll | F5, M8, M9 |
 | 20 | Overview / window switcher (`super+Tab`) | Not started (dwm bind reserved; no IpcHandler listens) | M14, H2 |
 | 21 | Workspaces: only occupied/focused, styles, numbers vs dots | **Done** (hide_when_empty, regular/minimal/focus_hint, icons) | — |
-| 22 | Tray drawer (collapsible), open/closed default | Not started (Tray's gear panel has icon size only); right-click still has no menu | M7 |
+| 22 | Tray drawer (collapsible), open/closed default | **Done** (M7): drawer + per-item Shown/Drawer/Hidden + start open/closed; right-click opens the item's menu | M7 |
 | 23 | Xidou icon and logo | Not started (Logo module is a placeholder wordmark) | M24 |
 | 24 | Launcher Switchboard (chip, many actions, ←→ sliders) | **Partial**: 4×3 grid mode exists, Tab cycles 3 modes | M12 |
 | 25 | Fork dwm → XidouWM, own animation patch, fork picom etc. | **Done**: H8 change 1 (rename to `xidouwm/`, `xidouwm`/`xidouwm-msg`) and change 2 (socket in `$XDG_RUNTIME_DIR`), both confirmed on the X1CG5. L15 (socket removed on exit): implemented, not confirmed on the real machine. No picom fork (1.5) | H8 |
@@ -759,7 +759,30 @@ with H8 change 2 (`6dbdf76`; implemented, not confirmed on the real machine)
 - Depends on: nothing (see 1.5 #2). Verify: file writing `[CLOUD]`; live GTK update
   `[SESSION]`.
 
-**M7 — Tray drawer and menus**
+**M7 — Tray drawer and menus** — **Done** (2026-10-02, on master)
+- Menus: `SystemTrayItem.display()` (a Qt platform menu) needs `//@ pragma
+  UseQApplication` and a restart, and would be drawn in Qt's widget style. So
+  the menu is `bar/TrayMenu.qml` instead: a themed dock panel ("tray-menu" in
+  PanelManager, "xidou-panel" to xidouwm) listing the item's dbusmenu via
+  `QsMenuOpener`, under the icon. It gets panel focus and closes on outside
+  actions like every panel; submenus drill in with a Back row; check/radio
+  states; Up/Down/Return/Left/Escape. `services/TrayMenuState.qml` holds which
+  menu is showing (a second click on the same icon closes it).
+- Clicks: right → menu (or secondaryActivate without one), left → activate
+  (menu for a menu-only item), middle → secondaryActivate.
+- Drawer: `[bar_widgets.tray] drawer` / `hidden` (item ids) / `drawer_open`.
+  A chevron on the drawer's outer side opens/closes it for the session. The
+  Tray gear panel lists running items plus configured ids, each Shown /
+  Drawer / Hidden, and Drawer Starts Closed/Open.
+- Checked on the X1CG5 (by Claude, with a test Ayatana AppIndicator item, not a
+  real app): right-click menu shows under the icon with focus, keyboard and
+  mouse picks reach the app, Escape / second click / `panels closeAll` close
+  it. Under Xvfb: drawer, chevron, hidden items, gear panel writes and reset,
+  menu from a drawer item. Not confirmed by はる; not tried with real apps.
+- Found, not changed: Quickshell has no icon theme set, so a tray icon given
+  as a theme name that isn't in hicolor (e.g. `dialog-information`) draws as
+  Qt's missing-icon checkerboard. `//@ pragma IconTheme breeze-dark` would fix
+  it but also swaps some launcher app icons for breeze ones; left to はる.
 - What: (a) Right-click on a tray item currently calls `secondaryActivate()`; apps like
   mozc and blueman expect a context menu. Use the item's menu (`hasMenu` / `menu`) with
   Quickshell's menu opener. (b) A collapsible drawer: pinned items shown, the rest behind
