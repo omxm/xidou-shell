@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell.Io
 import "../../config"
 import "../widgets"
-import "../../services"
 
 // Memory usage, read straight from /proc/meminfo and polled — no daemon or
 // service needed for a number this simple.
@@ -62,12 +61,5 @@ Item {
             text: root.usedPercent + "%"
             stateColor: root.warning ? Theme.warning : Theme.textMuted
         }
-    }
-
-    // Click slot for Bar.qml's widget wrapper (ROADMAP F5): left opens
-    // control-center at System (M8, D6). Right click isn't declared, so it
-    // falls through to the bar's dead zone.
-    function leftClicked() {
-        Actions.run("control_center.system");
     }
 }

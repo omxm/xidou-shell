@@ -5,7 +5,7 @@ import "../../services"
 
 // Do-not-disturb indicator (Phase 4) -- reflects Notifications.dnd, toggled
 // by dwm's super+n keybind (xidou msg notifications toggleDnd) or by
-// right-clicking here directly.
+// a bar click (right click by default, [bar_widgets.dnd]).
 Item {
     id: root
 
@@ -25,15 +25,5 @@ Item {
             text: root.icon
             stateColor: Notifications.dnd ? Theme.accent : Theme.textMuted
         }
-    }
-
-    // Click slots for Bar.qml's widget wrapper (ROADMAP F5). Left opens
-    // control-center at Notifications, right toggles DND (M8, D6).
-    function leftClicked() {
-        Actions.run("control_center.notifications");
-    }
-
-    function rightClicked() {
-        Actions.run("dnd.toggle");
     }
 }

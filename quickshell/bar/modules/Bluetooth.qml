@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell.Bluetooth
 import "../../config"
 import "../widgets"
-import "../../services"
 
 // Adapter power state + connected-device count, via Quickshell's Bluez
 // service (talks to bluez over D-Bus directly, no bluetoothctl shelling).
@@ -44,12 +43,5 @@ Item {
             visible: root.cfg.show_device_count && text.length > 0
             stateColor: root.enabled ? undefined : Theme.textMuted
         }
-    }
-
-    // Click slot for Bar.qml's widget wrapper (ROADMAP F5): left opens
-    // control-center at Bluetooth (M8, D6). Right click isn't declared, so it
-    // falls through to the bar's dead zone.
-    function leftClicked() {
-        Actions.run("control_center.bluetooth");
     }
 }

@@ -237,15 +237,26 @@ Singleton {
         // their own real display settings land in the same table without
         // key collisions -- same shape as [panels] holding one sub-table
         // per panel.
+        // left_click/right_click/middle_click: an action registry id
+        // (services/Actions.qml, `xidou msg actions list`), run by Bar.qml's
+        // widget wrapper (ROADMAP M8, D6). "" = nothing; a right click then
+        // falls through to the bar's dead zone. Workspaces and Tray have
+        // per-item clicks instead.
         bar_widgets: {
             weather: {
                 max_length: 0,          // 0 = unlimited; truncates the combined label to this many characters
                 show_condition: false,  // append the WMO condition word (e.g. "Cloudy") after the temperature
-                show_temperature: true  // false hides the temperature -- only meaningful combined with show_condition true, otherwise the widget just goes empty
+                show_temperature: true, // false hides the temperature -- only meaningful combined with show_condition true, otherwise the widget just goes empty
+                left_click: "control_center.weather",
+                right_click: "",
+                middle_click: ""
             },
             clock: {
                 time_format: "24h", // 24h | 12h
-                timezone: ""         // IANA zone name (e.g. "America/New_York"); "" = system's local timezone
+                timezone: "",        // IANA zone name (e.g. "America/New_York"); "" = system's local timezone
+                left_click: "control_center.calendar",
+                right_click: "",
+                middle_click: ""
             },
             workspaces: {
                 hide_when_empty: false,
@@ -255,26 +266,54 @@ Singleton {
             media: {
                 album_art_only: false, // show only a small art thumbnail (or a fallback icon) instead of the title/artist text
                 hide_artist: false,    // title only -- overrides artist_first below, since there's no artist left to reorder
-                artist_first: false    // "Artist — Title" instead of the default "Title — Artist"
+                artist_first: false,   // "Artist — Title" instead of the default "Title — Artist"
+                left_click: "control_center.media",
+                right_click: "media.play_pause",
+                middle_click: ""
             },
             volume: {
-                show_percentage: true // false hides the numeric label, icon only
+                show_percentage: true, // false hides the numeric label, icon only
+                left_click: "control_center.audio",
+                right_click: "audio.mute_toggle",
+                middle_click: ""
             },
             bluetooth: {
-                show_device_count: true // false hides the connected-device count, icon only
+                show_device_count: true, // false hides the connected-device count, icon only
+                left_click: "control_center.bluetooth",
+                right_click: "",
+                middle_click: ""
             },
             tray: {
                 icon_size: 0 // 0 = default (Theme.fontSize + 4); otherwise an explicit pixel size
             },
             mem: {
-                warning_threshold: 90 // usedPercent at/above this recolors the widget to Theme.warning; 100 = never
+                warning_threshold: 90, // usedPercent at/above this recolors the widget to Theme.warning; 100 = never
+                left_click: "control_center.system",
+                right_click: "",
+                middle_click: ""
             },
             cpu: {
-                warning_threshold: 90 // usagePercent at/above this recolors the widget to Theme.warning; 100 = never
+                warning_threshold: 90, // usagePercent at/above this recolors the widget to Theme.warning; 100 = never
+                left_click: "control_center.system",
+                right_click: "",
+                middle_click: ""
             },
             power: {
                 show_percentage: true,   // false hides the numeric label, icon only
-                low_battery_threshold: 20 // percent at/below which the "battery_alert" icon shows instead of "battery_full"
+                low_battery_threshold: 20, // percent at/below which the "battery_alert" icon shows instead of "battery_full"
+                left_click: "control_center.power",
+                right_click: "",
+                middle_click: ""
+            },
+            logo: {
+                left_click: "",
+                right_click: "",
+                middle_click: ""
+            },
+            dnd: {
+                left_click: "control_center.notifications",
+                right_click: "dnd.toggle",
+                middle_click: ""
             }
         },
         osd: {

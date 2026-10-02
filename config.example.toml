@@ -113,14 +113,25 @@ hover_highlight = false
 # Per-bar-widget display settings -- distinct from a widget's own top-level
 # table (e.g. [weather]'s location/units, shared with the Home tab and
 # control-center), since these only affect how the bar's copy renders.
+#
+# left_click / right_click / middle_click take an action id from the action
+# registry (`xidou msg actions list`); "" = nothing, and a right click then
+# falls through to the bar's dead zone (control-center at Home). Workspaces
+# and Tray have per-item clicks instead.
 [bar_widgets.weather]
 max_length = 0          # 0 = unlimited; truncates the combined label to this many characters
 show_condition = false  # append the WMO condition word (e.g. "Cloudy") after the temperature
 show_temperature = true # false hides the temperature -- only meaningful combined with show_condition true
+left_click = "control_center.weather"
+right_click = ""
+middle_click = ""
 
 [bar_widgets.clock]
 time_format = "24h" # 24h | 12h
 timezone = ""        # IANA zone name (e.g. "America/New_York"); "" = system's local timezone
+left_click = "control_center.calendar"
+right_click = ""
+middle_click = ""
 
 [bar_widgets.workspaces]
 hide_when_empty = false
@@ -131,25 +142,53 @@ show_icons = false # only visible in practice under focus_hint
 album_art_only = false # show only a small art thumbnail (or fallback icon) instead of the title/artist text
 hide_artist = false    # title only -- overrides artist_first below
 artist_first = false   # "Artist — Title" instead of the default "Title — Artist"
+left_click = "control_center.media"
+right_click = "media.play_pause"
+middle_click = ""
 
 [bar_widgets.volume]
 show_percentage = true # false hides the numeric label, icon only
+left_click = "control_center.audio"
+right_click = "audio.mute_toggle"
+middle_click = ""
 
 [bar_widgets.bluetooth]
 show_device_count = true # false hides the connected-device count, icon only
+left_click = "control_center.bluetooth"
+right_click = ""
+middle_click = ""
 
 [bar_widgets.tray]
 icon_size = 0 # 0 = default (bar height derived); otherwise an explicit pixel size
 
 [bar_widgets.mem]
 warning_threshold = 90 # used% at/above this recolors the widget to theme.warning; 100 = never
+left_click = "control_center.system"
+right_click = ""
+middle_click = ""
 
 [bar_widgets.cpu]
 warning_threshold = 90 # usage% at/above this recolors the widget to theme.warning; 100 = never
+left_click = "control_center.system"
+right_click = ""
+middle_click = ""
+
+[bar_widgets.logo]
+left_click = ""
+right_click = ""
+middle_click = ""
+
+[bar_widgets.dnd]
+left_click = "control_center.notifications"
+right_click = "dnd.toggle"
+middle_click = ""
 
 [bar_widgets.power]
 show_percentage = true      # false hides the numeric label, icon only
 low_battery_threshold = 20  # percent at/below which the low-battery icon shows instead of full
+left_click = "control_center.power"
+right_click = ""
+middle_click = ""
 
 [layout]
 # Window gaps for the tiling layout -- a real dwm feature (xidouwm/fibonacci.c),

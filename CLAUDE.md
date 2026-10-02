@@ -196,9 +196,11 @@ Read-only survey; nothing was changed to collect it.
     / `middleClicked()` / `scrolled(steps)` functions. Bar.qml's wrapper
     calls them, and undeclared buttons fall through to the dead zone.
   - A `tooltip` property gets the bar's shared popup.
-  - Default clicks (ROADMAP M8, D6): left opens control-center at the module's
-    section; a module's quick action (mute, DND, play/pause) is on right click.
-    Both are action registry ids.
+  - Clicks (ROADMAP M8, D6) come from `[bar_widgets.<module>]`
+    `left_click`/`right_click`/`middle_click`, each an action registry id,
+    set in Settings > Bar > Modules > gear. Defaults: left opens the module's
+    control-center section, right runs its quick action (mute, DND,
+    play/pause). A module's own F5 slot is only the fallback.
 - **Quick actions live in `services/Actions.qml`** (ROADMAP M12). Switchboard,
   Home's toggle grid, the bar and the IPC targets dwm's keybinds call all run
   `Actions.run(id)`; never re-implement an action at a call site. Add an entry
@@ -475,14 +477,19 @@ Items below are the headline ones; the roadmap is the complete list.
   is not built.
 - **Bar Dead Zone settings**: click actions on empty bar space are hardcoded (right
   click → control-center); no config key or tab yet.
-- **Bar widget click model (M8)**: D6's defaults are built (left → the module's
-  control-center section, right → its quick action), but hardcoded; the
-  per-widget configuration D6 adopted (gear panel + M12's action registry) isn't
-  built. A right click that a module doesn't declare still falls through to the
-  dead zone, which opens control-center at Home. Before M8 that was the only way
-  a bar click reached control-center, and most likely what はる reported on
-  2026-10-02 ("control-center opens, but not the module's section"). Which
-  button actually reached the bar wasn't checked on the machine.
+- **Bar widget scroll actions (M8)**: clicks are configurable, scroll isn't.
+  A right click with no action set still falls through to the dead zone,
+  which opens control-center at Home. Before M8 that was the only way a bar
+  click reached control-center, and most likely what はる reported on
+  2026-10-02 ("control-center opens, but not the module's section").
+- **Quickshell log flood, cause unknown.** On 2026-10-02 one live instance
+  (10:13–10:14:54) wrote `QSocketNotifier: Socket notifiers cannot be enabled
+  or disabled from another thread`, then `Invalid socket 78 and type 'Read',
+  disabling...` 1.3 million times in under two minutes (127 MB of text log in
+  `/run/user/1000`, which is RAM). It began right after the theme mode was
+  cycled three times; はる logged out and back in. Rapid and concurrent config
+  writes under Xvfb didn't reproduce it. The instance's `log.qslog` is kept
+  in `/run/user/1000/quickshell/by-id/lsjb2a9mt/` (until reboot).
 - **Window gaps have no Settings UI**: `[layout] gap_inner/gap_outer` + dwm's
   `setgappih`/`setgappoh` IPC exist (`a941b03`), but they're only pushed once at
   session start by an `awk` block in `session/xidou-xinitrc`.
@@ -521,6 +528,8 @@ Items below are the headline ones; the roadmap is the complete list.
     module click does the same as on master.
   - M12's other Switchboard tiles (Wi-Fi, Bluetooth, Caffeine, Night Light,
     Lock) and region screenshot, now run through the registry.
+  - M8's click settings in the gear panel (the default clicks themselves
+    were re-checked on the machine).
   - Sound effects (every individual sound, including Wi-Fi/Bluetooth, charger,
     battery and lock sounds) and the log out/restart/shut down sound wait.
   - Screenshot's Save to File / Copy to Clipboard toggles (L3).
@@ -586,8 +595,10 @@ file is for project-level state, that one is for recurring implementation traps.
   machine, including switching the working tree. はる never types commands.
   - `/home/haru/projects/xidou-shell` is the tree the live session runs:
     xinitrc execs `xidouwm/xidouwm` from it, and Quickshell runs
-    `quickshell -p` on its `quickshell/`. A commit there is what はる gets,
-    at the latest after the next logout/login.
+    `quickshell -p` on its `quickshell/`. Quickshell reloads as soon as a
+    file there changes, so a QML edit is live on はる's screen immediately,
+    before any commit (a broken edit breaks the live shell until it's fixed
+    or reverted). xidouwm changes need a rebuild and a logout/login.
 - **Ask はる only for**: checking something on screen, `sudo`, and logging
   out/in.
 - **Reports are short**, with what はる has to decide or do at the top.

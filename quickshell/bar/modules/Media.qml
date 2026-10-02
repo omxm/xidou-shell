@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell.Services.Mpris
 import "../../config"
 import "../widgets"
-import "../../services"
 
 // Now-playing title/artist for the first MPRIS player found. Collapses to
 // zero width when nothing is playing, rather than showing an empty label.
@@ -101,15 +100,5 @@ Item {
             elide: Text.ElideRight
             text: root.labelText
         }
-    }
-
-    // Click slots for Bar.qml's widget wrapper (ROADMAP F5). Left opens
-    // control-center at Media, right plays/pauses (M8, D6).
-    function leftClicked() {
-        Actions.run("control_center.media");
-    }
-
-    function rightClicked() {
-        Actions.run("media.play_pause");
     }
 }

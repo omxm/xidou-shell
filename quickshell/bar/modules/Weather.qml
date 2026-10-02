@@ -255,11 +255,4 @@ Item {
             stateColor: Theme.textMuted
         }
     }
-
-    // Click slot for Bar.qml's widget wrapper (ROADMAP F5): left opens
-    // control-center at Weather (M8, D6). Right click isn't declared, so it
-    // falls through to the bar's dead zone.
-    function leftClicked() {
-        Actions.run("control_center.weather");
-    }
 }

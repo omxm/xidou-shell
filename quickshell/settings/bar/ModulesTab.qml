@@ -558,6 +558,49 @@ Item {
             }
         }
 
+        // Clicks (ROADMAP M8, D6): each button runs an action registry id
+        // from [bar_widgets.<module>], for every module that has the keys
+        // (all but Workspaces and Tray, which have per-item clicks).
+        readonly property bool hasClicks: Config.defaults.bar_widgets[moduleEntry.name] !== undefined
+            && Config.defaults.bar_widgets[moduleEntry.name].left_click !== undefined
+        readonly property var clickButtons: [
+            { key: "left_click", label: "Left Click" },
+            { key: "right_click", label: "Right Click" },
+            { key: "middle_click", label: "Middle Click" }
+        ]
+
+        Column {
+            id: clicksBlock
+            width: parent.width
+            spacing: Theme.fontSize / 2
+            visible: parent.hasClicks
+            height: visible ? implicitHeight : 0
+
+            Repeater {
+                model: clicksBlock.visible ? clicksBlock.parent.clickButtons : []
+
+                delegate: Settings.SettingRow {
+                    id: clickRow
+                    required property var modelData
+
+                    readonly property string moduleName: clicksBlock.parent.moduleEntry.name
+
+                    width: clicksBlock.width
+                    label: modelData.label
+                    tableHeader: "bar_widgets." + moduleName
+                    settingKey: modelData.key
+                    defaultValue: Config.defaults.bar_widgets[moduleName][modelData.key]
+                    showOverriddenOnly: root.showOverriddenOnly
+
+                    Settings.ActionPicker {
+                        width: parent.width
+                        currentValue: Config.data.bar_widgets[clickRow.moduleName][clickRow.modelData.key] || ""
+                        onActionSelected: (value) => Config.setValue("bar_widgets." + clickRow.moduleName, clickRow.modelData.key, value)
+                    }
+                }
+            }
+        }
+
         // Widget-specific content -- real controls where the underlying
         // value already has backing, a PlaceholderTab fallback for every
         // other widget, same "fail soft to placeholder" convention as
@@ -579,7 +622,7 @@ Item {
 
         Loader {
             width: parent.width
-            height: parent.height - (Theme.fontSize * 1.8) - (Theme.fontSize * 2.6) - (parent.spacing * 2)
+            height: parent.height - (Theme.fontSize * 1.8) - (Theme.fontSize * 2.6) - clicksBlock.height - (parent.spacing * 3)
             sourceComponent: parent.widgetComponentsByName[root.editingModule] || placeholderWidgetComponent
         }
 

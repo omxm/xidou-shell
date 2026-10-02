@@ -319,19 +319,32 @@ PanelWindow {
                 border.color: Theme.border
             }
 
-            // Click and scroll slots (ROADMAP F5). A module declares what it
-            // does by defining any of leftClicked(), rightClicked(),
-            // middleClicked() and scrolled(steps) (steps > 0 = wheel up);
-            // this MouseArea calls them. It only accepts the buttons the
-            // module declares, so anything else falls through to the bar's
-            // dead-zone handler underneath (right-click opens Home). It sits
-            // under the module, so a module's own per-item MouseAreas
+            // Click and scroll slots (ROADMAP F5, M8). A button runs the
+            // action registry id set in [bar_widgets.<module>]'s left_click/
+            // right_click/middle_click (Settings > Bar > Modules > gear);
+            // with none set, a module can still declare leftClicked(),
+            // rightClicked(), middleClicked() and scrolled(steps) (steps > 0
+            // = wheel up) itself. This MouseArea only accepts buttons that
+            // have one or the other, so anything else falls through to the
+            // bar's dead-zone handler underneath (right-click opens Home). It
+            // sits under the module, so a module's own per-item MouseAreas
             // (Workspaces' tags, Tray's icons) still come first.
             readonly property var module: loader.item
-            readonly property bool hasLeft: !!wrapper.module && typeof wrapper.module.leftClicked === "function"
-            readonly property bool hasRight: !!wrapper.module && typeof wrapper.module.rightClicked === "function"
-            readonly property bool hasMiddle: !!wrapper.module && typeof wrapper.module.middleClicked === "function"
+            readonly property var clickCfg: Config.data.bar_widgets[wrapper.modelData.name] || ({})
+            readonly property string leftAction: wrapper.clickCfg.left_click || ""
+            readonly property string rightAction: wrapper.clickCfg.right_click || ""
+            readonly property string middleAction: wrapper.clickCfg.middle_click || ""
+            readonly property bool hasLeft: wrapper.leftAction !== "" || (!!wrapper.module && typeof wrapper.module.leftClicked === "function")
+            readonly property bool hasRight: wrapper.rightAction !== "" || (!!wrapper.module && typeof wrapper.module.rightClicked === "function")
+            readonly property bool hasMiddle: wrapper.middleAction !== "" || (!!wrapper.module && typeof wrapper.module.middleClicked === "function")
             readonly property bool hasScroll: !!wrapper.module && typeof wrapper.module.scrolled === "function"
+
+            function click(action, slot) {
+                if (action !== "")
+                    Actions.run(action);
+                else
+                    wrapper.module[slot]();
+            }
 
             MouseArea {
                 anchors.fill: parent
@@ -342,11 +355,11 @@ PanelWindow {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: (mouse) => {
                     if (mouse.button === Qt.LeftButton)
-                        wrapper.module.leftClicked();
+                        wrapper.click(wrapper.leftAction, "leftClicked");
                     else if (mouse.button === Qt.RightButton)
-                        wrapper.module.rightClicked();
+                        wrapper.click(wrapper.rightAction, "rightClicked");
                     else if (mouse.button === Qt.MiddleButton)
-                        wrapper.module.middleClicked();
+                        wrapper.click(wrapper.middleAction, "middleClicked");
                 }
             }
 

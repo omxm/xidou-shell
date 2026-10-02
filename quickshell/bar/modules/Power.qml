@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell.Services.UPower
 import "../../config"
 import "../widgets"
-import "../../services"
 
 // Battery percentage from UPower's composite "display device" (the one
 // UPower itself picks as representative — the laptop battery here).
@@ -46,12 +45,5 @@ Item {
             text: root.hasBattery ? (root.cfg.show_percentage ? (root.percent + "%") : "") : "--"
             visible: !root.hasBattery || root.cfg.show_percentage
         }
-    }
-
-    // Click slot for Bar.qml's widget wrapper (ROADMAP F5): left opens
-    // control-center at Power (M8, D6). Right click isn't declared, so it
-    // falls through to the bar's dead zone.
-    function leftClicked() {
-        Actions.run("control_center.power");
     }
 }

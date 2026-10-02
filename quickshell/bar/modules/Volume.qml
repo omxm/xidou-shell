@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell.Services.Pipewire
 import "../../config"
 import "../widgets"
-import "../../services"
 
 // Default sink volume/mute, via Quickshell's Pipewire service. PwObjectTracker
 // is required to keep the node's properties bound/updating — without it
@@ -43,16 +42,7 @@ Item {
         }
     }
 
-    // Click and tooltip slots for Bar.qml's widget wrapper (ROADMAP F5).
-    // Left opens control-center at Audio, right toggles mute (M8, D6).
-    function leftClicked() {
-        Actions.run("control_center.audio");
-    }
-
-    function rightClicked() {
-        Actions.run("audio.mute_toggle");
-    }
-
+    // Tooltip slot for Bar.qml's widget wrapper (ROADMAP F5).
     readonly property string tooltip: root.sink
         ? ((root.sink.description || root.sink.name || "Output") + " · " + (root.muted ? "muted" : root.volumePercent + "%"))
         : ""
